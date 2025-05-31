@@ -89,10 +89,10 @@ function AdminAccess() {
         );
 
         if (response.data && Array.isArray(response.data)) {
-          setCompanies(response.data); // Store the full company objects
+          setCompanies(response.data);
 
-          // Get the company from localStorage
-          const storedCompanyId = localStorage.getItem("selectedCompanyId");
+          // Get the company from sessionStorage instead of localStorage
+          const storedCompanyId = sessionStorage.getItem("currentCompanyId");
 
           // Set the prefilled company if it exists in the response
           const prefilledCompany = response.data.find(
@@ -101,9 +101,9 @@ function AdminAccess() {
 
           if (prefilledCompany) {
             setSelectedCompany(prefilledCompany);
-            fetchUsers(prefilledCompany.companyId); // Fetch users for the prefilled company
+            fetchUsers(prefilledCompany.companyId);
           } else {
-            setSelectedCompany(response.data[0]); // Default to the first company
+            setSelectedCompany(response.data[0]);
             fetchUsers(response.data[0].companyId);
           }
         }
@@ -122,7 +122,8 @@ function AdminAccess() {
     );
     if (selected) {
       setSelectedCompany(selected);
-      localStorage.setItem("selectedCompanyId", companyId); // Save the selected company to localStorage
+      // Store in sessionStorage instead of localStorage
+      sessionStorage.setItem("currentCompanyId", companyId);
       setSelectedUsers([]);
       fetchUsers(companyId);
     }
@@ -149,11 +150,14 @@ function AdminAccess() {
 
     try {
       const token = getItemFromSessionStorage("token", null);
+      const companyId = sessionStorage.getItem("currentCompanyId"); // Get company ID from sessionStorage
+
       const response = await axios.put(
         `${publicRuntimeConfig.apiURL}/hradmin/employees/${userToUnassign.employeeId}/roles`,
         {
           roles: ["HRADMIN"],
           operation: "Remove",
+          companyId: companyId // Add company ID to the request
         },
         {
           headers: {
@@ -198,18 +202,21 @@ function AdminAccess() {
     setIsAssignConfirmModalOpen(true);
   };
 
-  // New function to handle the actual assignment after confirmation
+  // Handle the actual assignment after confirmation
   const confirmAssignAdmin = async () => {
     if (usersToAssignInfo.length === 0) return;
 
-    const user = usersToAssignInfo[0]; // Get the user to assign
+    const user = usersToAssignInfo[0];
     try {
       const token = getItemFromSessionStorage("token", null);
+      const companyId = sessionStorage.getItem("currentCompanyId"); // Get company ID from sessionStorage
+
       const response = await axios.put(
         `${publicRuntimeConfig.apiURL}/hradmin/employees/${user.employeeId}/roles`,
         {
           roles: ["HRADMIN"],
           operation: "Add",
+          companyId: companyId // Add company ID to the request
         },
         {
           headers: {
@@ -219,7 +226,6 @@ function AdminAccess() {
       );
 
       if (response.status === 200) {
-        // Update local state to reflect the role assignment
         setUsers((prevUsers) =>
           prevUsers.map((u) =>
             u.employeeId === user.employeeId
@@ -233,7 +239,7 @@ function AdminAccess() {
       toast.error("Error assigning HR Admin role:", error);
       setError("Failed to assign HR Admin role. Please try again.");
     } finally {
-      setIsAssignConfirmModalOpen(false); // Close the modal
+      setIsAssignConfirmModalOpen(false);
     }
   };
 
@@ -260,13 +266,13 @@ function AdminAccess() {
   // Filter users based on search input
   const filteredUsers = users.filter(
     (user) =>
-      user.name.toLowerCase().includes(searchInput.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchInput.toLowerCase())
+      (user.name?.toLowerCase() || '').includes(searchInput.toLowerCase()) ||
+      (user.email?.toLowerCase() || '').includes(searchInput.toLowerCase())
   );
 
   const usersWithAdminFlag = users.map((user) => ({
     ...user,
-    isAdmin: user.roles.includes("HRADMIN"), // Dynamically determine if the user is an admin
+    isAdmin: user.roles?.includes("HRADMIN") || false,
   }));
 
   const toggleSidebar = () => {

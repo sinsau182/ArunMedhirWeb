@@ -5,7 +5,7 @@ import withAuth from "@/components/withAuth";
 import { useRouter } from "next/router";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchExpenseByEmployeeId } from "@/redux/slices/expensesSlice";
-import { FiEye } from "react-icons/fi";
+import { FiEye, FiFileText } from "react-icons/fi";
 
 const Expenses = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -51,6 +51,68 @@ const Expenses = () => {
     router.push(`/employee/add-expense?id=${expense.expenseId}`);
   };
   
+  // Empty state component
+  const EmptyState = () => (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '48px 24px',
+      background: '#fff',
+      borderRadius: 12,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      marginTop: 16
+    }}>
+      <div style={{
+        width: 64,
+        height: 64,
+        borderRadius: '50%',
+        background: '#f3f4f6',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16
+      }}>
+        <FiFileText size={32} color="#6b7280" />
+      </div>
+      <h3 style={{
+        fontSize: 18,
+        fontWeight: 600,
+        color: '#374151',
+        marginBottom: 8
+      }}>
+        No Expenses Found
+      </h3>
+      <p style={{
+        fontSize: 14,
+        color: '#6b7280',
+        textAlign: 'center',
+        maxWidth: 400,
+        marginBottom: 24
+      }}>
+        You haven't submitted any expenses yet. Click the button below to add your first expense.
+      </p>
+      <button
+        style={{
+          background: '#2563eb',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 6,
+          padding: '10px 24px',
+          fontWeight: 600,
+          fontSize: 14,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}
+        onClick={() => router.push('/employee/add-expense')}
+      >
+        Add Your First Expense
+      </button>
+    </div>
+  );
 
   return (
     <>
@@ -68,50 +130,80 @@ const Expenses = () => {
             Add Expense
           </button>
         </div>
-        <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: 0, marginTop: 16 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr style={{ background: '#f5f6fa', textAlign: 'left' }}>
-                {/* <th style={{ padding: '16px 12px' }}>ID</th> */}
-                <th style={{ padding: '16px 12px' }}>Main Head</th>
-                <th style={{ padding: '16px 12px' }}>Expense Head</th>
-                <th style={{ padding: '16px 12px' }}>Vendor</th>
-                <th style={{ padding: '16px 12px' }}>Amount</th>
-                <th style={{ padding: '16px 12px' }}>Initiated</th>
-                <th style={{ padding: '16px 12px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '16px 12px', textAlign: 'center', verticalAlign: 'middle' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((row) => (
-                <tr
-                  key={row.expenseId}
-                  style={{ borderBottom: '1px solid #f0f0f0', cursor: 'pointer' }}
-                  onClick={() => handleRowClick(row)}
-                  onMouseOver={e => e.currentTarget.style.background = '#f5f6fa'}
-                  onMouseOut={e => e.currentTarget.style.background = ''}
-                >
-                  {/* <td style={{ padding: '14px 12px' }}>{row.expenseId}</td> */}
-                  <td style={{ padding: '14px 12px' }}>{row.mainHead}</td>
-                  <td style={{ padding: '14px 12px' }}>{row.expenseHead}</td>
-                  <td style={{ padding: '14px 12px' }}>{row.vendor}</td>
-                  <td style={{ padding: '14px 12px' }}>{row.totalAmount}</td>
-                  <td style={{ padding: '14px 12px' }}>{formatDate(row.initiated)}</td>
-                  <td style={{ padding: '14px 12px', textAlign: 'center' }}>
-                    <span style={{ background: statusColors[row.status], color: '#444', borderRadius: 12, padding: '4px 16px', fontWeight: 500, fontSize: 15 }}>
-                      {row.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '14px 12px', textAlign: 'center', verticalAlign: 'middle' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                      <FiEye className="w-5 h-5" />
-                    </span>
-                  </td>
+        {loading ? (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '48px',
+            background: '#fff',
+            borderRadius: 12,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            marginTop: 16
+          }}>
+            <div style={{ color: '#6b7280', fontSize: 16 }}>Loading expenses...</div>
+          </div>
+        ) : error ? (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '48px',
+            background: '#fff',
+            borderRadius: 12,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            marginTop: 16
+          }}>
+            <div style={{ color: '#ef4444', fontSize: 16 }}>Error: {error}</div>
+          </div>
+        ) : expenses.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: 0, marginTop: 16 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr style={{ background: '#f5f6fa', textAlign: 'left' }}>
+                  {/* <th style={{ padding: '16px 12px' }}>ID</th> */}
+                  <th style={{ padding: '16px 12px' }}>Main Head</th>
+                  <th style={{ padding: '16px 12px' }}>Expense Head</th>
+                  <th style={{ padding: '16px 12px' }}>Vendor</th>
+                  <th style={{ padding: '16px 12px' }}>Amount</th>
+                  <th style={{ padding: '16px 12px' }}>Initiated</th>
+                  <th style={{ padding: '16px 12px', textAlign: 'center' }}>Status</th>
+                  <th style={{ padding: '16px 12px', textAlign: 'center', verticalAlign: 'middle' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {expenses.map((row) => (
+                  <tr
+                    key={row.expenseId}
+                    style={{ borderBottom: '1px solid #f0f0f0', cursor: 'pointer' }}
+                    onClick={() => handleRowClick(row)}
+                    onMouseOver={e => e.currentTarget.style.background = '#f5f6fa'}
+                    onMouseOut={e => e.currentTarget.style.background = ''}
+                  >
+                    {/* <td style={{ padding: '14px 12px' }}>{row.expenseId}</td> */}
+                    <td style={{ padding: '14px 12px' }}>{row.mainHead}</td>
+                    <td style={{ padding: '14px 12px' }}>{row.expenseHead}</td>
+                    <td style={{ padding: '14px 12px' }}>{row.vendor}</td>
+                    <td style={{ padding: '14px 12px' }}>{row.totalAmount}</td>
+                    <td style={{ padding: '14px 12px' }}>{formatDate(row.initiated)}</td>
+                    <td style={{ padding: '14px 12px', textAlign: 'center' }}>
+                      <span style={{ background: statusColors[row.status], color: '#444', borderRadius: 12, padding: '4px 16px', fontWeight: 500, fontSize: 15 }}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px 12px', textAlign: 'center', verticalAlign: 'middle' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                        <FiEye className="w-5 h-5" />
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   );

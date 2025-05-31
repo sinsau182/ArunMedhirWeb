@@ -4,6 +4,9 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchModules,
   fetchEmployees,
+  addModule,
+  updateModule,
+  deleteModule
 } from "@/redux/slices/modulesSlice";
 // import { fetchAllEmployees } from "@/redux/slices/allEmployeesSlice";
 import { fetchCompanies } from "@/redux/slices/companiesSlice";
@@ -168,25 +171,12 @@ function SuperadminModules() {
 
     setIsLoading(true);
     try {
-      const token = getItemFromSessionStorage("token", null);
-      const response = await fetch(`${publicRuntimeConfig.apiURL}/superadmin/modules/${selectedModule.moduleId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete module");
-      }
-
-      // Reset selection and refresh data
+      await dispatch(deleteModule(selectedModule.moduleId)).unwrap();
+      // Reset selection and close modal
       setSelectedModule(null);
       setIsAddModuleOpen(false);
-      await refreshData();
     } catch (error) {
       toast.error("Error deleting module:", error);
-      alert(error.message || "Failed to delete module");
     } finally {
       setIsLoading(false);
     }
@@ -206,7 +196,6 @@ function SuperadminModules() {
 
     setIsLoading(true);
     try {
-      const token = getItemFromSessionStorage("token", null);
       const moduleData = {
         moduleName: moduleName.trim(),
         description: moduleDescription.trim(),
@@ -214,44 +203,26 @@ function SuperadminModules() {
         employeeIds: selectedEmployees.map(employee => employee.employeeId)
       };
 
-      let response;
       if (isEditMode) {
         // Update existing module
-        response = await fetch(`${publicRuntimeConfig.apiURL}/superadmin/modules/${selectedModule.moduleId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(moduleData),
-        });
+        await dispatch(updateModule({
+          moduleId: selectedModule.moduleId,
+          moduleData
+        })).unwrap();
       } else {
         // Create new module
-        response = await fetch(`${publicRuntimeConfig.apiURL}/superadmin/modules`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(moduleData),
-        });
+        await dispatch(addModule(moduleData)).unwrap();
       }
 
-      if (!response.ok) {
-        throw new Error(isEditMode ? "Failed to update module" : "Failed to create module");
-      }      // Reset form and close modal
+      // Reset form and close modal
       setModuleName("");
       setModuleDescription("");
       setSelectedCompany(null);
       setSelectedEmployees([]);
       setIsAddModuleOpen(false);
       setIsEditMode(false);
-      
-      // Refresh all data
-      await refreshData();
     } catch (error) {
       toast.error("Error saving module:", error);
-      alert(error.message || "Failed to save module. Please try again.");
     } finally {
       setIsLoading(false);
     }

@@ -794,18 +794,28 @@ function EmployeeProfilePage() {
                     <div className="flex space-x-3">
                       {/* Add Edit Profile button here, to the left of Reports to */}
                       {!isPageInEditMode ? (
-                        <button
-                          onClick={handleEditProfileClick}
-                          className={`flex flex-col items-center bg-white/10 backdrop-blur px-4 py-2 rounded-lg text-white ${
-                            !isEditable
-                              ? "opacity-50 cursor-not-allowed"
-                              : "hover:bg-white/20"
-                          }`}
-                          disabled={!isEditable || loading}
-                        >
-                          <FiEdit2 className="w-4 h-4 mb-1" />
-                          <span className="text-xs">Edit Profile</span>
-                        </button>
+                        <div className="relative group">
+                          <button
+                            onClick={handleEditProfileClick}
+                            className={`flex flex-col items-center bg-white/10 backdrop-blur px-4 py-2 rounded-lg text-white ${
+                              !isEditable
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover:bg-white/20"
+                            }`}
+                            disabled={!isEditable || loading}
+                          >
+                            <FiEdit2 className="w-4 h-4 mb-1" />
+                            <span className="text-xs">Edit Profile</span>
+                          </button>
+                          {!isEditable && (
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                              <div className="relative">
+                                <p>Cannot edit while update request is pending</p>
+                                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div
                           onClick={handleSaveAllClick}

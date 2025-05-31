@@ -10,7 +10,7 @@ export const fetchTDS = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const token = getItemFromSessionStorage("token", null);
-      const company = localStorage.getItem("selectedCompanyId");
+      const company = sessionStorage.getItem("currentCompanyId");
       const response = await axios.get(
         `${publicRuntimeConfig.apiURL}/tds-settings/company/${company}`,
         {

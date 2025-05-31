@@ -32,11 +32,16 @@ const Navbar = () => {
   const { publicRuntimeConfig } = getConfig();
 
   useEffect(() => {
-    const storedCompany = localStorage.getItem("selectedCompany");
-    const storedColor = localStorage.getItem("selectedCompanyColor");
+    const storedCompany = sessionStorage.getItem("currentCompany");
+    const storedColor = sessionStorage.getItem("currentCompanyColor");
+    const lastSelectedCompany = localStorage.getItem("lastSelectedCompany");
 
     if (storedCompany) {
       setSelectedCompany(storedCompany);
+    } else if (lastSelectedCompany) {
+      // If no current company in session, use last selected from localStorage
+      setSelectedCompany(lastSelectedCompany);
+      sessionStorage.setItem("currentCompany", lastSelectedCompany);
     }
 
     if (storedColor) {
@@ -168,7 +173,7 @@ const Navbar = () => {
       return;
     }
 
-    const currentSelectedCompany = localStorage.getItem("selectedCompany");
+    const currentSelectedCompany = sessionStorage.getItem("currentCompany");
 
     if (companyName !== currentSelectedCompany) {
       setSelectedCompany(companyName);
@@ -179,16 +184,15 @@ const Navbar = () => {
       );
 
       if (selectedCompanyData) {
-        // Store selected company name and color code in localStorage
-        localStorage.setItem("selectedCompany", companyName);
-        localStorage.setItem(
-          "selectedCompanyColor",
-          selectedCompanyData.colorCode
-        );
-        localStorage.setItem(
-          "selectedCompanyId",
-          selectedCompanyData.companyId
-        );
+        // Store current company in sessionStorage
+        sessionStorage.setItem("currentCompany", companyName);
+        sessionStorage.setItem("currentCompanyColor", selectedCompanyData.colorCode);
+        sessionStorage.setItem("currentCompanyId", selectedCompanyData.companyId);
+
+        // Store last selected company in localStorage
+        localStorage.setItem("lastSelectedCompany", companyName);
+        localStorage.setItem("lastSelectedCompanyColor", selectedCompanyData.colorCode);
+        localStorage.setItem("lastSelectedCompanyId", selectedCompanyData.companyId);
 
         window.location.reload();
 

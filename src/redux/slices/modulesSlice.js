@@ -88,40 +88,88 @@ export const fetchEmployees = createAsyncThunk(
 // Add module
 export const addModule = createAsyncThunk(
   "modules/addModule",
-  async (moduleData, { rejectWithValue }) => {
+  async (moduleData, { dispatch, rejectWithValue }) => {
     try {
       const token = getItemFromSessionStorage("token", null);
-
       const response = await fetch(API_BASE_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          moduleName: moduleData.moduleName,
-          description: moduleData.description,
-          employeeIds: moduleData.employeeIds,
-          companyId: moduleData.companyId,
-        }),
+        body: JSON.stringify(moduleData),
       });
 
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error("Error response:", errorData);
-        throw new Error(errorData || "Failed to add module");
+        throw new Error("Failed to add module");
       }
 
       const data = await response.json();
+      // Refresh modules list after adding
+      await dispatch(fetchModules());
       return data;
     } catch (error) {
-      console.error("Error creating module:", error);
       return rejectWithValue(error.message);
     }
   }
 );
 
-const moduleSlice = createSlice({
+// Update module
+export const updateModule = createAsyncThunk(
+  "modules/updateModule",
+  async ({ moduleId, moduleData }, { dispatch, rejectWithValue }) => {
+    try {
+      const token = getItemFromSessionStorage("token", null);
+      const response = await fetch(`${API_BASE_URL}/${moduleId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(moduleData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update module");
+      }
+
+      const data = await response.json();
+      // Refresh modules list after updating
+      await dispatch(fetchModules());
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Delete module
+export const deleteModule = createAsyncThunk(
+  "modules/deleteModule",
+  async (moduleId, { dispatch, rejectWithValue }) => {
+    try {
+      const token = getItemFromSessionStorage("token", null);
+      const response = await fetch(`${API_BASE_URL}/${moduleId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete module");
+      }
+
+      // Refresh modules list after deleting
+      await dispatch(fetchModules());
+      return moduleId;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+const modulesSlice = createSlice({
   name: "modules",
   initialState: {
     modules: [],
@@ -132,6 +180,7 @@ const moduleSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // Fetch modules cases
       .addCase(fetchModules.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -144,6 +193,43 @@ const moduleSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // Add module cases
+      .addCase(addModule.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(addModule.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(addModule.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Update module cases
+      .addCase(updateModule.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateModule.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(updateModule.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Delete module cases
+      .addCase(deleteModule.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteModule.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(deleteModule.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Fetch employees cases
       .addCase(fetchEmployees.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -155,18 +241,8 @@ const moduleSlice = createSlice({
       .addCase(fetchEmployees.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      })
-      .addCase(addModule.fulfilled, (state, action) => {
-        state.modules.push(action.payload);
-      })
-      .addMatcher(
-        (action) => action.type.endsWith("/rejected"),
-        (state, action) => {
-          state.loading = false;
-          state.error = action.payload || "Something went wrong";
-        }
-      );
+      });
   },
 });
 
-export default moduleSlice.reducer;
+export default modulesSlice.reducer;

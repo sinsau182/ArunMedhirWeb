@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, X, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, X, CheckCircle, AlertCircle, FileText } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import HradminNavbar from "@/components/HradminNavbar";
 import { useDispatch, useSelector } from "react-redux";
@@ -828,8 +828,32 @@ const LeaveSettings = () => {
                       </tr>
                     ) : leaveTypes.length === 0 ? (
                       <tr>
-                        <td colSpan="4" className="px-6 py-4 text-center">
-                          No leave types found
+                        <td colSpan="4" className="px-6 py-8 text-center">
+                          <div className="flex flex-col items-center justify-center text-gray-500">
+                            <div className="rounded-full bg-gray-100 p-4 mb-4">
+                              <FileText className="h-10 w-10 text-gray-400" />
+                            </div>
+                            <p className="text-xl font-semibold text-gray-800 mb-1">No Leave Types Found</p>
+                            <p className="text-sm mb-4">You haven't added any leave types yet. Click the button below to add your first leave type.</p>
+                            <button
+                              onClick={() => {
+                                setSelectedLeaveType(null);
+                                setLeaveTypeForm({
+                                  name: "",
+                                  accrual: "",
+                                  description: "",
+                                  allowedInProbation: false,
+                                  allowedInNotice: false,
+                                  canCarryForward: false,
+                                });
+                                setShowLeaveTypeModal(true);
+                                setIsLeaveTypeFormChanged(false);
+                              }}
+                              className="px-5 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                              Add Your First Leave Type
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -925,8 +949,28 @@ const LeaveSettings = () => {
                       </tr>
                     ) : policies.length === 0 ? (
                       <tr>
-                        <td colSpan="2" className="px-6 py-4 text-center">
-                          No leave policies found
+                        <td colSpan="2" className="px-6 py-8 text-center">
+                          <div className="flex flex-col items-center justify-center text-gray-500">
+                            <div className="rounded-full bg-gray-100 p-4 mb-4">
+                              <FileText className="h-10 w-10 text-gray-400" />
+                            </div>
+                            <p className="text-xl font-semibold text-gray-800 mb-1">No Leave Policies Found</p>
+                            <p className="text-sm mb-4">You haven't added any leave policies yet. Click the button below to add your first leave policy.</p>
+                            <button
+                              onClick={() => {
+                                setSelectedPolicy(null);
+                                setPolicyForm({
+                                  name: "",
+                                  leaveAllocations: [{ leaveTypeId: "", daysPerYear: "" }],
+                                });
+                                setShowPolicyModal(true);
+                                setIsPolicyFormChanged(false);
+                              }}
+                              className="px-5 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                              Add Your First Leave Policy
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -1254,10 +1298,10 @@ const LeaveSettings = () => {
                       <div className="flex justify-end gap-3 mt-6">
                         <button
                           type="button"
-                          onClick={handlePolicyDelete}
-                          className="px-4 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200"
+                          onClick={() => setShowPolicyEditModal(false)}
+                          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
                         >
-                          Delete
+                          Cancel
                         </button>
                         <button
                           type="submit"
@@ -1330,8 +1374,29 @@ const LeaveSettings = () => {
                       </tr>
                     ) : holidays.length === 0 ? (
                       <tr>
-                        <td colSpan="3" className="px-6 py-4 text-center">
-                          No public holidays found
+                        <td colSpan="3" className="px-6 py-8 text-center">
+                          <div className="flex flex-col items-center justify-center text-gray-500">
+                            <div className="rounded-full bg-gray-100 p-4 mb-4">
+                              <FileText className="h-10 w-10 text-gray-400" />
+                            </div>
+                            <p className="text-xl font-semibold text-gray-800 mb-1">No Public Holidays Found</p>
+                            <p className="text-sm mb-4">You haven't added any public holidays yet. Click the button below to add your first public holiday.</p>
+                            <button
+                              onClick={() => {
+                                setSelectedHoliday(null);
+                                setHolidayForm({
+                                  name: "",
+                                  date: "",
+                                  description: "",
+                                });
+                                setShowHolidayModal(true);
+                                setIsHolidayFormChanged(false);
+                              }}
+                              className="px-5 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                              Add Your First Public Holiday
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -1512,10 +1577,10 @@ const LeaveSettings = () => {
                       <div className="flex justify-end gap-3 mt-6">
                         <button
                           type="button"
-                          onClick={handleHolidayDelete}
-                          className="px-4 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200"
+                          onClick={() => setShowHolidayEditModal(false)}
+                          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
                         >
-                          Delete
+                          Cancel
                         </button>
                         <button
                           type="submit"
@@ -1808,10 +1873,10 @@ const LeaveSettings = () => {
                   <div className="flex justify-end gap-3 mt-6">
                     <button
                       type="button"
-                      onClick={handleLeaveTypeDelete}
-                      className="px-4 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200"
+                      onClick={() => setShowLeaveTypeEditModal(false)}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
                     >
-                      Delete
+                      Cancel
                     </button>
                     <button
                       type="submit"

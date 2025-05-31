@@ -2,15 +2,22 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 import { setItem, getItem, removeItem } from "./sessionStorageSlice";
 import getConfig from "next/config";
-// Define the base URL
+// Define the base URLs
 const {publicRuntimeConfig} = getConfig();
-const BASE_URL = publicRuntimeConfig.apiURL + "/api/auth";
+const SUPERADMIN_BASE_URL = publicRuntimeConfig.apiURL + "/auth";
+const EMPLOYEE_BASE_URL = publicRuntimeConfig.apiURL + "/api/auth";
+
+// Helper function to determine which base URL to use
+const getBaseUrl = (isSuperadmin) => {
+  return isSuperadmin ? SUPERADMIN_BASE_URL : EMPLOYEE_BASE_URL;
+};
 
 export const registerUser = createAsyncThunk(
   "auth/register",
-  async (userData, { rejectWithValue }) => {
+  async ({ userData, isSuperadmin }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${BASE_URL}/register`, userData);
+      const baseUrl = getBaseUrl(isSuperadmin);
+      const response = await axios.post(`${baseUrl}/register`, userData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || "Registration failed");
@@ -20,9 +27,10 @@ export const registerUser = createAsyncThunk(
 
 export const loginUser = createAsyncThunk(
   "auth/login",
-  async (credentials, { dispatch, rejectWithValue }) => {
+  async ({ credentials, isSuperadmin }, { dispatch, rejectWithValue }) => {
     try {
-      const response = await axios.post(`${BASE_URL}/login`, credentials);
+      const baseUrl = getBaseUrl(isSuperadmin);
+      const response = await axios.post(`${baseUrl}/login`, credentials);
       if (response.data.token) {
         // Store token in sessionStorage using sessionStorageSlice
         await dispatch(setItem({ key: 'token', value: response.data.token }));
@@ -32,6 +40,8 @@ export const loginUser = createAsyncThunk(
           await sessionStorage.setItem('passwordChanged', response.data.passwordChanged);
         }
         await sessionStorage.setItem('departmentName', response.data.departmentName);
+        // Store the user type in sessionStorage
+        await sessionStorage.setItem('isSuperadmin', isSuperadmin);
       }
       return response.data;
     } catch (error) {

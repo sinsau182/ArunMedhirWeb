@@ -9,13 +9,12 @@ export const fetchPendingLeaveRequests = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const token = getItemFromSessionStorage("token");
-      const company = localStorage.getItem("selectedCompanyId");
+      const company = sessionStorage.getItem("currentCompanyId");
       const currentRole = sessionStorage.getItem("currentRole");
       const employeeId = sessionStorage.getItem("employeeId");
       if (!token) {
         return rejectWithValue("Authentication token not found");
       }
-
 
       let url = "";
       if (currentRole === "MANAGER") {
@@ -23,7 +22,6 @@ export const fetchPendingLeaveRequests = createAsyncThunk(
       } else {
         url = `${publicRuntimeConfig.apiURL}/leave/status/${company}/Pending`;
       }
-
 
       const response = await axios.get(url, {
         headers: {

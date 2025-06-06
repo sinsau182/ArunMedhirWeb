@@ -189,8 +189,7 @@ function SuperadminModules() {
 
   // Update handleAddOrUpdateModule
   const handleAddOrUpdateModule = async () => {
-    if (!moduleName || !moduleDescription || !selectedCompany || selectedEmployees.length === 0) {
-      alert("Please fill in all fields and select at least one admin");
+    if (!moduleName || !moduleDescription || !selectedCompany) {
       return;
     }
 

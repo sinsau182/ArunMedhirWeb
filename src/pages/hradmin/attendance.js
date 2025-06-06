@@ -35,6 +35,7 @@ function Attendance() {
   const [selectedDate, setSelectedDate] = useState(today.getDate());
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [isDepartmentFilterOpen, setIsDepartmentFilterOpen] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
 
   // Constants/Options
   const statusOptions = [
@@ -45,7 +46,7 @@ function Attendance() {
     { value: 'A', label: 'Absent', color: '#FFCCCC' },
     { value: 'LOP', label: 'Loss of Pay', color: '#e57373' },
     { value: 'H', label: 'Holiday', color: '#E0E0E0' },
-    { value: 'P/LOP', label: 'Present on Loss of Pay', color: '#A89EF6' }
+    { value: 'P/LOP', label: 'Present Half Day on Loss of Pay', color: '#A89EF6' }
   ];
 
   // Effects
@@ -267,7 +268,7 @@ function Attendance() {
   const getAttendanceColor = useCallback((status) => {
     if (status === null) return "bg-gray-100"; // No Data
     if (status === "P") return "bg-[#CCFFCC]"; // Present (Light green)
-    if (status === "P/A") return "bg-[#FFFFCC]"; // Half day (Light yellow)
+    if (status === "P/A") return "halfday-gradient"; // Use custom class for half day
     if (status === "A") return "bg-[#FFCCCC]"; // Absent (Light red)
     if (status === "H") return "bg-[#E0E0E0]"; // Holiday (Gray)
     if (status === "PH") return "bg-[#5cbf85]"; // Present on Holiday (Light blue)
@@ -288,7 +289,8 @@ function Attendance() {
 
   const handleDateClick = useCallback((day) => {
     setSelectedDate(prevDate => (prevDate === day ? null : day)); // Toggle selection
-  }, []); // Added empty dependency array
+    setSelectedEmployeeId(null); // Clear employee selection when date is clicked
+  }, []);
 
    const toggleDepartment = useCallback((department) => {
      setSelectedDepartments(prev => 
@@ -304,7 +306,15 @@ function Attendance() {
     setSelectedMonth(month);
     setSelectedYear(year);
     setIsCalendarOpen(false);
+    setSelectedDate(null);
+    setSelectedEmployeeId(null);
   }, []); // Added empty dependency array
+
+  // Handler for clicking an employee row (not a date cell)
+  const handleEmployeeRowClick = useCallback((employeeId) => {
+    setSelectedEmployeeId(prevId => prevId === employeeId ? null : employeeId); // Toggle selection
+    setSelectedDate(null); // Clear date selection when employee is clicked
+  }, []);
 
   // Memoized values
   const filteredEmployees = useMemo(
@@ -595,11 +605,33 @@ function Attendance() {
     }
 
 
-    // Calculate summary based on the rendered data
-    const summary = calculateAttendanceSummary(dataToRender, summaryDate);
+    // Calculate summary based on selected employee or date
+    const summary = useMemo(() => {
+      if (selectedEmployeeId) {
+        // Find the selected employee's data
+        const emp = dataToRender.find(e => e.id === selectedEmployeeId);
+        if (!emp) return calculateAttendanceSummary([], null);
+        // Calculate summary for this employee across all dates
+        return calculateAttendanceSummary([emp], null);
+      } else {
+        // Calculate summary for all employees for the selected date
+        return calculateAttendanceSummary(dataToRender, summaryDate);
+      }
+    }, [selectedEmployeeId, dataToRender, calculateAttendanceSummary, summaryDate]);
 
     return (
       <div className="bg-white rounded-lg shadow-md p-4 space-y-6">
+        {/* Dynamic selection message */}
+        {selectedEmployeeId && !selectedDate && (
+          <div className="mb-2 text-gray-700 font-medium text-base">
+            Showing attendance of an employee with EMP ID <span className="font-semibold">{selectedEmployeeId}</span> on {selectedMonth} {selectedYear}
+          </div>
+        )}
+        {!selectedEmployeeId && selectedDate && (
+          <div className="mb-2 text-gray-700 font-medium text-base">
+            Showing attendance of the employees on <span className="font-semibold">{selectedDate} {selectedMonth} {selectedYear}</span>
+          </div>
+        )}
         {/* Summary Cards in Single Row */}
         <div className="flex gap-4 overflow-x-auto pb-4 border-b border-gray-200">
           {statusOptions.map((status) => {
@@ -616,17 +648,20 @@ function Attendance() {
               case 'P/LOP': summaryKey = 'totalPresentOnLOP'; break;
               default: summaryKey = '';
             }
-            
-            const count = summary[summaryKey] || 0;
-            
+            const showNoData = selectedDate === null && !selectedEmployeeId;
+            const count = showNoData ? '--' : (summary[summaryKey] || 0);
             return (
-              <div 
-                key={status.value} 
-                className="rounded-lg p-4 min-w-[130px] text-gray-800 flex flex-col"
-                style={{ backgroundColor: status.color }}
+              <div
+                key={status.value}
+                className={`rounded-lg p-4 min-w-[130px] flex flex-col justify-between items-center group ${showNoData ? 'bg-gray-100' : (status.value === 'P/A' ? 'halfday-gradient' : '')}`}
+                style={{ background: showNoData ? undefined : (status.value === 'P/A' ? 'linear-gradient(90deg, #CCFFCC 50%, #FFCCCC 50%)' : status.color), cursor: showNoData ? 'not-allowed' : 'default' }}
+                title={showNoData ? 'Please select a date or employee to show data' : ''}
               >
                 <p className="text-sm text-gray-700 mb-1 font-medium min-h-[20px]">{status.label}</p>
-                <h3 className="text-xl font-bold mt-auto">{count}</h3>
+                <h3 className={`text-xl font-bold mt-auto ${showNoData ? 'text-gray-400' : 'text-gray-800'}`}>{count}</h3>
+                {showNoData && (
+                  <span className="absolute opacity-0 group-hover:opacity-100 bg-gray-700 text-white text-xs rounded px-2 py-1 mt-2 z-50 transition-opacity duration-200" style={{top: '100%'}}>Please select a date or employee to show data</span>
+                )}
               </div>
             );
           })}
@@ -649,28 +684,32 @@ function Attendance() {
                 <span className="flex flex-wrap gap-1 ml-2">
                   {selectedStatuses.map((status) => {
                     const found = statusOptions.find(opt => opt.value === status);
+                    const isActive = selectedStatuses.includes(status);
                     return (
                       <span
                         key={status}
-                        className="flex items-center px-2 py-0.5 rounded text-xs"
+                        className={`flex items-center px-2 py-0.5 rounded text-xs cursor-pointer`}
                         style={{
                           backgroundColor: found ? found.color : "#eee",
                           color: "#333",
                           border: "1px solid #ddd"
                         }}
+                        onClick={() => toggleStatus(status)}
                       >
                         {found ? found.label : status}
-                        <button
-                          type="button"
-                          className="ml-1 text-gray-500 hover:text-red-600 focus:outline-none"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setSelectedStatuses(prev => prev.filter(s => s !== status));
-                          }}
-                          aria-label={`Remove ${found ? found.label : status}`}
-                        >
-                          &times;
-                        </button>
+                        {isActive && (
+                          <button
+                            type="button"
+                            className="ml-1 text-gray-500 hover:text-red-600 focus:outline-none"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setSelectedStatuses(prev => prev.filter(s => s !== status));
+                            }}
+                            aria-label={`Remove ${found ? found.label : status}`}
+                          >
+                            &times;
+                          </button>
+                        )}
                       </span>
                     );
                   })}
@@ -716,18 +755,39 @@ function Attendance() {
         {/* Table */}
         <div className="bg-white rounded-lg shadow-sm">
           {/* Legend */}
-          <div className="p-4 border-b flex flex-wrap gap-4 text-xs">
-            {statusOptions.map(status => (
-              <div key={status.value} className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: status.color }}></div>
-                <span>{status.label} ({status.value})</span>
-        </div>
-            ))}
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-gray-100 rounded"></div>
-              <span>No Data</span>
-        </div>
-      </div>
+          <div className="p-4 border-b flex flex-wrap gap-4 text-xs items-center">
+            {statusOptions.map(status => {
+              const isActive = selectedStatuses.includes(status.value);
+              return (
+                <button
+                  key={status.value}
+                  type="button"
+                  onClick={() => toggleStatus(status.value)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded transition focus:outline-none select-none border text-xs
+                    ${isActive ? 'shadow-sm -translate-y-0.5 border-2' : 'border border-gray-200'}
+                    ${isActive ? '' : 'hover:bg-gray-200'}
+                  `}
+                  style={{
+                    background: isActive ? (status.value === 'P/A' ? 'linear-gradient(90deg, #CCFFCC 50%, #FFCCCC 50%)' : status.color) : '#f3f4f6',
+                    borderColor: isActive ? (status.value === 'P/A' ? 'transparent' : status.color) : '#e5e7eb',
+                    fontWeight: 400,
+                    boxShadow: isActive ? '0 2px 8px 0 rgba(0,0,0,0.04)' : 'none',
+                    transition: 'all 0.15s cubic-bezier(.4,0,.2,1)'
+                  }}
+                >
+                  <div className="w-3 h-3 rounded" style={{ background: status.value === 'P/A' ? 'linear-gradient(90deg, #CCFFCC 50%, #FFCCCC 50%)' : status.color }}></div>
+                  <span>{status.label} ({status.value})</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setSelectedStatuses([])}
+              className="ml-2 px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs border border-gray-300"
+            >
+              Clear
+            </button>
+          </div>
 
           <table className="w-full table-fixed border-collapse">
         <thead>
@@ -774,9 +834,15 @@ function Attendance() {
             <tr
               key={index}
               className="hover:bg-gray-50 transition-colors cursor-pointer"
+              onClick={e => {
+                // Only trigger row click if not clicking a date cell
+                if (!e.target.closest('td[data-date-cell]')) {
+                  handleEmployeeRowClick(employee.id);
+                }
+              }}
             >
                   {/* Fixed Cells */}
-                  <td className="py-1 px-1 text-sm text-gray-800 border-r border-black sticky left-0 bg-white z-10">
+                  <td className={`py-1 px-1 text-sm border-r border-black sticky left-0 z-10 ${selectedEmployeeId === employee.id ? 'bg-blue-100 font-semibold text-gray-800' : 'bg-white text-gray-800'}`}> 
                 {employee.id}
               </td>
                   <td className="py-1 px-1 text-sm text-gray-800 border-r border-black whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px] sticky left-[8%] bg-white z-10">
@@ -826,12 +892,17 @@ function Attendance() {
                     }
 
                     return (
-                <td
-                  key={index}
+                      <td
+                        key={index}
+                        data-date-cell
                         className={`py-0.5 px-0 text-center text-[10px] border-r border-black ${getAttendanceColor(attendanceForDay.label)}`}
-                >
+                        onClick={e => {
+                          e.stopPropagation(); // Prevent row click
+                          handleDateClick(day);
+                        }}
+                      >
                         {attendanceForDay.label}
-                </td>
+                      </td>
                     );
                   })}
                 </tr>
@@ -852,10 +923,21 @@ function Attendance() {
       isDepartmentFilterOpen,
       toggleDepartment,
       filteredAndSearchedLeaveData, // This already contains mapped data
-      calculateLeaveSummary 
+      calculateLeaveSummary,
+      selectedEmployeeId,
+      setSelectedEmployeeId
     } = props;
 
-    const leaveSummary = calculateLeaveSummary(); // Call the passed function
+    // If an employee is selected, show summary for that employee only
+    const leaveSummary = useMemo(() => {
+      if (selectedEmployeeId) {
+        const emp = filteredAndSearchedLeaveData.find(e => e.id === selectedEmployeeId);
+        if (!emp) return calculateLeaveSummary([]);
+        return calculateLeaveSummary([emp]);
+      } else {
+        return calculateLeaveSummary(filteredAndSearchedLeaveData);
+      }
+    }, [selectedEmployeeId, filteredAndSearchedLeaveData, calculateLeaveSummary]);
 
     return (
       <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
@@ -969,48 +1051,52 @@ function Attendance() {
         </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredAndSearchedLeaveData.map((leave) => {
-            const leaveBalance =
+                const leaveBalance =
                   parseFloat(leave.leavesEarned) +
                   parseFloat(leave.leavesFromPreviousYear) +
                   parseFloat(leave.compOffEarned) +
                   parseFloat(leave.compOffCarriedForward) -
                   parseFloat(leave.leavesTaken);
 
-            return (
-                  <tr key={leave.id} className="hover:bg-gray-100">
+                return (
+                  <tr
+                    key={leave.id}
+                    className="hover:bg-gray-100 cursor-pointer"
+                    onClick={() => setSelectedEmployeeId(leave.id)}
+                  >
+                    <td className={`py-3 px-4 whitespace-nowrap text-sm border-r border-gray-200 ${selectedEmployeeId === leave.id ? 'bg-blue-100 font-semibold text-gray-800' : 'text-gray-800'}`}>
+                      {leave.id}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.id}
-                </td>
+                      {leave.name}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.name}
-                </td>
+                      {leave.department}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.department}
-                </td>
+                      {leave.noOfPayableDays}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.noOfPayableDays}
-                </td>
+                      {leave.leavesTaken}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.leavesTaken}
-                </td>
+                      {leave.leavesEarned}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.leavesEarned}
-                </td>
+                      {leave.leavesFromPreviousYear}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.leavesFromPreviousYear}
-                </td>
+                      {leave.compOffEarned}
+                    </td>
                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.compOffEarned}
-                </td>
-                    <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-800 border-r border-gray-200">
-                  {leave.compOffCarriedForward}
-                </td>
+                      {leave.compOffCarriedForward}
+                    </td>
                     <td className={`py-3 px-4 whitespace-nowrap text-sm ${leaveBalance < 0 ? 'text-red-600 font-semibold' : 'text-gray-800'}`}>
                       {leaveBalance.toFixed(1)}
-                </td>
-              </tr>
-            );
-          })}
+                    </td>
+                  </tr>
+                );
+              })}
         </tbody>
       </table>
         </div>
@@ -1183,7 +1269,9 @@ function Attendance() {
                 isDepartmentFilterOpen,
                 toggleDepartment,
                 filteredAndSearchedLeaveData,
-                calculateLeaveSummary
+                calculateLeaveSummary,
+                selectedEmployeeId,
+                setSelectedEmployeeId
               })}
         </div>
       </div>
@@ -1192,3 +1280,9 @@ function Attendance() {
 }
 
 export default withAuth(Attendance);
+
+<style jsx global>{`
+  .halfday-gradient {
+    background: linear-gradient(90deg, #CCFFCC 50%, #FFCCCC 50%);
+  }
+`}</style>

@@ -74,6 +74,12 @@ const Overview = () => {
     totalAbsent: 0,
   });
 
+  // Animation state for Total Employees card
+  const [loadingNumbers, setLoadingNumbers] = useState(true);
+  const [displayedTotal, setDisplayedTotal] = useState(0);
+  const [displayedPresent, setDisplayedPresent] = useState(0);
+  const [displayedAbsent, setDisplayedAbsent] = useState(0);
+
   const dispatch = useDispatch();
   // Update the useSelector hook
   const { employees, loading: employeesLoading } = useSelector(
@@ -133,6 +139,46 @@ const Overview = () => {
     }
   }, [attendance]); // Dependency on attendance state
 
+  useEffect(() => {
+    setLoadingNumbers(true);
+    const timer = setTimeout(() => {
+      setLoadingNumbers(false);
+    }, 1000); // 1 second loading
+    return () => clearTimeout(timer);
+  }, [employees, currentDayAttendanceSummary]);
+
+  // Count up animation for numbers
+  useEffect(() => {
+    if (!loadingNumbers) {
+      let total = employees?.length ?? 0;
+      let present = currentDayAttendanceSummary.totalPresent;
+      let absent = currentDayAttendanceSummary.totalAbsent;
+      let duration = 500; // ms
+      let steps = 20;
+      let stepTime = duration / steps;
+      let i = 0;
+      let totalStep = total / steps;
+      let presentStep = present / steps;
+      let absentStep = absent / steps;
+      const interval = setInterval(() => {
+        i++;
+        setDisplayedTotal(Math.round(Math.min(total, i * totalStep)));
+        setDisplayedPresent(Math.round(Math.min(present, i * presentStep)));
+        setDisplayedAbsent(Math.round(Math.min(absent, i * absentStep)));
+        if (i >= steps) {
+          setDisplayedTotal(total);
+          setDisplayedPresent(present);
+          setDisplayedAbsent(absent);
+          clearInterval(interval);
+        }
+      }, stepTime);
+      return () => clearInterval(interval);
+    } else {
+      setDisplayedTotal(0);
+      setDisplayedPresent(0);
+      setDisplayedAbsent(0);
+    }
+  }, [loadingNumbers, employees, currentDayAttendanceSummary]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -335,40 +381,40 @@ const Overview = () => {
                 item.label === "Total Employees" ? (
                   <div
                     key={index}
-                    className="p-8 bg-white shadow-lg rounded-xl flex flex-col justify-between items-start hover:shadow-2xl hover:scale-105 transform transition-all duration-300 cursor-pointer border border-gray-100"
-                    style={{ height: "250px", width: "350px" }} // Adjust width if needed
-                    // No overall click handler for the card, clicks will be on specific counts
+                    className="relative p-8 bg-white shadow-lg rounded-xl flex flex-col items-start hover:shadow-2xl hover:scale-105 transform transition-all duration-300 border border-gray-100"
+                    style={{ height: "250px", width: "350px" }}
                   >
-                    <div className="flex justify-between items-center w-full mb-8">
-                      <p className="text-xl font-semibold text-gray-800">
-                        {item.label}
-                      </p>
+                    <div className="flex justify-between items-center w-full mb-2 z-10">
+                      <p className="text-2xl font-bold text-gray-800">Today</p>
                       <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-full">
                         <FaUsers className="text-blue-600 text-2xl" />
                       </div>
                     </div>
-                    <div className="space-y-4"> {/* Increased space-y */}
-                      <div className="flex items-center text-gray-600">
-                         <p className="text-sm mr-2">Total Employees:</p>
-                         <p className="text-2xl font-bold text-gray-900">{item.count}</p>
-                      </div>
-
-                       {/* Present Today */}
-                      <div
-                        className="flex items-center text-gray-600 cursor-pointer hover:text-green-700"
-                        onClick={() => handleAttendanceCountClick('P')}
-                      >
-                         <p className="text-sm mr-2">Present Today:</p>
-                         <p className="text-xl font-bold text-green-600">{currentDayAttendanceSummary.totalPresent}</p>
-                      </div>
-
-                       {/* Absent Today */}
-                      <div
-                        className="flex items-center text-gray-600 cursor-pointer hover:text-red-700"
-                        onClick={() => handleAttendanceCountClick('A')}
-                      >
-                         <p className="text-sm mr-2">Absent Today:</p>
-                         <p className="text-xl font-bold text-red-600">{currentDayAttendanceSummary.totalAbsent}</p>
+                    {/* Division Style Row with Smooth Count Up Animation */}
+                    <div className="flex flex-row items-start w-full z-10 mt-2 transition-opacity duration-500 opacity-100" style={{height: '90px'}}>
+                      {/* Total on the left */}
+                      <span className="text-6xl font-extrabold text-gray-900" style={{minWidth: '60px', textAlign: 'left'}}>{displayedTotal}</span>
+                      {/* Single tall slash */}
+                      <span className="flex flex-col justify-center items-center ml-2 mr-2" style={{height: '90px'}}>
+                        <span className="text-6xl font-extrabold text-gray-300 leading-none" style={{lineHeight: '1.1'}}>/</span>
+                      </span>
+                      {/* Present - Absent below slash, aligned to bottom */}
+                      <div className="flex flex-row items-end ml-2" style={{alignSelf: 'flex-end'}}>
+                        <span
+                          className="px-4 py-1 rounded-lg bg-green-100 text-gray-900 text-4xl font-extrabold cursor-pointer hover:bg-green-200 transition"
+                          onClick={() => handleAttendanceCountClick('P')}
+                          style={{minWidth: '48px', textAlign: 'center'}}
+                        >
+                          {displayedPresent}
+                        </span>
+                        <span className="text-4xl font-extrabold text-gray-400 mx-2">-</span>
+                        <span
+                          className="px-4 py-1 rounded-lg bg-red-100 text-gray-900 text-4xl font-extrabold cursor-pointer hover:bg-red-200 transition"
+                          onClick={() => handleAttendanceCountClick('A')}
+                          style={{minWidth: '48px', textAlign: 'center'}}
+                        >
+                          {displayedAbsent}
+                        </span>
                       </div>
                     </div>
                   </div>

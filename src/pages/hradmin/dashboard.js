@@ -377,44 +377,47 @@ const Overview = () => {
             {/* Updated grid layout and data source */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-12 mb-6"> {/* Changed to lg:grid-cols-2 */}
               {itemsToDisplayInOverview.map((item, index) => (
-                // Conditional rendering for the "Total Employees" card
                 item.label === "Total Employees" ? (
                   <div
                     key={index}
-                    className="relative p-8 bg-white shadow-lg rounded-xl flex flex-col items-start hover:shadow-2xl hover:scale-105 transform transition-all duration-300 border border-gray-100"
-                    style={{ height: "250px", width: "350px" }}
+                    className="relative bg-white/90 shadow-xl rounded-2xl flex flex-col items-center justify-between border border-gray-100 p-8 w-full max-w-xl mx-auto transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]"
+                    style={{ minHeight: "220px" }}
                   >
-                    <div className="flex justify-between items-center w-full mb-2 z-10">
-                      <p className="text-2xl font-bold text-gray-800">Today</p>
-                      <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-full">
-                        <FaUsers className="text-blue-600 text-2xl" />
+                    <div className="flex justify-between items-center w-full mb-6">
+                      <h2 className="text-lg font-bold text-gray-800">Today's Attendance</h2>
+                      <div className="p-2 bg-blue-50 rounded-full">
+                        <FaUsers className="text-blue-600 text-xl" />
                       </div>
                     </div>
-                    {/* Division Style Row with Smooth Count Up Animation */}
-                    <div className="flex flex-row items-start w-full z-10 mt-2 transition-opacity duration-500 opacity-100" style={{height: '90px'}}>
-                      {/* Total on the left */}
-                      <span className="text-6xl font-extrabold text-gray-900" style={{minWidth: '60px', textAlign: 'left'}}>{displayedTotal}</span>
-                      {/* Single tall slash */}
-                      <span className="flex flex-col justify-center items-center ml-2 mr-2" style={{height: '90px'}}>
-                        <span className="text-6xl font-extrabold text-gray-300 leading-none" style={{lineHeight: '1.1'}}>/</span>
-                      </span>
-                      {/* Present - Absent below slash, aligned to bottom */}
-                      <div className="flex flex-row items-end ml-2" style={{alignSelf: 'flex-end'}}>
+                    <div className="flex w-full justify-center items-end gap-0 text-center mt-2">
+                      {/* Total Employees */}
+                      <div className="flex flex-col items-center justify-center flex-1">
+                        <span className="text-7xl font-extrabold text-gray-800 leading-tight">{displayedTotal}</span>
+                        <span className="text-sm text-gray-400 mt-2 tracking-wide">Total</span>
+                      </div>
+                      {/* Divider */}
+                      <div className="h-16 border-l border-gray-200 mx-4"></div>
+                      {/* Present */}
+                      <div className="flex flex-col items-center justify-center flex-1">
                         <span
-                          className="px-4 py-1 rounded-lg bg-green-100 text-gray-900 text-4xl font-extrabold cursor-pointer hover:bg-green-200 transition"
+                          className="text-7xl font-extrabold text-green-700 leading-tight cursor-pointer hover:underline transition"
                           onClick={() => handleAttendanceCountClick('P')}
-                          style={{minWidth: '48px', textAlign: 'center'}}
                         >
                           {displayedPresent}
                         </span>
-                        <span className="text-4xl font-extrabold text-gray-400 mx-2">-</span>
+                        <span className="text-sm text-gray-400 mt-2 tracking-wide">Present</span>
+                      </div>
+                      {/* Divider */}
+                      <div className="h-16 border-l border-gray-200 mx-4"></div>
+                      {/* Absent */}
+                      <div className="flex flex-col items-center justify-center flex-1">
                         <span
-                          className="px-4 py-1 rounded-lg bg-red-100 text-gray-900 text-4xl font-extrabold cursor-pointer hover:bg-red-200 transition"
+                          className="text-7xl font-extrabold text-red-400 leading-tight cursor-pointer hover:underline transition"
                           onClick={() => handleAttendanceCountClick('A')}
-                          style={{minWidth: '48px', textAlign: 'center'}}
                         >
                           {displayedAbsent}
                         </span>
+                        <span className="text-sm text-gray-400 mt-2 tracking-wide">Absent</span>
                       </div>
                     </div>
                   </div>

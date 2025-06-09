@@ -741,6 +741,29 @@ const LeaveSettings = () => {
     }
   };
 
+  // Add at the top, after useState for policyForm
+  const defaultDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  // Helper to initialize allocation with new fields
+  function enrichAllocation(allocation) {
+    return {
+      ...allocation,
+      specialCondition: allocation.specialCondition ?? false,
+      allowedDays: allocation.allowedDays ?? [],
+      maxConsecutiveDays: allocation.maxConsecutiveDays ?? 1,
+      allowConsecutiveLeaves: allocation.allowConsecutiveLeaves ?? false,
+    };
+  }
+
+  // Update leaveAllocations in state to always have new fields
+  useEffect(() => {
+    setPolicyForm((prev) => ({
+      ...prev,
+      leaveAllocations: prev.leaveAllocations.map(enrichAllocation),
+    }));
+    // eslint-disable-next-line
+  }, []);
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
@@ -1014,7 +1037,7 @@ const LeaveSettings = () => {
               {/* Leave Policy Modal */}
               {showPolicyModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-xl">
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-xl font-semibold text-gray-800">
                         Add New Leave Policy
@@ -1026,7 +1049,8 @@ const LeaveSettings = () => {
                         <X className="h-6 w-6" />
                       </button>
                     </div>
-
+                    {/* Add scrollable content area */}
+                    <div className="overflow-y-auto max-h-[80vh] pr-2">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -1067,17 +1091,54 @@ const LeaveSettings = () => {
                           </button>
                         </div>
 
-                        {policyForm.leaveAllocations.map(
-                          (allocation, index) => (
-                            <div key={index} className="flex gap-4 items-start">
+                          {policyForm.leaveAllocations.map((allocation, index) => {
+                            // Ensure allocation has all fields
+                            allocation = enrichAllocation(allocation);
+                            const handleToggle = (field) => {
+                              setIsPolicyFormChanged(true);
+                              const newAllocations = [...policyForm.leaveAllocations];
+                              newAllocations[index][field] = !newAllocations[index][field];
+                              // If turning off specialCondition, reset allowedDays and maxConsecutiveDays
+                              if (field === "specialCondition" && newAllocations[index][field] === false) {
+                                newAllocations[index].allowedDays = [];
+                                newAllocations[index].maxConsecutiveDays = 1;
+                              }
+                              setPolicyForm({ ...policyForm, leaveAllocations: newAllocations });
+                            };
+                            const handleDayChange = (day) => {
+                              setIsPolicyFormChanged(true);
+                              const newAllocations = [...policyForm.leaveAllocations];
+                              let days = newAllocations[index].allowedDays || [];
+                              if (days.includes(day)) {
+                                days = days.filter((d) => d !== day);
+                              } else {
+                                days = [...days, day];
+                              }
+                              newAllocations[index].allowedDays = days;
+                              // Adjust maxConsecutiveDays if needed
+                              if (days.length < newAllocations[index].maxConsecutiveDays) {
+                                newAllocations[index].maxConsecutiveDays = days.length || 1;
+                              }
+                              setPolicyForm({ ...policyForm, leaveAllocations: newAllocations });
+                            };
+                            const handleMaxConsecutiveChange = (e) => {
+                              setIsPolicyFormChanged(true);
+                              const val = Math.max(1, Math.min(Number(e.target.value), allocation.allowedDays.length || 1));
+                              const newAllocations = [...policyForm.leaveAllocations];
+                              newAllocations[index].maxConsecutiveDays = val;
+                              setPolicyForm({ ...policyForm, leaveAllocations: newAllocations });
+                            };
+                            return (
+                              <div key={index} className="flex flex-col gap-2 border p-3 rounded-md mb-2 bg-gray-50">
+                                {/* Add Leave Type label */}
+                                <div className="mb-2 text-base font-semibold text-gray-700">Leave Type {index + 1}</div>
+                                <div className="flex gap-4 items-start">
                               <div className="flex-1">
                                 <select
                                   value={allocation.leaveTypeId || ""}
                                   onChange={(e) => {
                                     setIsPolicyFormChanged(true);
-                                    const newAllocations = [
-                                      ...policyForm.leaveAllocations,
-                                    ];
+                                        const newAllocations = [...policyForm.leaveAllocations];
                                     newAllocations[index] = {
                                       ...newAllocations[index],
                                       leaveTypeId: e.target.value,
@@ -1087,14 +1148,11 @@ const LeaveSettings = () => {
                                       leaveAllocations: newAllocations,
                                     });
                                   }}
-                                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm truncate"
                                 >
-                                  <option value="">Select Leave Type</option>
+                                      <option value="" className="text-xs text-gray-400 truncate">Select Leave Type</option>
                                   {leaveTypes.map((type) => (
-                                    <option
-                                      key={type.leaveTypeId}
-                                      value={type.leaveTypeId}
-                                    >
+                                        <option key={type.leaveTypeId} value={type.leaveTypeId} className="truncate text-sm">
                                       {type.leaveTypeName}
                                     </option>
                                   ))}
@@ -1106,9 +1164,7 @@ const LeaveSettings = () => {
                                   value={allocation.daysPerYear || ""}
                                   onChange={(e) => {
                                     setIsPolicyFormChanged(true);
-                                    const newAllocations = [
-                                      ...policyForm.leaveAllocations,
-                                    ];
+                                        const newAllocations = [...policyForm.leaveAllocations];
                                     newAllocations[index] = {
                                       ...newAllocations[index],
                                       daysPerYear: e.target.value,
@@ -1125,17 +1181,73 @@ const LeaveSettings = () => {
                               {index > 0 && (
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    handleRemoveLeaveAllocation(index)
-                                  }
+                                      onClick={() => handleRemoveLeaveAllocation(index)}
                                   className="text-red-500 hover:text-red-700"
                                 >
                                   <X className="h-5 w-5" />
                                 </button>
                               )}
                             </div>
-                          )
-                        )}
+                                {/* --- Functional Special Condition and Consecutive Leaves --- */}
+                                <div className="mt-4 p-4 rounded-lg bg-gray-100 border border-gray-200 w-full max-w-2xl mx-auto">
+                                  <div className="flex flex-row items-center gap-12 mb-4 flex-nowrap">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-gray-700">Special Condition</span>
+                                      <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={allocation.specialCondition} onChange={() => handleToggle("specialCondition")} className="sr-only peer" />
+                                        <div className={`w-10 h-6 rounded-full transition-all ${allocation.specialCondition ? "bg-blue-600" : "bg-gray-300"}`}></div>
+                                        <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-all ${allocation.specialCondition ? "translate-x-4" : ""}`}></div>
+                                      </label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-gray-700">Allow Consecutive Leaves</span>
+                                      <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={allocation.allowConsecutiveLeaves} onChange={() => handleToggle("allowConsecutiveLeaves")} className="sr-only peer" />
+                                        <div className={`w-10 h-6 rounded-full transition-all ${allocation.allowConsecutiveLeaves ? "bg-blue-600" : "bg-gray-300"}`}></div>
+                                        <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-all ${allocation.allowConsecutiveLeaves ? "translate-x-4" : ""}`}></div>
+                                      </label>
+                                    </div>
+                                  </div>
+                                  {/* Divider */}
+                                  <div className="w-full flex items-center mb-6">
+                                    <div className="flex-grow border-t border-gray-300"></div>
+                                  </div>
+                                  {allocation.specialCondition && (
+                                    <div className="rounded-lg bg-white border border-gray-200 p-4 flex flex-col items-center w-full mb-4">
+                                      <div className="font-semibold text-gray-700 mb-3 text-base w-full text-center">Allowed Days</div>
+                                      <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 w-full mb-4">
+                                        {defaultDays.map((day) => (
+                                          <label key={day} className="flex items-center gap-2 text-gray-600 text-base cursor-pointer select-none whitespace-nowrap">
+                                            <input
+                                              type="checkbox"
+                                              checked={allocation.allowedDays.includes(day)}
+                                              onChange={() => handleDayChange(day)}
+                                              className="accent-blue-600 w-5 h-5 rounded focus:ring-2 focus:ring-blue-400"
+                                            />
+                                            <span>{day}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                      <div className="w-full flex flex-col items-center mt-2">
+                                        <label className="block text-base font-semibold text-gray-700 mb-2 text-center w-full">Maximum Consecutive Days Allowed</label>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          max={allocation.allowedDays.length || 1}
+                                          value={allocation.maxConsecutiveDays}
+                                          onChange={handleMaxConsecutiveChange}
+                                          className="w-28 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 text-gray-700 text-lg shadow-sm text-center"
+                                        />
+                                        <div className="text-xs text-gray-500 mt-2 text-center w-full">
+                                          Max is the number of selected days ({allocation.allowedDays.length || 1})
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         {errors.leaveAllocation && (
                           <p className="text-red-500 text-sm mt-1">
                             {errors.leaveAllocation}
@@ -1159,6 +1271,7 @@ const LeaveSettings = () => {
                         </button>
                       </div>
                     </form>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1219,17 +1332,54 @@ const LeaveSettings = () => {
                           </button>
                         </div>
 
-                        {policyForm.leaveAllocations.map(
-                          (allocation, index) => (
-                            <div key={index} className="flex gap-4 items-start">
+                        {policyForm.leaveAllocations.map((allocation, index) => {
+                          // Ensure allocation has all fields
+                          allocation = enrichAllocation(allocation);
+                          const handleToggle = (field) => {
+                            setIsPolicyFormChanged(true);
+                            const newAllocations = [...policyForm.leaveAllocations];
+                            newAllocations[index][field] = !newAllocations[index][field];
+                            // If turning off specialCondition, reset allowedDays and maxConsecutiveDays
+                            if (field === "specialCondition" && newAllocations[index][field] === false) {
+                              newAllocations[index].allowedDays = [];
+                              newAllocations[index].maxConsecutiveDays = 1;
+                            }
+                            setPolicyForm({ ...policyForm, leaveAllocations: newAllocations });
+                          };
+                          const handleDayChange = (day) => {
+                            setIsPolicyFormChanged(true);
+                            const newAllocations = [...policyForm.leaveAllocations];
+                            let days = newAllocations[index].allowedDays || [];
+                            if (days.includes(day)) {
+                              days = days.filter((d) => d !== day);
+                            } else {
+                              days = [...days, day];
+                            }
+                            newAllocations[index].allowedDays = days;
+                            // Adjust maxConsecutiveDays if needed
+                            if (days.length < newAllocations[index].maxConsecutiveDays) {
+                              newAllocations[index].maxConsecutiveDays = days.length || 1;
+                            }
+                            setPolicyForm({ ...policyForm, leaveAllocations: newAllocations });
+                          };
+                          const handleMaxConsecutiveChange = (e) => {
+                            setIsPolicyFormChanged(true);
+                            const val = Math.max(1, Math.min(Number(e.target.value), allocation.allowedDays.length || 1));
+                            const newAllocations = [...policyForm.leaveAllocations];
+                            newAllocations[index].maxConsecutiveDays = val;
+                            setPolicyForm({ ...policyForm, leaveAllocations: newAllocations });
+                          };
+                          return (
+                            <div key={index} className="flex flex-col gap-2 border p-3 rounded-md mb-2 bg-gray-50">
+                              {/* Add Leave Type label */}
+                              <div className="mb-2 text-base font-semibold text-gray-700">Leave Type {index + 1}</div>
+                              <div className="flex gap-4 items-start">
                               <div className="flex-1">
                                 <select
                                   value={allocation.leaveTypeId || ""}
                                   onChange={(e) => {
                                     setIsPolicyFormChanged(true);
-                                    const newAllocations = [
-                                      ...policyForm.leaveAllocations,
-                                    ];
+                                      const newAllocations = [...policyForm.leaveAllocations];
                                     newAllocations[index] = {
                                       ...newAllocations[index],
                                       leaveTypeId: e.target.value,
@@ -1239,14 +1389,11 @@ const LeaveSettings = () => {
                                       leaveAllocations: newAllocations,
                                     });
                                   }}
-                                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm truncate"
                                 >
-                                  <option value="">Select Leave Type</option>
+                                    <option value="" className="text-xs text-gray-400 truncate">Select Leave Type</option>
                                   {leaveTypes.map((type) => (
-                                    <option
-                                      key={type.leaveTypeId}
-                                      value={type.leaveTypeId}
-                                    >
+                                      <option key={type.leaveTypeId} value={type.leaveTypeId} className="truncate text-sm">
                                       {type.leaveTypeName}
                                     </option>
                                   ))}
@@ -1258,9 +1405,7 @@ const LeaveSettings = () => {
                                   value={allocation.daysPerYear || ""}
                                   onChange={(e) => {
                                     setIsPolicyFormChanged(true);
-                                    const newAllocations = [
-                                      ...policyForm.leaveAllocations,
-                                    ];
+                                      const newAllocations = [...policyForm.leaveAllocations];
                                     newAllocations[index] = {
                                       ...newAllocations[index],
                                       daysPerYear: e.target.value,
@@ -1277,17 +1422,73 @@ const LeaveSettings = () => {
                               {index > 0 && (
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    handleRemoveLeaveAllocation(index)
-                                  }
+                                    onClick={() => handleRemoveLeaveAllocation(index)}
                                   className="text-red-500 hover:text-red-700"
                                 >
                                   <X className="h-5 w-5" />
                                 </button>
                               )}
                             </div>
-                          )
-                        )}
+                              {/* --- Functional Special Condition and Consecutive Leaves --- */}
+                              <div className="mt-4 p-4 rounded-lg bg-gray-100 border border-gray-200 w-full max-w-2xl mx-auto">
+                                <div className="flex flex-row items-center gap-12 mb-4 flex-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-gray-700">Special Condition</span>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                      <input type="checkbox" checked={allocation.specialCondition} onChange={() => handleToggle("specialCondition")} className="sr-only peer" />
+                                      <div className={`w-10 h-6 rounded-full transition-all ${allocation.specialCondition ? "bg-blue-600" : "bg-gray-300"}`}></div>
+                                      <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-all ${allocation.specialCondition ? "translate-x-4" : ""}`}></div>
+                                    </label>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-gray-700">Allow Consecutive Leaves</span>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                      <input type="checkbox" checked={allocation.allowConsecutiveLeaves} onChange={() => handleToggle("allowConsecutiveLeaves")} className="sr-only peer" />
+                                      <div className={`w-10 h-6 rounded-full transition-all ${allocation.allowConsecutiveLeaves ? "bg-blue-600" : "bg-gray-300"}`}></div>
+                                      <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-all ${allocation.allowConsecutiveLeaves ? "translate-x-4" : ""}`}></div>
+                                    </label>
+                                  </div>
+                                </div>
+                                {/* Divider */}
+                                <div className="w-full flex items-center mb-6">
+                                  <div className="flex-grow border-t border-gray-300"></div>
+                                </div>
+                                {allocation.specialCondition && (
+                                  <div className="rounded-lg bg-white border border-gray-200 p-4 flex flex-col items-center w-full mb-4">
+                                    <div className="font-semibold text-gray-700 mb-3 text-base w-full text-center">Allowed Days</div>
+                                    <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 w-full mb-4">
+                                      {defaultDays.map((day) => (
+                                        <label key={day} className="flex items-center gap-2 text-gray-600 text-base cursor-pointer select-none whitespace-nowrap">
+                                          <input
+                                            type="checkbox"
+                                            checked={allocation.allowedDays.includes(day)}
+                                            onChange={() => handleDayChange(day)}
+                                            className="accent-blue-600 w-5 h-5 rounded focus:ring-2 focus:ring-blue-400"
+                                          />
+                                          <span>{day}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                    <div className="w-full flex flex-col items-center mt-2">
+                                      <label className="block text-base font-semibold text-gray-700 mb-2 text-center w-full">Maximum Consecutive Days Allowed</label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max={allocation.allowedDays.length || 1}
+                                        value={allocation.maxConsecutiveDays}
+                                        onChange={handleMaxConsecutiveChange}
+                                        className="w-28 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 text-gray-700 text-lg shadow-sm text-center"
+                                      />
+                                      <div className="text-xs text-gray-500 mt-2 text-center w-full">
+                                        Max is the number of selected days ({allocation.allowedDays.length || 1})
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                         {errors.leaveAllocation && (
                           <p className="text-red-500 text-sm mt-1">
                             {errors.leaveAllocation}

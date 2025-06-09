@@ -268,7 +268,7 @@ function Attendance() {
   const getAttendanceColor = useCallback((status) => {
     if (status === null) return "bg-gray-100"; // No Data
     if (status === "P") return "bg-[#CCFFCC]"; // Present (Light green)
-    if (status === "P/A") return "halfday-gradient"; // Use custom class for half day
+    if (status === "P/A") return "bg-yellow-100 text-yellow-800"; // Half Day (Yellow)
     if (status === "A") return "bg-[#FFCCCC]"; // Absent (Light red)
     if (status === "H") return "bg-[#E0E0E0]"; // Holiday (Gray)
     if (status === "PH") return "bg-[#5cbf85]"; // Present on Holiday (Light blue)
@@ -653,12 +653,12 @@ function Attendance() {
             return (
               <div
                 key={status.value}
-                className={`rounded-lg p-4 min-w-[130px] flex flex-col justify-between items-center group ${showNoData ? 'bg-gray-100' : (status.value === 'P/A' ? 'halfday-gradient' : '')}`}
-                style={{ background: showNoData ? undefined : (status.value === 'P/A' ? 'linear-gradient(90deg, #CCFFCC 50%, #FFCCCC 50%)' : status.color), cursor: showNoData ? 'not-allowed' : 'default' }}
+                className={`rounded-lg p-4 min-w-[130px] flex flex-col justify-between items-center group ${showNoData ? 'bg-gray-100' : (status.value === 'P/A' ? 'bg-yellow-100 text-yellow-800' : '')}`}
+                style={{ background: showNoData ? undefined : (status.value === 'P/A' ? undefined : status.color), cursor: showNoData ? 'not-allowed' : 'default' }}
                 title={showNoData ? 'Please select a date or employee to show data' : ''}
               >
                 <p className="text-sm text-gray-700 mb-1 font-medium min-h-[20px]">{status.label}</p>
-                <h3 className={`text-xl font-bold mt-auto ${showNoData ? 'text-gray-400' : 'text-gray-800'}`}>{count}</h3>
+                <h3 className={`text-xl font-bold mt-auto ${showNoData ? 'text-gray-400' : (status.value === 'P/A' ? 'text-yellow-800' : 'text-gray-800')}`}>{count}</h3>
                 {showNoData && (
                   <span className="absolute opacity-0 group-hover:opacity-100 bg-gray-700 text-white text-xs rounded px-2 py-1 mt-2 z-50 transition-opacity duration-200" style={{top: '100%'}}>Please select a date or employee to show data</span>
                 )}
@@ -1280,9 +1280,3 @@ function Attendance() {
 }
 
 export default withAuth(Attendance);
-
-<style jsx global>{`
-  .halfday-gradient {
-    background: linear-gradient(90deg, #CCFFCC 50%, #FFCCCC 50%);
-  }
-`}</style>

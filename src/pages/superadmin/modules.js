@@ -185,7 +185,7 @@ function SuperadminModules() {
     }
   };
 
-  const filteredModules = modules.filter((module) =>
+  const filteredModules = (modules || []).filter((module) =>
     module?.moduleName?.toLowerCase().includes(searchInput?.toLowerCase() || "")
   );
 

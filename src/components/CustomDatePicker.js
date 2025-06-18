@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar as CalendarIcon, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, isWeekend, isSameDay } from 'date-fns';
+import { format, isWeekend, isSameDay, getDay, isSameMonth } from 'date-fns';
 import { toast } from 'sonner';
 
 const CustomDatePicker = ({
@@ -12,12 +12,16 @@ const CustomDatePicker = ({
   minDate = new Date(),
   shiftType = 'FULL_DAY',
   onShiftTypeChange,
+  departmentInfo = null,
+  leavePolicy = null,
+  weeklyOffs = [],
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [timeSlot, setTimeSlot] = useState(shiftType);
   const [selectedDateObjects, setSelectedDateObjects] = useState([]);
   const [hoverDate, setHoverDate] = useState(null);
+  const [frozenDates, setFrozenDates] = useState([]);
   const calendarRef = useRef(null);
   const inputRef = useRef(null);
   const calendarPopupRef = useRef(null);
@@ -32,16 +36,8 @@ const CustomDatePicker = ({
   const handleShiftTypeChange = (e) => {
     const newShiftType = e.target.value;
     setTimeSlot(newShiftType);
-    
-    // Update all selected dates with new shift type
-    const updatedDates = selectedDateObjects.map(date => ({
-      ...date,
-      shiftType: newShiftType,
-      timeSlot: newShiftType
-    }));
-    setSelectedDateObjects(updatedDates);
-    
-    // Notify parent component
+    // Do NOT update all selected dates' shiftType here
+    // Only new selections will use the current dropdown value
     if (onShiftTypeChange) {
       onShiftTypeChange({
         ...e,
@@ -50,9 +46,6 @@ const CustomDatePicker = ({
           value: newShiftType
         }
       });
-    }
-    if (onChange) {
-      onChange(updatedDates);
     }
   };
 
@@ -71,7 +64,6 @@ const CustomDatePicker = ({
   // Add click outside handler
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Close calendar if click is outside calendar popup and input field
       if (
         calendarPopupRef.current && 
         !calendarPopupRef.current.contains(event.target) &&
@@ -89,6 +81,26 @@ const CustomDatePicker = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
+  // Debug logs for leave policy and restrictions
+  useEffect(() => {
+    const restrictions = leavePolicy?.leaveAllocations?.[0]?.restrictions?.[0];
+    const restrictedDays = restrictions?.restrictedDays || [];
+    const allowedValue = restrictions?.allowedValue;
+    console.log('[CustomDatePicker] leavePolicy:', leavePolicy);
+    console.log('[CustomDatePicker] restrictedDays:', restrictedDays);
+    console.log('[CustomDatePicker] allowedValue:', allowedValue);
+    console.log('[CustomDatePicker] selectedDateObjects:', selectedDateObjects);
+    console.log('[CustomDatePicker] frozenDates:', frozenDates);
+    if (restrictedDays.length) {
+      const selectedRestricted = selectedDateObjects.filter(selected =>
+        restrictedDays.includes(format(selected.date, 'EEE'))
+      );
+      console.log('[CustomDatePicker] selected restricted days:', selectedRestricted.map(d => d.date));
+    }
+    // Debug log for weeklyOffs
+    console.log('[CustomDatePicker] weeklyOffs:', weeklyOffs, isCompOff ? '(ignored for comp-off)' : '');
+  }, [leavePolicy, selectedDateObjects, frozenDates, weeklyOffs, isCompOff]);
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -112,105 +124,124 @@ const CustomDatePicker = ({
 
   const isDateDisabled = (date) => {
     if (!date) return true;
-    if (isWeekend(date)) return true;
     if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
-    
-    return disabledDates.some(disabledDate => 
-      isSameDay(new Date(disabledDate), date)
-    );
+    if (disabledDates.some(disabledDate => isSameDay(new Date(disabledDate), date))) return true;
+    if (frozenDates.some(frozenDate => isSameDay(frozenDate, date))) return true;
+
+    // Freeze weekly offs - but skip this for comp-off requests
+    if (!isCompOff && weeklyOffs && weeklyOffs.length > 0) {
+      const dayName = format(date, 'EEEE'); // 'Sunday', 'Monday', etc.
+      if (weeklyOffs.includes(dayName)) return true;
+    }
+
+    // Weekly holidays
+    if (departmentInfo?.weeklyHolidays) {
+      const weekDays = departmentInfo.weeklyHolidays.split(',').map(day => day.trim());
+      const dayName = format(date, 'EEEE');
+      if (weekDays.includes(dayName)) return true;
+    }
+
+    // Dynamic restricted days from leave policy
+    const restrictions = leavePolicy?.leaveAllocations?.[0]?.restrictions?.[0];
+    if (restrictions?.restrictedDays && restrictions?.allowedValue !== undefined) {
+      const dayName = format(date, 'EEE');
+      if (restrictions.restrictedDays.includes(dayName)) {
+        // Count how many restricted days are already selected
+        const restrictedSelected = selectedDateObjects.filter(selected => 
+          restrictions.restrictedDays.includes(format(selected.date, 'EEE'))
+        );
+        if (restrictedSelected.length >= restrictions.allowedValue &&
+            !restrictedSelected.some(selected => isSameDay(selected.date, date))) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   };
 
   const isDateSelected = (date) => {
-    return selectedDateObjects.some(selected => 
-      isSameDay(selected.date, date)
-    );
+    return selectedDateObjects.some(selected => isSameDay(selected.date, date));
   };
 
   const handleDateClick = (date) => {
-    if (isDateDisabled(date) && !isWeekend(date)) return;
+    if (isDateDisabled(date)) return;
 
     let newSelectedDates;
-    if (isCompOff) {
-      if (selectedDateObjects.some(selected => isSameDay(selected.date, date))) {
-        newSelectedDates = [];
-      } else {
-        // Create date with UTC midnight
+    const restrictions = leavePolicy?.leaveAllocations?.[0]?.restrictions?.[0];
+    const restrictedDays = restrictions?.restrictedDays || [];
+    const allowedValue = restrictions?.allowedValue;
+    const dayName = format(date, 'EEE');
+
+    // Debug log for click
+    console.log('[CustomDatePicker] handleDateClick:', {
+      date,
+      dayName,
+      restrictedDays,
+      allowedValue,
+      selectedDateObjects,
+      frozenDates
+    });
+
+    // Check if date is already selected
+    const isAlreadySelected = selectedDateObjects.some(selected => 
+      isSameDay(selected.date, date)
+    );
+
+    if (isAlreadySelected) {
+      // Allow removing any selected date (not just start or end)
+      newSelectedDates = selectedDateObjects.filter(selected => !isSameDay(selected.date, date));
+
+      // If a restricted day is being unselected, unfreeze all restricted days for that month
+      if (restrictedDays.includes(dayName)) {
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        setFrozenDates(prev => prev.filter(d => d.getMonth() !== month || d.getFullYear() !== year));
+      }
+    } else {
+      // Check max days limit
+      if (maxDays && selectedDateObjects.length >= maxDays) {
+        toast.error(`You can only select up to ${maxDays} days`);
+        return;
+      }
+
+      // For comp-off, replace all selected dates with the new one
+      if (isCompOff) {
         const newDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
         newSelectedDates = [{ 
           date: newDate,
           shiftType: timeSlot,
           timeSlot: timeSlot
         }];
-      }
-    } else {
-      const isAlreadySelected = selectedDateObjects.some(selected => 
-        isSameDay(selected.date, date)
-      );
-
-      if (isAlreadySelected) {
-        // When removing a date, only allow if it's at the start or end of the range
-        const sortedDates = [...selectedDateObjects].sort((a, b) => a.date - b.date);
-        const isStartOrEnd = isSameDay(sortedDates[0].date, date) || 
-                           isSameDay(sortedDates[sortedDates.length - 1].date, date);
-        
-        if (!isStartOrEnd) {
-          toast.error("You can only remove dates from the start or end of the range");
-          return;
-        }
-        newSelectedDates = selectedDateObjects.filter(selected => !isSameDay(selected.date, date));
       } else {
-        if (maxDays && selectedDateObjects.length >= maxDays) {
-          toast.error(`You can only select up to ${maxDays} days`);
-          return;
-        }
-
-        // When adding a date, ensure it's continuous with existing dates (skipping weekends)
-        if (selectedDateObjects.length > 0) {
-          const sortedDates = [...selectedDateObjects].sort((a, b) => a.date - b.date);
-          const firstDate = sortedDates[0].date;
-          const lastDate = sortedDates[sortedDates.length - 1].date;
-          const newDateValue = date.getTime();
-          
-          // Check if the new date is adjacent to the existing range (considering weekends)
-          const isAdjacent = (() => {
-            // Function to get next working day
-            const getNextWorkingDay = (date) => {
-              let nextDay = new Date(date);
-              nextDay.setDate(nextDay.getDate() + 1);
-              while (isWeekend(nextDay)) {
-                nextDay.setDate(nextDay.getDate() + 1);
+        // Dynamic restricted days from leave policy
+        if (restrictedDays.length && allowedValue !== undefined) {
+          if (restrictedDays.includes(dayName)) {
+            // Count how many restricted days are already selected
+            const restrictedSelected = selectedDateObjects.filter(selected => 
+              restrictions.restrictedDays.includes(format(selected.date, 'EEE'))
+            );
+            if (restrictedSelected.length >= allowedValue) {
+              toast.error(`You can only select up to ${allowedValue} restricted day(s)`);
+              return;
+            }
+            // Freeze all other restricted days in the same month
+            const month = date.getMonth();
+            const year = date.getFullYear();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const newFrozen = [];
+            for (let d = 1; d <= daysInMonth; d++) {
+              const dObj = new Date(year, month, d);
+              const dName = format(dObj, 'EEE');
+              if (restrictedDays.includes(dName) && !isSameDay(dObj, date)) {
+                newFrozen.push(dObj);
               }
-              return nextDay;
-            };
-
-            // Function to get previous working day
-            const getPrevWorkingDay = (date) => {
-              let prevDay = new Date(date);
-              prevDay.setDate(prevDay.getDate() - 1);
-              while (isWeekend(prevDay)) {
-                prevDay.setDate(prevDay.getDate() - 1);
-              }
-              return prevDay;
-            };
-
-            // Check if the new date is the next working day after the last date
-            const nextWorkingDay = getNextWorkingDay(lastDate);
-            if (isSameDay(date, nextWorkingDay)) return true;
-
-            // Check if the new date is the previous working day before the first date
-            const prevWorkingDay = getPrevWorkingDay(firstDate);
-            if (isSameDay(date, prevWorkingDay)) return true;
-
-            return false;
-          })();
-          
-          if (!isAdjacent) {
-            toast.error("Please select continuous working days (weekends will be skipped)");
-            return;
+            }
+            setFrozenDates(prev => ([...prev, ...newFrozen]));
           }
         }
-        
-        // Create date with UTC midnight
+
+        // Allow adding any date (no adjacency requirement)
         const newDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
         newSelectedDates = [...selectedDateObjects, { 
           date: newDate,
@@ -220,6 +251,7 @@ const CustomDatePicker = ({
       }
     }
 
+    // Sort dates chronologically for display
     newSelectedDates.sort((a, b) => a.date - b.date);
     setSelectedDateObjects(newSelectedDates);
     onChange(newSelectedDates);
@@ -350,6 +382,7 @@ const CustomDatePicker = ({
                         isDateSelected(date) ? 'bg-blue-500 text-white hover:bg-blue-600' :
                         'hover:bg-blue-50 text-gray-700'
                       }
+                      ${frozenDates.some(frozenDate => isSameDay(frozenDate, date)) ? 'bg-gray-100' : ''}
                     `}
                     onClick={(e) => {
                       e.stopPropagation();

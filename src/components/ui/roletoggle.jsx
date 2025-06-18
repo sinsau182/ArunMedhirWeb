@@ -7,18 +7,26 @@ const roleLabels = {
   EMPLOYEE: "Employee",
   MANAGER: "Manager",
   HRADMIN: "HR Admin",
-  SALES: "Sales Employee"
+  SALES: "Sales Employee",
+  ACCOUNTADMIN: "Accountant",
+  PROJECTADMIN: "Project Admin",
+  ACCOUNTANT: "Accountant",
+  PROJECTMANAGER: "Project Manager"
 };
 
 const roleColors = {
   HRADMIN: "bg-blue-500 text-white",
   MANAGER: "bg-green-500 text-white",
   EMPLOYEE: "bg-purple-500 text-white",
-  SALES: "bg-yellow-500 text-white"
+  SALES: "bg-yellow-500 text-white",
+  ACCOUNTADMIN: "bg-indigo-500 text-white",
+  PROJECTADMIN: "bg-orange-500 text-white",
+  ACCOUNTANT: "bg-indigo-500 text-white",
+  PROJECTMANAGER: "bg-orange-500 text-white"
 };
 
 // Define the desired order of roles
-const roleOrder = ["EMPLOYEE", "MANAGER", "HRADMIN"];
+const roleOrder = ["EMPLOYEE", "MANAGER", "HRADMIN", "ACCOUNTANT", "PROJECTMANAGER"];
 
 const RoleToggle = () => {
   const router = useRouter();
@@ -62,6 +70,10 @@ const RoleToggle = () => {
         router.push("/manager/dashboard");
       } else if (role === "EMPLOYEE") {
         router.push("/employee/dashboard");
+      } else if (role === "ACCOUNTANT") {
+        router.push("/account/accountantExpense");
+      } else if (role === "PROJECTMANAGER") {
+        router.push("/project_Manager/expense");
       }
     }
   };

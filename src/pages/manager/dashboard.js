@@ -220,6 +220,11 @@ const Overview = () => {
     },
   ];
 
+  const refreshRequests = useCallback(async () => {
+    await fetchPendingRequests();
+    await fetchProfileUpdates();
+  }, [fetchPendingRequests, fetchProfileUpdates]);
+
   return (
     <div className="min-h-screen flex bg-gray-100">
       {/* Sidebar */}
@@ -539,10 +544,11 @@ const Overview = () => {
             </div>
           )}
 
-          {showRequestDetails && ( // Replace requestToggle with showRequestDetails
+          {showRequestDetails && (
             <RequestDetails
               activeTab={activeTab}
               onTabChange={handleTabChange}
+              onActionComplete={refreshRequests}
             />
           )}
         </div>

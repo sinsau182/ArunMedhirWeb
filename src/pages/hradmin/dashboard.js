@@ -389,7 +389,7 @@ const Overview = () => {
 
           <div className="flex justify-center">
             {/* Updated grid layout and data source */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-12 mb-6"> {/* Changed to lg:grid-cols-2 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-12 mb-3"> {/* Changed to lg:grid-cols-2 */}
               {itemsToDisplayInOverview.map((item, index) => (
                 item.label === "Total Employees" ? (
                   <div

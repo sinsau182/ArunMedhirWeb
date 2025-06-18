@@ -154,27 +154,36 @@ export const applyLeave = createAsyncThunk(
         throw new Error("No authentication token found");
       }
 
-      // Validate required fields
-      if (
-        !leaveData.startDate ||
-        !leaveData.endDate ||
-        !leaveData.shiftType ||
-        !leaveData.reason
-      ) {
-        throw new Error("Missing required fields");
+      // Enhanced validation with detailed error messages for new structure
+      const missingFields = [];
+      if (!leaveData.leaveDates || !Array.isArray(leaveData.leaveDates) || leaveData.leaveDates.length === 0) {
+        missingFields.push('leaveDates');
+      }
+      if (!leaveData.shiftType) missingFields.push('shiftType');
+      if (!leaveData.reason) missingFields.push('reason');
+
+      if (missingFields.length > 0) {
+        console.log('[LeaveSlice] applyLeave validation failed:', {
+          missingFields,
+          providedData: leaveData,
+          timestamp: new Date().toISOString()
+        });
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
 
       const decodedToken = JSON.parse(atob(token.split(".")[1])); // Decode the JWT token
-        const companyId = decodedToken.companyId; // Extract
+      const companyId = decodedToken.companyId; // Extract companyId from token
+      const employeeId = sessionStorage.getItem("employeeId"); // Get employeeId from session storage
 
       const response = await axios.post(
         `${API_BASE_URL}/leave/apply`,
         {
-          ...leaveData,
-          employeeId: sessionStorage.getItem("employeeId"), // Hardcoded as requested
-          companyId: companyId, // Hardcoded as requested
-          leaveName: "Leave", // Hardcoded as requested
-          shiftType: leaveData.shiftType, // Use the shift type from the form
+          employeeId: employeeId,
+          companyId: companyId,
+          leaveName: "Leave",
+          leaveDates: leaveData.leaveDates,
+          shiftType: leaveData.shiftType,
+          reason: leaveData.reason,
         },
         {
           headers: {
@@ -251,17 +260,34 @@ export const applyCompOffLeave = createAsyncThunk(
         throw new Error("No authentication token found");
       }
 
-        const decodedToken = JSON.parse(atob(token.split(".")[1])); // Decode the JWT token
-        const companyId = decodedToken.companyId; // Extract
+      // Enhanced validation with detailed error messages for new structure
+      const missingFields = [];
+      if (!formData.leaveDates || !Array.isArray(formData.leaveDates) || formData.leaveDates.length === 0) {
+        missingFields.push('leaveDates');
+      }
+      if (!formData.shiftType) missingFields.push('shiftType');
+      if (!formData.reason) missingFields.push('reason');
+
+      if (missingFields.length > 0) {
+        console.log('[LeaveSlice] applyCompOffLeave validation failed:', {
+          missingFields,
+          providedData: formData,
+          timestamp: new Date().toISOString()
+        });
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      const decodedToken = JSON.parse(atob(token.split(".")[1])); // Decode the JWT token
+      const companyId = decodedToken.companyId; // Extract companyId from token
+      const employeeId = sessionStorage.getItem("employeeId"); // Get employeeId from session storage
 
       const response = await axios.post(
         `${API_BASE_URL}/leave/apply`,
         {
-          employeeId: sessionStorage.getItem("employeeId"), // Hardcoded as requested
-          companyId: companyId, // Hardcoded as requested
+          employeeId: employeeId,
+          companyId: companyId,
           leaveName: "Comp-Off",
-          startDate: formData.startDate,
-          endDate: formData.endDate,
+          leaveDates: formData.leaveDates,
           shiftType: formData.shiftType,
           reason: formData.reason,
         },
@@ -321,6 +347,13 @@ const leaveSlice = createSlice({
         state.status = "succeeded";
       })
       .addCase(fetchLeaves.rejected, (state, action) => {
+        console.log('[LeaveSlice] fetchLeaves rejected:', {
+          error: action.payload,
+          errorMessage: action.error?.message,
+          meta: action.meta,
+          requestId: action.meta?.requestId,
+          timestamp: new Date().toISOString()
+        });
         state.loading = false;
         state.error = action.payload || "Failed to fetch leaves";
         state.status = "failed";
@@ -338,6 +371,14 @@ const leaveSlice = createSlice({
         state.leaves.push(action.payload);
       })
       .addCase(createLeave.rejected, (state, action) => {
+        console.log('[LeaveSlice] createLeave rejected:', {
+          error: action.payload,
+          errorMessage: action.error?.message,
+          meta: action.meta,
+          requestId: action.meta?.requestId,
+          timestamp: new Date().toISOString(),
+          fullAction: action
+        });
         state.loading = false;
         state.submissionStatus = "error";
         state.submissionError = action.payload;
@@ -363,9 +404,19 @@ const leaveSlice = createSlice({
         state.applyLeaveStatus = "succeeded";
       })
       .addCase(applyLeave.rejected, (state, action) => {
+        console.log('[LeaveSlice] applyLeave rejected:', {
+          error: action.payload,
+          errorMessage: action.error?.message,
+          meta: action.meta,
+          requestId: action.meta?.requestId,
+          timestamp: new Date().toISOString(),
+          fullAction: action,
+          leaveData: action.meta?.arg
+        });
         state.applyLeaveStatus = "failed";
         state.applyLeaveError = action.payload;
       })
+
       .addCase(fetchLeaveHistory.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -378,6 +429,14 @@ const leaveSlice = createSlice({
         state.status = "succeeded";
       })
       .addCase(fetchLeaveHistory.rejected, (state, action) => {
+        console.log('[LeaveSlice] fetchLeaveHistory rejected:', {
+          error: action.payload,
+          errorMessage: action.error?.message,
+          meta: action.meta,
+          requestId: action.meta?.requestId,
+          timestamp: new Date().toISOString(),
+          fullAction: action
+        });
         state.loading = false;
         state.error = action.payload || "Failed to fetch leave history";
         state.status = "failed";
@@ -392,6 +451,14 @@ const leaveSlice = createSlice({
         state.error = null;
       })
       .addCase(applyCompOffLeave.rejected, (state, action) => {
+        console.log('[LeaveSlice] applyCompOffLeave rejected:', {
+          error: action.error?.message,
+          errorPayload: action.payload,
+          meta: action.meta,
+          requestId: action.meta?.requestId,
+          timestamp: new Date().toISOString(),
+          fullAction: action
+        });
         state.loading = false;
         state.error = action.error.message;
       });

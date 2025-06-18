@@ -11,6 +11,24 @@ import CustomDatePicker from '@/components/CustomDatePicker';
 import { getItemFromSessionStorage } from '@/redux/slices/sessionStorageSlice';
 import withAuth from "@/components/withAuth";
 
+// Helper to format numbers: show two decimals only if not whole
+function formatNumber(num) {
+  if (num === null || num === undefined || isNaN(num)) return "0";
+  return Number(num) % 1 === 0 ? Number(num) : Number(num).toFixed(2);
+}
+
+// Helper to calculate requested days based on shift type
+function calculateRequestedDays(dates) {
+  return dates.reduce((total, date) => {
+    const shift = date.shiftType || date.timeSlot;
+    const dayValue =
+      shift === 'FIRST_HALF' || shift === 'SECOND_HALF'
+        ? 0.5
+        : 1;
+    return total + dayValue;
+  }, 0);
+}
+
 const Leaves = () => {
   const [token, setToken] = useState(null);
 
@@ -54,6 +72,9 @@ const Leaves = () => {
     return state;
   });
   
+  // Add state for leave policy and weekly offs
+  const [leavePolicy, setLeavePolicy] = useState(null);
+  const [weeklyOffs, setWeeklyOffs] = useState([]);
 
   useEffect(() => {
     dispatch(fetchLeaveHistory());
@@ -87,20 +108,26 @@ const Leaves = () => {
   }, []);
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
-  const openModal = () => setIsModalOpen(true);
+  const openModal = async () => {
+    await fetchLeavePolicy();
+    setIsModalOpen(true);
+  };
   const closeModal = () => {
     setIsModalOpen(false);
-    setLeaveForm({ dates: [], reason: "", shiftType: "Full Day" });
+    setLeaveForm({ dates: [], reason: '', shiftType: 'Full Day' });
+    setLeavePolicy(null);
+    setWeeklyOffs([]);
   };
   
-  const openCompOffModal = () => setIsCompOffModalOpen(true);
+  const openCompOffModal = async () => {
+    await fetchLeavePolicy();
+    setIsCompOffModalOpen(true);
+  };
   const closeCompOffModal = () => {
     setIsCompOffModalOpen(false);
-    setCompOffForm({
-      dates: [],
-      description: "",
-      shiftType: "Full Day"
-    });
+    setCompOffForm({ dates: [], description: '', shiftType: 'Full Day' });
+    setLeavePolicy(null);
+    setWeeklyOffs([]);
   };
 
   const handleLeaveFormChange = (e) => {
@@ -110,15 +137,6 @@ const Leaves = () => {
 
   const handleShiftTypeChange = (e) => {
     setLeaveForm(prev => ({ ...prev, shiftType: e.target.value }));
-  };
-
-  const calculateRequestedDays = (dates) => {
-    return dates.reduce((total, date) => {
-      // Check for half day types (both First Half and Second Half count as 0.5)
-      const dayValue = date.shiftType === 'First Half (Morning)' || 
-                      date.shiftType === 'Second Half (Evening)' ? 0.5 : 1;
-      return total + dayValue;
-    }, 0);
   };
 
   const handleLeaveDatesChange = (dates) => {
@@ -149,9 +167,13 @@ const Leaves = () => {
     }
 
     try {
+      // Convert selected dates to ISO string format
+      const leaveDates = compOffForm.dates
+        .map(date => date.date.toISOString().split('T')[0])
+        .sort();
+
       const formData = {
-        startDate: compOffForm.dates[0].date.toISOString().split('T')[0],
-        endDate: compOffForm.dates[0].date.toISOString().split('T')[0],
+        leaveDates: leaveDates,
         shiftType: compOffForm.dates[0]?.timeSlot || compOffForm.dates[0]?.shiftType || 'Full Day',
         reason: compOffForm.description,
       };
@@ -174,15 +196,19 @@ const Leaves = () => {
   const handleSubmitLeave = async (e) => {
     e.preventDefault();
     
+    // Convert selected dates to ISO string format and sort them
+    const leaveDates = leaveForm.dates
+      .map(date => date.date.toISOString().split('T')[0])
+      .sort();
+
     const formData = {
-      startDate: leaveForm.dates[0]?.date.toISOString().split('T')[0],
-      endDate: leaveForm.dates[leaveForm.dates.length - 1]?.date.toISOString().split('T')[0],
+      leaveDates: leaveDates,
       shiftType: leaveForm.dates[0]?.timeSlot || leaveForm.dates[0]?.shiftType || 'Full Day',
       reason: leaveForm.reason,
     };
 
-    if (!formData.startDate || !formData.endDate || !formData.reason) {
-      toast.error("Please fill in all required fields");
+    if (!formData.leaveDates.length || !formData.reason) {
+      toast.error("Please select at least one date and provide a reason");
       return;
     }
 
@@ -207,6 +233,22 @@ const Leaves = () => {
       }
     } catch (error) {
       toast.error(error.message || "Failed to apply for leave");
+    }
+  };
+
+  // Helper to fetch leave policy
+  const fetchLeavePolicy = async () => {
+    try {
+      const baseUrl = process.env.REACT_APP_API_BASE_URL || '';
+      const response = await fetch(`http://localhost:8080/employee/${employeeId}/leave-policy`);
+      if (!response.ok) throw new Error('Failed to fetch leave policy');
+      const data = await response.json();
+      setLeavePolicy(data);
+      setWeeklyOffs(Array.isArray(data.weeklyOffs) ? data.weeklyOffs : []);
+    } catch (err) {
+      setLeavePolicy(null);
+      setWeeklyOffs([]);
+      toast.error('Could not fetch leave policy');
     }
   };
 
@@ -247,33 +289,44 @@ const Leaves = () => {
               {isLoadingBalance ? (
                 <div className="text-center py-4">Loading leave balance...</div>
               ) : balanceError ? (
-                <div className="text-center py-4 text-red-500">{balanceError}</div>
+                (typeof balanceError === "string" && balanceError.includes("400")) ||
+                (typeof balanceError === "object" && balanceError?.status === 400) ? (
+                  <div className="text-center py-4 text-gray-500">
+                    Please add department to view Leave Balance
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-red-500">
+                    {typeof balanceError === "string"
+                      ? balanceError
+                      : balanceError?.message || "Failed to load leave balance"}
+                  </div>
+                )
               ) : leaveBalance ? (
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <p className="text-gray-600">Leave carried from previous year</p>
-                    <p className="text-gray-800 font-medium">{leaveBalance.annualLeavesCarryForwarded}</p>
+                    <p className="text-gray-800 font-medium">{formatNumber(leaveBalance.annualLeavesCarryForwarded)}</p>
                   </div>
                   <div className="flex justify-between">
                     <p className="text-gray-600">Leaves earned since January</p>
-                    <p className="text-gray-800 font-medium">{leaveBalance.totalAnnualLeavesEarnedSinceJanuary}</p>
+                    <p className="text-gray-800 font-medium">{formatNumber(leaveBalance.totalAnnualLeavesEarnedSinceJanuary)}</p>
                   </div>
                   <div className="flex justify-between">
                     <p className="text-gray-600">Comp-off carried forward</p>
-                    <p className="text-gray-800 font-medium">{leaveBalance.compOffLeavesCarryForwarded}</p>
+                    <p className="text-gray-800 font-medium">{formatNumber(leaveBalance.compOffLeavesCarryForwarded)}</p>
                   </div>
                   <div className="flex justify-between">
                     <p className="text-gray-600">Comp-off earned this month</p>
-                    <p className="text-gray-800 font-medium">{leaveBalance.compOffLeavesEarned}</p>
+                    <p className="text-gray-800 font-medium">{formatNumber(leaveBalance.compOffLeavesEarned)}</p>
                   </div>
                   <div className="flex justify-between">
                     <p className="text-gray-600">Leaves taken in this year</p>
-                    <p className="text-red-500 font-medium">-{leaveBalance.leavesTakenThisYear}</p>
+                    <p className="text-red-500 font-medium">-{formatNumber(leaveBalance.leavesTakenThisYear)}</p>
                   </div>
                   <hr className="my-4" />
                   <div className="flex justify-between">
                     <p className="text-gray-800 font-semibold">Total Balance</p>
-                    <p className="text-gray-800 font-semibold">{leaveBalance.newLeaveBalance}</p>
+                    <p className="text-gray-800 font-semibold">{formatNumber(leaveBalance.newLeaveBalance)}</p>
                   </div>
                   <div className="mt-2 text-xs text-gray-500">
                     * Total = Previous year leaves + Earned leaves + Comp-off (carried & earned) - Taken leaves
@@ -318,12 +371,20 @@ const Leaves = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {[...leaveHistory].sort((a, b) => new Date(b.startDate) - new Date(a.startDate)).map((leave, index) => (
+                        {[...leaveHistory].sort((a, b) => new Date(b.startDate || b.leaveDates?.[0] || 0) - new Date(a.startDate || a.leaveDates?.[0] || 0)).map((leave, index) => (
                           <tr key={index}>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              {new Date(leave.startDate).toLocaleDateString()}
-                              {leave.startDate !== leave.endDate && 
-                                ` - ${new Date(leave.endDate).toLocaleDateString()}`}
+                              {leave.leaveDates ? (
+                                // New format: display leaveDates array
+                                leave.leaveDates.length === 1 ? 
+                                  new Date(leave.leaveDates[0]).toLocaleDateString() :
+                                  `${new Date(leave.leaveDates[0]).toLocaleDateString()} - ${new Date(leave.leaveDates[leave.leaveDates.length - 1]).toLocaleDateString()} (${leave.leaveDates.length} days)`
+                              ) : (
+                                // Old format: display startDate and endDate
+                                new Date(leave.startDate).toLocaleDateString() +
+                                (leave.startDate !== leave.endDate ? 
+                                  ` - ${new Date(leave.endDate).toLocaleDateString()}` : '')
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
@@ -465,6 +526,8 @@ const Leaves = () => {
                       maxDays={5}
                       shiftType={leaveForm.shiftType}
                       onShiftTypeChange={handleShiftTypeChange}
+                      leavePolicy={leavePolicy}
+                      weeklyOffs={weeklyOffs}
                     />
                     {showLOPWarning && (
                       <div className="mt-2 text-red-500 text-sm flex items-center">
@@ -474,7 +537,7 @@ const Leaves = () => {
                     )}
                     {leaveForm.dates.length > 0 && (
                       <div className="mt-2 text-sm text-gray-600">
-                        Requested: {requestedDays} day(s) | Available Balance: {leaveBalance?.newLeaveBalance || 0} day(s)
+                        Requested: {requestedDays % 1 === 0 ? requestedDays : requestedDays.toFixed(1)} day(s) | Available Balance: {formatNumber(leaveBalance?.newLeaveBalance || 0)} day(s)
                       </div>
                     )}
                   </div>

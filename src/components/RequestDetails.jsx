@@ -175,7 +175,7 @@ ChangesModal.propTypes = {
 };
 // --- End Modal Component ---
 
-const RequestDetails = ({ activeTab, onTabChange }) => {
+const RequestDetails = ({ activeTab, onTabChange, onActionComplete }) => {
   const dispatch = useDispatch();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUpdateChanges, setSelectedUpdateChanges] = useState([]);
@@ -320,6 +320,7 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
     } catch (error) {
       toast.error(error.message || "An unknown error occurred.");
     }
+    if (onActionComplete) onActionComplete();
   };
 
   const handleRejectProfileUpdate = async (employeeId) => {
@@ -348,6 +349,7 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
     } catch (error) {
       toast.error(error.message || "An unknown error occurred.");
     }
+    if (onActionComplete) onActionComplete();
   };
 
   const handleApprove = async (leaveId) => {
@@ -372,6 +374,7 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
     } catch (error) {
       toast.error(error.message || "Failed to approve request");
     }
+    if (onActionComplete) onActionComplete();
   };
 
   const handleReject = async (leaveId) => {
@@ -396,6 +399,7 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
     } catch (error) {
       toast.error(error.message || "Failed to reject request");
     }
+    if (onActionComplete) onActionComplete();
   };
 
   // Handle expense approval
@@ -424,6 +428,7 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
     } finally {
       setApprovingExpenseId(null);
     }
+    if (onActionComplete) onActionComplete();
   };
 
   // Handle expense rejection
@@ -452,6 +457,7 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
     } finally {
       setRejectingExpenseId(null);
     }
+    if (onActionComplete) onActionComplete();
   };
 
   // Handle income approval
@@ -480,6 +486,7 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
     } finally {
       setApprovingIncomeId(null);
     }
+    if (onActionComplete) onActionComplete();
   };
 
   // Handle income rejection
@@ -508,6 +515,7 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
     } finally {
       setRejectingIncomeId(null);
     }
+    if (onActionComplete) onActionComplete();
   };
 
   // Updated combined loading state
@@ -1111,8 +1119,9 @@ const RequestDetails = ({ activeTab, onTabChange }) => {
 };
 
 RequestDetails.propTypes = {
-  activeTab: PropTypes.string.isRequired,
-  onTabChange: PropTypes.func.isRequired,
+  activeTab: PropTypes.string,
+  onTabChange: PropTypes.func,
+  onActionComplete: PropTypes.func,
 };
 
 export default RequestDetails;

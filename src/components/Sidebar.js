@@ -49,6 +49,18 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     }));
   };
 
+  // Add display mapping for roles
+  const roleDisplayLabels = {
+    EMPLOYEE: "Employee",
+    MANAGER: "Manager",
+    HRADMIN: "HR Admin",
+    SALES: "Sales Employee",
+    ACCOUNTADMIN: "Accountant",
+    PROJECTADMIN: "Project Admin",
+    ACCOUNTANT: "Accountant",
+    PROJECTMANAGER: "Project Manager"
+  };
+
   // Define menu items based on the role
   const menuItems = [
     {
@@ -142,24 +154,24 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       link: "/employee/leaves",
       roles: ["EMPLOYEE"],
     },
-    // {
-    //   label: "Reimbursement",
-    //   icon: <CreditCard />,
-    //   link: "/employee/reimbursement",
-    //   roles: ["EMPLOYEE"],
-    // },
-    {
-      label: "Expenses",
-      icon: <ReceiptIcon />,
-      link: "/employee/expenses",
-      roles: ["EMPLOYEE"],
-    },
-    {
-      label: "Income",
-      icon: <Wallet />,
-      link: "/employee/income",
-      roles: ["EMPLOYEE"],
-    },
+     {
+       label: "Reimbursement",
+       icon: <CreditCard />,
+       link: "/employee/reimbursement",
+       roles: ["EMPLOYEE"],
+     },
+//    {
+//      label: "Expenses",
+//      icon: <ReceiptIcon />,
+//      link: "/employee/expenses",
+//      roles: ["EMPLOYEE"],
+//    },
+//    {
+//      label: "Income",
+//      icon: <Wallet />,
+//      link: "/employee/income",
+//      roles: ["EMPLOYEE"],
+//    },
     {
       label: "Attendance",
       icon: <Clock />,
@@ -178,7 +190,34 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       link: "/employee/leads",
       roles: ["EMPLOYEE"],
     },
-  
+
+    // Add Account Admin items
+    {
+      label: "Expenses",
+      icon: <ReceiptIcon />,
+      link: "/account/accountantExpense",
+      roles: ["ACCOUNTANT"],
+    },
+    {
+      label: "Income",
+      icon: <Wallet />,
+      link: "/project_Manager/income",
+      roles: ["ACCOUNTANT"],
+    },
+
+    // Add Project Admin items
+    {
+      label: "Expenses",
+      icon: <ReceiptIcon />,
+      link: "/project_Manager/expense",
+      roles: ["PROJECTMANAGER"],
+    },
+    {
+      label: "Income",
+      icon: <Wallet />,
+      link: "/project_Manager/income",
+      roles: ["PROJECTMANAGER"],
+    },
   ];
 
   // Filter menu items based on currentRole and department

@@ -326,7 +326,7 @@ const Leaves = () => {
                   <hr className="my-4" />
                   <div className="flex justify-between">
                     <p className="text-gray-800 font-semibold">Total Balance</p>
-                    <p className="text-gray-800 font-semibold">{formatNumber(leaveBalance.newLeaveBalance)}</p>
+                    <p className="text-gray-800 font-semibold">{formatNumber(leaveBalance.totalAvailableBalance)}</p>
                   </div>
                   <div className="mt-2 text-xs text-gray-500">
                     * Total = Previous year leaves + Earned leaves + Comp-off (carried & earned) - Taken leaves

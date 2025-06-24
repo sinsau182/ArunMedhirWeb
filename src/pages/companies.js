@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchCompanies } from "../redux/slices/companiesSlice";
+import { fetchCompanies } from "@/redux/slices/companiesSlice";
 import SuperadminHeaders from "@/components/SuperadminHeaders";
 
 export default function CompaniesPage() {

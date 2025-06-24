@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FiChevronDown, FiChevronUp, FiFileText, FiEdit2, FiEye } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiFileText, FiEdit2, FiEye, FiImage, FiChevronDown } from 'react-icons/fi';
 import Tooltip from '../ui/ToolTip';
 
 // Loading Skeleton Component
@@ -33,11 +33,7 @@ const statusColors = {
 
 const styles = {
   tableContainer: {
-    background: '#fff',
-    borderRadius: 12,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
     overflowX: 'auto',
-    padding: '16px',
   },
   table: {
     width: '100%',
@@ -45,7 +41,7 @@ const styles = {
     fontFamily: "'Inter', sans-serif",
   },
   th: {
-    padding: '16px 24px',
+    padding: '16px 12px',
     textAlign: 'left',
     fontWeight: 700,
     color: '#1f2937',
@@ -54,14 +50,16 @@ const styles = {
     fontSize: '0.75rem',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
+    whiteSpace: 'nowrap',
   },
   td: {
-    padding: '14px 24px',
+    padding: '14px 12px',
     borderBottom: '1px solid #f3f4f6',
     color: '#374151',
     fontSize: '0.875rem',
     transition: 'background 0.2s',
     lineHeight: '1.5',
+    verticalAlign: 'top',
   },
   zebraRow: {
     background: '#fafafa',
@@ -83,25 +81,10 @@ const styles = {
     alignItems: 'center',
     gap: '6px',
     transition: 'color 0.2s ease',
+    cursor: 'pointer',
     '&:hover': {
       color: '#1d4ed8',
     }
-  },
-  groupRow: {
-    cursor: 'pointer',
-    background: '#f8fafc',
-    fontWeight: 700,
-    color: '#1f2937',
-    '&:hover': {
-      background: '#eef2ff',
-    }
-  },
-  childRow: {
-    background: '#fff'
-  },
-  subTableContainer: {
-    padding: '16px 24px',
-    background: '#fff',
   },
   actionButton: {
     background: 'none',
@@ -123,125 +106,124 @@ const styles = {
   },
   projectIdCell: {
     fontWeight: 600,
-    color: '#2563eb',
+    color: '#1f2937',
   },
   clientNameCell: {
     fontWeight: 500,
     color: '#374151',
-  }
+  },
+  descriptionCell: {
+    maxWidth: '200px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  imagePreview: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '4px',
+    objectFit: 'cover',
+    cursor: 'pointer',
+    border: '1px solid #e5e7eb',
+  },
+  imageModal: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(0,0,0,0.8)',
+    zIndex: 1000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalImage: {
+    maxWidth: '90vw',
+    maxHeight: '90vh',
+    borderRadius: '8px',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: '20px',
+    right: '20px',
+    background: 'none',
+    border: 'none',
+    color: 'white',
+    fontSize: '2rem',
+    cursor: 'pointer',
+  },
+  groupRow: {
+    cursor: 'pointer',
+    background: '#f8fafc',
+    fontWeight: 700,
+    color: '#1f2937',
+    transition: 'background 0.2s',
+    '&:hover': {
+      background: '#eef2ff',
+    }
+  },
+  expandedGroupRow: {
+    background: '#f1f6fd'
+  },
+  subTableContainer: {
+    padding: '16px 24px',
+    background: '#fff',
+  },
+  subTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+  },
+  subTh: {
+    padding: '12px',
+    textAlign: 'left',
+    fontSize: '0.7rem',
+    color: '#2563eb',
+    background: '#f1f6fd',
+    textTransform: 'uppercase',
+  },
 };
 
 const getExpenseId = (id) => `EXP-${id.slice(-4)}`;
 
 const formatCurrency = (amount) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(amount)}`;
 
-function getGroupStatus(payments) {
-  if (payments.some(p => p.status === 'Rejected')) return 'Rejected';
-  if (payments.some(p => p.status === 'Pending')) return 'Pending';
-  return 'Paid';
-}
-
-function getGroupStatusSummary(payments) {
-  const total = payments.length;
-  const paidCount = payments.filter(p => p.status === 'Paid').length;
-  const rejectedCount = payments.filter(p => p.status === 'Rejected').length;
-
-  if (paidCount === total) {
-    return "All Paid";
-  }
-  if (rejectedCount === total) {
-    return "All Rejected";
-  }
-  const remainingCount = total - paidCount;
-  return `${remainingCount} Remaining`;
-}
-
-const groupExpenses = (expenses) => {
-  const groups = {};
-  expenses.forEach((exp) => {
-    const groupKey = `${exp.projectId}__${exp.clientName}`;
-    if (!groups[groupKey]) {
-        groups[groupKey] = {
-            projectId: exp.projectId,
-            projectManager: exp.projectManager,
-            clientName: exp.clientName,
-            budget: exp.budget,
-            totalExpense: 0,
-            payments: [],
-        };
-    }
-    groups[groupKey].totalExpense += parseFloat(exp.amount);
-    groups[groupKey].payments.push(exp);
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', { 
+    day: '2-digit', 
+    month: 'short'
   });
-  Object.values(groups).forEach((group) => {
-    group.payments.sort((a, b) => new Date(b.date) - new Date(a.date));
-    group.expenseStatus = getGroupStatus(group.payments);
-    group.expenseStatusSummary = getGroupStatusSummary(group.payments);
-  });
-  return groups;
 };
 
-const AccountantExpenseTable = ({ expenses, onEdit, loading = false, error = null, preferencesKey = 'defaultExpenseColumns', showProjectManager = false }) => {
-  const [openGroups, setOpenGroups] = useState({});
+const groupExpenses = (expenses, groupBy) => {
+    if (!groupBy) return null;
+  
+    const groups = expenses.reduce((acc, expense) => {
+      const key = expense[groupBy] || 'Unassigned';
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(expense);
+      return acc;
+    }, {});
+  
+    return Object.entries(groups).map(([key, values]) => ({
+      groupKey: key,
+      expenses: values
+    }));
+};
+
+const AccountantExpenseTable = ({ expenses, onEdit, loading = false, error = null, groupBy = '' }) => {
   const [hoverRow, setHoverRow] = useState(null);
-  const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [openGroups, setOpenGroups] = useState({});
 
-  // Column visibility state
-  const [visibleColumns, setVisibleColumns] = useState(() => {
-    const defaultColumns = {
-      projectId: true,
-      projectManager: true,
-      clientName: true,
-      totalExpense: true,
-      budget: true,
-      paymentCount: true,
-      date: true,
-      description: true,
-      createdBy: true,
-      category: true,
-      vendorName: true,
-      amount: true,
-      status: true,
-      paymentProof: true,
-      expenseStatus: true,
-    };
-
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(preferencesKey);
-      if (saved) {
-        const savedColumns = JSON.parse(saved);
-        // Merge defaults with saved to ensure new columns are added for existing users
-        return { ...defaultColumns, ...savedColumns };
-      }
-    }
-    return defaultColumns;
-  });
-
-  // Save column preferences
-  const saveColumnPreferences = (newColumns) => {
-    setVisibleColumns(newColumns);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(preferencesKey, JSON.stringify(newColumns));
-    }
-  };
-
-  // Toggle column visibility
-  const toggleColumn = (columnKey) => {
-    const newColumns = { ...visibleColumns, [columnKey]: !visibleColumns[columnKey] };
-    saveColumnPreferences(newColumns);
-  };
-
-  // Close column settings when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showColumnSettings && !event.target.closest('.column-settings')) {
-        setShowColumnSettings(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showColumnSettings]);
+  // Reset open groups when groupBy changes
+  useEffect(() => {
+    setOpenGroups({});
+  }, [groupBy]);
 
   // Show loading skeleton if loading
   if (loading) {
@@ -300,226 +282,211 @@ const AccountantExpenseTable = ({ expenses, onEdit, loading = false, error = nul
     displayId: getExpenseId(e.id),
   }));
 
-  const groups = groupExpenses(processedExpenses);
+  const groupedData = groupExpenses(processedExpenses, groupBy);
 
-  const summaryColumns = [
+  const handleImageClick = (imageUrl) => {
+    setPreviewImage(imageUrl);
+    setShowImageModal(true);
+  };
+
+  const renderCell = (expense, column) => {
+    switch (column) {
+      case 'projectId':
+        return <span style={styles.projectIdCell}>{expense.projectId}</span>;
+      case 'clientName':
+        return <span style={styles.clientNameCell}>{expense.clientName}</span>;
+      case 'date':
+        return formatDate(expense.date);
+      case 'description':
+        return (
+          <Tooltip text={expense.description}>
+            <div style={styles.descriptionCell}>{expense.description}</div>
+          </Tooltip>
+        );
+      case 'amount':
+        return <span style={styles.amountCell}>{formatCurrency(expense.amount)}</span>;
+      case 'status':
+        return (
+          <Tooltip text={expense.status === 'Rejected' ? expense.rejectionComment : ''}>
+            <span style={styles.statusBadge(expense.status)}>{expense.status}</span>
+          </Tooltip>
+        );
+      case 'invoiceAttachment':
+        const invoiceAttachment = expense.invoiceAttachment || '/path/to/invoice.jpg';
+        return (
+          <img
+            src={invoiceAttachment}
+            alt="Invoice"
+            style={styles.imagePreview}
+            onClick={(e) => { e.stopPropagation(); handleImageClick(invoiceAttachment); }}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        );
+      case 'paymentProof':
+        if (!expense.paymentProof) return 'N/A';
+        return (
+          <a href={expense.paymentProof} target="_blank" rel="noopener noreferrer" style={styles.proofLink} onClick={e => e.stopPropagation()}>
+            <FiFileText /> View Proof
+          </a>
+        );
+      default:
+        return expense[column];
+    }
+  };
+
+  const allColumns = [
     { key: 'projectId', label: 'Project ID' },
     { key: 'clientName', label: 'Client Name' },
-    showProjectManager && { key: 'projectManager', label: 'Project Manager' },
-    { key: 'totalExpense', label: 'Total Expense', align: 'right' },
-    { key: 'budget', label: 'Budget', align: 'right' },
-    { key: 'paymentCount', label: 'No. of Payments', align: 'center' },
-    { key: 'expenseStatus', label: 'Expense Status' },
-  ].filter(Boolean).sort((a, b) => {
-    const order = ['projectId', 'clientName', 'projectManager', 'totalExpense', 'budget', 'paymentCount', 'expenseStatus'];
-    return order.indexOf(a.key) - order.indexOf(b.key);
-  }).filter(col => visibleColumns[col.key]);
-
-  const detailColumns = [
+    { key: 'projectManager', label: 'Project Manager' },
     { key: 'date', label: 'Date' },
     { key: 'description', label: 'Description' },
     { key: 'createdBy', label: 'Created by' },
     { key: 'category', label: 'Category' },
     { key: 'vendorName', label: 'Vendor Name' },
-    { key: 'amount', label: 'Amount', align: 'right' },
+    { key: 'amount', label: 'Amount' },
     { key: 'status', label: 'Status' },
+    { key: 'invoiceAttachment', label: 'Invoice Est.' },
     { key: 'paymentProof', label: 'Payment Proof' },
-  ].filter(col => visibleColumns[col.key]);
+  ];
+  
+  if (!groupBy) {
+    // Render flat table
+    return (
+      <>
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                {allColumns.map(col => <th key={col.key} style={styles.th}>{col.label}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {processedExpenses.map((expense, index) => (
+                <tr
+                  key={expense.id}
+                  style={{
+                    ...(index % 2 === 1 && styles.zebraRow),
+                    ...(hoverRow === expense.id && { background: '#f3f4f6' }),
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={() => setHoverRow(expense.id)}
+                  onMouseLeave={() => setHoverRow(null)}
+                  onClick={() => onEdit(expense)}
+                >
+                  {allColumns.map(col => <td key={col.key} style={styles.td}>{renderCell(expense, col.key)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-  const renderSummaryCell = (group, colKey) => {
-    switch(colKey) {
-        case 'totalExpense':
-        case 'budget':
-            return <span style={styles.amountCell}>{formatCurrency(group[colKey])}</span>;
-        case 'paymentCount':
-            return <span style={{ fontWeight: 600, color: '#6b7280' }}>{group.payments.length}</span>;
-        case 'projectId':
-            return <span style={styles.projectIdCell}>{group[colKey]}</span>;
-        case 'clientName':
-            return <span style={styles.clientNameCell}>{group[colKey]}</span>;
-        case 'expenseStatus':
-            return (
-              <div>
-                <span style={styles.statusBadge(group.expenseStatus)}>{group.expenseStatus}</span>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
-                  {group.expenseStatusSummary}
-                </div>
-              </div>
-            );
-        default:
-            return <span style={{ fontWeight: 500 }}>{group[colKey]}</span>;
-    }
-  }
-
-  const renderDetailCell = (exp, colKey) => {
-    const value = exp[colKey];
-    switch (colKey) {
-        case 'amount':
-            return <span style={styles.amountCell}>{formatCurrency(value)}</span>;
-        case 'status':
-            return (
-                <Tooltip text={exp.status === 'Rejected' ? exp.rejectionComment : ''}>
-                    <span style={styles.statusBadge(value)}>{value}</span>
-                </Tooltip>
-            );
-        case 'paymentProof':
-            return value ? (
-                <a href={value} target="_blank" rel="noopener noreferrer" style={styles.proofLink} onClick={e => e.stopPropagation()}>
-                    <FiFileText /> View Proof
-                </a>
-            ) : 'N/A';
-        default:
-            return value;
-    }
-  };
-
-  return (
-    <div style={styles.tableContainer}>
-      {/* Column Settings */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'flex-end',
-        marginBottom: '16px',
-        position: 'relative'
-      }}>
-        <button
-          onClick={() => setShowColumnSettings(!showColumnSettings)}
-          style={{
-            background: '#f3f4f6',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            padding: '8px 12px',
-            fontSize: '0.875rem',
-            color: '#374151',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <span>Columns</span>
-          <FiChevronDown style={{
-            transform: showColumnSettings ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s'
-          }} />
-        </button>
-
-        {showColumnSettings && (
-          <div className="column-settings" style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            background: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            padding: '12px',
-            zIndex: 10,
-            minWidth: '200px'
-          }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '8px', color: '#374151' }}>
-              Visible Columns
-            </div>
-            {Object.entries(visibleColumns).map(([key, visible]) => (
-              <label key={key} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '0.8rem',
-                color: '#6b7280',
-                cursor: 'pointer',
-                padding: '4px 0'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={visible}
-                  onChange={() => toggleColumn(key)}
-                  style={{ cursor: 'pointer' }}
-                />
-                {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
-              </label>
-            ))}
+        {/* Image Preview Modal */}
+        {showImageModal && previewImage && (
+          <div 
+            style={styles.imageModal}
+            onClick={() => setShowImageModal(false)}
+          >
+            <button 
+              style={styles.closeButton}
+              onClick={() => setShowImageModal(false)}
+            >
+              ×
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Preview" 
+              style={styles.modalImage}
+              onClick={e => e.stopPropagation()}
+            />
           </div>
         )}
+      </>
+    );
+  }
+
+  // Render grouped table
+  return (
+    <>
+      <div style={styles.tableContainer}>
+        <table style={styles.table}>
+          <tbody>
+            {groupedData.map(({ groupKey, expenses: groupExpenses }) => {
+              const isExpanded = openGroups[groupKey];
+              return (
+                <React.Fragment key={groupKey}>
+                  <tr
+                    style={{
+                      ...styles.groupRow,
+                      ...(isExpanded && styles.expandedGroupRow),
+                      ...(hoverRow === groupKey && !isExpanded && { background: '#eef2ff' }),
+                    }}
+                    onMouseEnter={() => setHoverRow(groupKey)}
+                    onMouseLeave={() => setHoverRow(null)}
+                    onClick={() => setOpenGroups(p => ({ ...p, [groupKey]: !isExpanded }))}
+                  >
+                    <td style={{...styles.td, display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <FiChevronDown style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
+                      {groupKey} ({groupExpenses.length})
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                      <tr>
+                          <td colSpan="1" style={{ padding: 0 }}>
+                              <div style={styles.subTableContainer}>
+                                  <table style={styles.subTable}>
+                                      <thead>
+                                          <tr>
+                                            {allColumns.map(col => <th key={col.key} style={styles.subTh}>{col.label}</th>)}
+                                          </tr>
+                                      </thead>
+                                      <tbody>
+                                          {groupExpenses.map((expense, expIndex) => (
+                                              <tr
+                                                  key={expense.id}
+                                                  style={{
+                                                      ...(expIndex % 2 === 1 && styles.zebraRow),
+                                                      cursor: 'pointer',
+                                                  }}
+                                                  onClick={() => onEdit(expense)}
+                                              >
+                                                {allColumns.map(col => <td key={col.key} style={styles.td}>{renderCell(expense, col.key)}</td>)}
+                                              </tr>
+                                          ))}
+                                      </tbody>
+                                  </table>
+                              </div>
+                          </td>
+                      </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={{ ...styles.th, width: '40px' }}></th>
-            {summaryColumns.map(col =>
-              <th key={col.key} style={{ ...styles.th, textAlign: col.align || 'left' }}>
-                {col.label}
-              </th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(groups).map(([groupKey, group], groupIndex) => {
-            const isExpanded = openGroups[groupKey];
+      {/* Image Preview Modal */}
+      {showImageModal && previewImage && (
+        <div 
+          style={styles.imageModal}
+          onClick={() => setShowImageModal(false)}
+        >
+          <button 
+            style={styles.closeButton}
+            onClick={() => setShowImageModal(false)}
+          >
+            ×
+          </button>
+          <img 
+            src={previewImage} 
+            alt="Preview" 
+            style={styles.modalImage}
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
+  );
+};
 
-            return (
-              <React.Fragment key={groupKey}>
-                <tr
-                  style={{
-                    ...styles.groupRow,
-                    ...(hoverRow === groupKey && { background: '#eef2ff' }),
-                    ...(groupIndex % 2 === 1 && styles.zebraRow)
-                  }}
-                  onMouseEnter={() => setHoverRow(groupKey)}
-                  onMouseLeave={() => setHoverRow(null)}
-                  onClick={() => setOpenGroups(p => ({ ...p, [groupKey]: !isExpanded }))}
-                >
-                  <td style={styles.td}>
-                    <FiChevronDown style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
-                  </td>
-                  {summaryColumns.map(col => <td key={col.key} style={{...styles.td, textAlign: col.align || 'left'}}>{renderSummaryCell(group, col.key)}</td>)}
-                </tr>
-                {isExpanded && (
-                    <tr>
-                        <td colSpan={summaryColumns.length + 1} style={{ padding: 0 }}>
-                                 <div style={styles.subTableContainer}>
-                                     <table style={{ ...styles.table, border: 'none' }}>
-                                         <thead>
-                                             <tr>
-                                                 {detailColumns.map(col =>
-                                                   <th key={col.key} style={{ ...styles.th, textAlign: col.align || 'left', fontSize: '0.7rem' }}>
-                                                     {col.label}
-                                                   </th>
-                                                 )}
-                                             </tr>
-                                         </thead>
-                                         <tbody>
-                                             {group.payments.map((exp, expIndex) => (
-                                                 <tr
-                                                     key={exp.id}
-                                                     style={{
-                                                         ...(expIndex % 2 === 1 && styles.zebraRow),
-                                                         cursor: 'pointer',
-                                                         '&:hover': { background: '#f9fafb' }
-                                                     }}
-                                                     onClick={() => onEdit(exp)}
-                                                 >
-                                                     {detailColumns.map(col =>
-                                                       <td key={col.key} style={{...styles.td, textAlign: col.align || 'left', fontSize: '0.8rem'}}>
-                                                         {renderDetailCell(exp, col.key)}
-                                                       </td>
-                                                     )}
-                                                 </tr>
-                                             ))}
-                                         </tbody>
-                                     </table>
-                                 </div>
-                             </td>
-                         </tr>
-                     )}
-                   </React.Fragment>
-                 );
-               })}
-             </tbody>
-           </table>
-         </div>
-       );
-     };
-
-     export default AccountantExpenseTable;
+export default AccountantExpenseTable;

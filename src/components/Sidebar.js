@@ -55,8 +55,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     MANAGER: "Manager",
     HRADMIN: "HR Admin",
     SALES: "Sales Employee",
-    ACCOUNTADMIN: "Accountant",
-    PROJECTADMIN: "Project Admin",
     ACCOUNTANT: "Accountant",
     PROJECTMANAGER: "Project Manager"
   };
@@ -135,12 +133,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       link: "/manager/attendance",
       roles: ["MANAGER"],
     },
-    {
-      label: "Lead Management",
-      icon: <FaTasks />,
-      link: "/manager/leads",
-      roles: ["MANAGER"],
-    },
 
     {
       label: "Dashboard",
@@ -160,18 +152,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
        link: "/employee/reimbursement",
        roles: ["EMPLOYEE"],
      },
-//    {
-//      label: "Expenses",
-//      icon: <ReceiptIcon />,
-//      link: "/employee/expenses",
-//      roles: ["EMPLOYEE"],
-//    },
-//    {
-//      label: "Income",
-//      icon: <Wallet />,
-//      link: "/employee/income",
-//      roles: ["EMPLOYEE"],
-//    },
     {
       label: "Attendance",
       icon: <Clock />,
@@ -184,11 +164,19 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       link: "/employee/mypayslip",
       roles: ["EMPLOYEE"],
     },
+
+    // Add Sales Role Item
     {
       label: "Lead Management",
       icon: <FaTasks />,
-      link: "/employee/leads",
-      roles: ["EMPLOYEE"],
+      link: "/Sales/LeadManagement",
+      roles: ["SALES"],
+    },
+    {
+      label: "Manager",
+      icon: <FaUsers />,
+      link: "/Sales/Manager",
+      roles: ["SALES"],
     },
 
     // Add Account Admin items
@@ -223,7 +211,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
   // Filter menu items based on currentRole and department
   const filteredMenu = menuItems.filter((item) => {
     if (item.label === "Lead Management") {
-      return item.roles.includes(currentRole) && department === "Sales";
+      return item.roles.includes(currentRole);
     }
     return item.roles.includes(currentRole);
   });

@@ -18,6 +18,7 @@ import payslipReducer from "./slices/payslipSlice";
 import allEmployeesSlice from "./slices/allEmployeesSlice";
 import managerEmployeeSlice from "./slices/managerEmployeeSlice";
 import leadsReducer from "./slices/leadsSlice";
+import pipelineReducer from "./slices/pipelineSlice";
 import incomesReducer from "./slices/incomesSlice";
 import attendancesReducer from "./slices/attendancesSlice";
 
@@ -43,6 +44,7 @@ export const store = configureStore({
     allEmployees: allEmployeesSlice,
     managerEmployee: managerEmployeeSlice,
     leads: leadsReducer,
+    pipeline: pipelineReducer,
     incomes: incomesReducer,
     attendances: attendancesReducer,
   },

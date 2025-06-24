@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { updateLead } from '@/redux/slices/leadsSlice';
 
 // Define predefined reasons for losing a lead
 const lostReasons = [
@@ -12,30 +14,42 @@ const lostReasons = [
   "Other (Specify in notes if possible)" // Consider adding a notes field later if needed
 ];
 
-const LostLeadModal = ({ isOpen, onClose, onSubmit, leadId }) => {
+const LostLeadModal = ({ lead, onClose }) => {
+    const dispatch = useDispatch();
     const [selectedReason, setSelectedReason] = useState('');
 
     // Reset selection when modal opens
     useEffect(() => {
-        if (isOpen) {
-            setSelectedReason('');
+        if (lead) {
+            setSelectedReason(lead.reasonForLost || '');
         }
-    }, [isOpen]);
+    }, [lead]);
 
     const handleChange = (e) => {
         setSelectedReason(e.target.value);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!selectedReason) {
             alert('Please select a reason for loss.');
             return;
         }
-        onSubmit(leadId, selectedReason);
+
+        try {
+            await dispatch(updateLead({
+                leadId: lead.leadId,
+                status: 'Lost',
+                reasonForLost: selectedReason
+            }));
+            onClose();
+        } catch (error) {
+            console.error('Error marking lead as lost:', error);
+            alert('Failed to mark lead as lost. Please try again.');
+        }
     };
 
-    if (!isOpen) return null;
+    if (!lead) return null;
 
     return (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 overflow-y-auto p-4">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import HradminNavbar from "../../components/HradminNavbar";
 import Sidebar from "../../components/Sidebar";
 import withAuth from "@/components/withAuth";
@@ -6,7 +6,7 @@ import { useRouter } from "next/router";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchIncomeByEmployeeId } from "@/redux/slices/incomesSlice";
 import { FaFilePdf, FaFileImage, FaLink, FaFilter, FaCalendarAlt, FaSearch } from "react-icons/fa";
-import { FiChevronDown, FiChevronRight, FiX } from "react-icons/fi";
+import { FiChevronDown, FiChevronRight, FiX, FiSearch, FiColumns, FiFilter } from "react-icons/fi";
 
 // Mock data to simulate what's coming from Redux for development
 const mockIncomes = [
@@ -58,27 +58,212 @@ const mockIncomes = [
 
 const styles = {
     pageContainer: { background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" },
-    contentArea: (isCollapsed) => ({ marginLeft: isCollapsed ? 80 : 250, paddingTop: 64, transition: 'margin-left 0.3s' }),
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 32px', background: '#fff', borderBottom: '1px solid #e5e7eb' },
+    contentArea: (isCollapsed) => ({ marginLeft: isCollapsed ? 80 : 250, paddingTop: 80, paddingLeft: 32, paddingRight: 32, paddingBottom: 32, transition: 'margin-left 0.3s' }),
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
     title: { fontSize: 28, fontWeight: 700, color: '#111827' },
+    subtitle: { color: '#6b7280', fontSize: "1rem", marginTop: 4 },
     addButton: { background: '#2563eb', color: 'white', fontWeight: 600, padding: '10px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 },
-    mainContent: { padding: '24px 32px' },
-    filterBar: { display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' },
-    filterDropdown: { position: 'relative' },
-    filterButton: { background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 500 },
-    filterMenu: { position: 'absolute', background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, top: '110%', width: 280, padding: 16 },
-    tableContainer: { background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflowX: 'auto' },
+    toolbar: {
+      marginBottom: 24,
+      position: 'relative',
+    },
+    searchFilterContainer: {
+      display: 'flex',
+      alignItems: 'center',
+      position: 'relative',
+      background: '#fff',
+      border: '1px solid #d1d5db',
+      borderRadius: '8px',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+      width: '520px',
+    },
+    searchInput: {
+      width: '100%',
+      padding: '12px 140px 12px 48px',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '1rem',
+      background: 'transparent',
+    },
+    searchIcon: {
+      position: 'absolute',
+      left: 16,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      color: '#9ca3af',
+    },
+    filterTriggerButton: {
+      position: 'absolute',
+      right: 1,
+      top: 1,
+      bottom: 1,
+      background: '#f9fafb',
+      border: 'none',
+      borderLeft: '1px solid #e5e7eb',
+      padding: '0 16px',
+      borderTopRightRadius: '7px',
+      borderBottomRightRadius: '7px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      color: '#374151',
+      fontWeight: 500,
+    },
+    advancedSearchDropdown: {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      width: '600px',
+      background: '#fff',
+      borderRadius: '12px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+      zIndex: 100,
+      marginTop: '8px',
+      border: '1px solid #e5e7eb',
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      padding: '24px',
+      gap: '32px',
+    },
+    dropdownSection: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '16px',
+      borderRight: '1px solid #f3f4f6',
+      paddingRight: '32px',
+    },
+    dropdownSectionTitle: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '1rem',
+      fontWeight: 600,
+      color: '#111827',
+      marginBottom: '8px'
+    },
+    dropdownItem: {
+      padding: '8px 12px',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      fontWeight: 500
+    },
+    dateFilterContainer: {
+      display: 'flex',
+      gap: '12px'
+    },
+    dropdownFormControl: {
+      padding: '10px 16px',
+      borderRadius: 8,
+      border: '1px solid #d1d5db',
+      background: '#fff',
+      color: '#374151',
+      fontWeight: 500,
+      cursor: 'pointer',
+      fontSize: '0.875rem',
+      width: '100%',
+    },
+    tagsContainer: {
+      position: 'absolute',
+      left: 48,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      maxWidth: 'calc(100% - 150px)',
+      overflow: 'hidden',
+    },
+    filterTag: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      background: '#eef2ff',
+      color: '#4338ca',
+      fontWeight: 500,
+      padding: '4px 8px',
+      borderRadius: '6px',
+      fontSize: '0.8rem',
+      whiteSpace: 'nowrap',
+    },
+    removeTagButton: {
+      background: 'none',
+      border: 'none',
+      padding: 0,
+      margin: 0,
+      cursor: 'pointer',
+      lineHeight: 1,
+      color: '#4338ca',
+    },
+    clearAllButton: {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      color: '#6b7280',
+      fontWeight: 600,
+      textDecoration: 'underline',
+      fontSize: '0.8rem',
+      marginLeft: '4px',
+      whiteSpace: 'nowrap'
+    },
+    tableContainer: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { padding: '16px 20px', textAlign: 'left', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', color: '#6b7280', textTransform: 'uppercase', fontSize: 12, fontWeight: 600 },
-    td: { padding: '16px 20px', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: 14 },
-    tr: { '&:hover': { background: '#f9fafb' } },
+    th: {
+        padding: '16px 24px',
+        textAlign: 'left',
+        fontWeight: 700,
+        color: '#1f2937',
+        borderBottom: '2px solid #e5e7eb',
+        background: '#f9fafb',
+        fontSize: '0.75rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+    },
+    td: {
+        padding: '14px 24px',
+        borderBottom: '1px solid #f3f4f6',
+        color: '#374151',
+        fontSize: '0.875rem',
+        transition: 'background 0.2s',
+        lineHeight: '1.5',
+    },
     fileLink: { color: '#2563eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500 },
     emptyState: { textAlign: 'center', padding: '64px 32px', background: 'white', borderRadius: 12 },
-    expandableRow: { cursor: 'pointer' },
-    expandedContent: { background: '#f9fafb', padding: '0' },
+    expandableRow: {
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+    },
+    expandedContent: { padding: '0' },
+    subTableContainer: { padding: '16px 24px' },
     subTable: { width: '100%', borderCollapse: 'collapse' },
-    subTh: { padding: '12px 16px', textAlign: 'left', background: '#eef2ff', color: '#4338ca', fontSize: 12, fontWeight: 600, borderBottom: '1px solid #e5e7eb' },
-    subTd: { padding: '12px 16px', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: 14 },
+    subTh: {
+        padding: '12px 24px',
+        textAlign: 'left',
+        fontSize: '0.7rem',
+        color: '#2563eb',
+        background: '#f1f6fd',
+        borderBottom: '1px solid #e0e7ff',
+        textTransform: 'uppercase',
+    },
+    subTd: {
+        padding: '14px 24px',
+        borderBottom: '1px solid #f3f4f6',
+        fontSize: '0.875rem'
+    },
+    groupHeaderRow: {
+        background: '#f9fafb',
+        cursor: 'pointer',
+    },
+    groupHeaderCell: {
+        padding: '12px 24px',
+        fontWeight: 600,
+        color: '#1f2937',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        borderBottom: '2px solid #e5e7eb',
+    },
 };
 
 const formatCurrency = (amount) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(amount)}`;
@@ -112,67 +297,125 @@ const Income = () => {
     const loading = false;
     const error = null;
 
-    const [filters, setFilters] = useState({ clientName: '', paymentMethod: '', startDate: '', endDate: '' });
-    const [showFilters, setShowFilters] = useState(false);
-    const [expandedRows, setExpandedRows] = useState([]);
+    const [filters, setFilters] = useState({ 
+      searchQuery: '', 
+      clientName: 'All', 
+      paymentMethod: 'All', 
+      dateFrom: '', 
+      dateTo: '' 
+    });
+    const [groupBy, setGroupBy] = useState('');
+    const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+    const [expandedGroups, setExpandedGroups] = useState({});
+    
+    const dropdownRef = useRef(null);
+    const tagsContainerRef = useRef(null);
+    const [inputPaddingLeft, setInputPaddingLeft] = useState(48);
 
-    // useEffect(() => {
-    //   dispatch(fetchIncomeByEmployeeId());
-    // }, [dispatch]);
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+          if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+            setShowAdvancedSearch(false);
+          }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [dropdownRef]);
+
+    const activeFilters = useMemo(() => {
+        const active = [];
+        if (filters.clientName && filters.clientName !== 'All') active.push({ key: 'clientName', label: `Client: ${filters.clientName}` });
+        if (filters.paymentMethod && filters.paymentMethod !== 'All') active.push({ key: 'paymentMethod', label: `Method: ${filters.paymentMethod}` });
+        if (filters.dateFrom || filters.dateTo) {
+          const from = filters.dateFrom;
+          const to = filters.dateTo;
+          let label = 'Date: ';
+          if (from && to) label += `${from} to ${to}`;
+          else if (from) label += `From ${from}`;
+          else label += `Up to ${to}`;
+          active.push({ key: 'dateRange', label });
+        }
+        if (groupBy) active.push({ key: 'groupBy', label: `Group by: ${groupBy}` });
+    
+        return active;
+    }, [filters, groupBy]);
+
+    useEffect(() => {
+        const basePadding = 48;
+        if (tagsContainerRef.current) {
+          const tagsWidth = tagsContainerRef.current.offsetWidth;
+          setInputPaddingLeft(basePadding + tagsWidth + (tagsWidth > 0 ? 8 : 0));
+        } else {
+          setInputPaddingLeft(basePadding);
+        }
+    }, [activeFilters]);
 
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
 
-    const clearFilters = () => {
-        setFilters({ clientName: '', paymentMethod: '', startDate: '', endDate: '' });
-        setShowFilters(false);
-    }
+    const handleRemoveFilter = (key) => {
+        if (key === 'groupBy') {
+          setGroupBy('');
+        } else if (key === 'dateRange') {
+          setFilters(prev => ({ ...prev, dateFrom: '', dateTo: '' }));
+        } else {
+          setFilters(prev => ({ ...prev, [key]: 'All' }));
+        }
+    };
+    
+    const clearAllFilters = () => {
+        setFilters(prev => ({
+          searchQuery: prev.searchQuery,
+          clientName: 'All',
+          paymentMethod: 'All',
+          dateFrom: '',
+          dateTo: '',
+        }));
+        setGroupBy('');
+    };
 
-    const toggleRowExpansion = (projectId) => {
-        setExpandedRows(prev =>
-            prev.includes(projectId) ? prev.filter(id => id !== projectId) : [...prev, projectId]
-        );
+    const toggleGroup = (groupKey) => {
+        setExpandedGroups(prev => ({...prev, [groupKey]: !prev[groupKey]}));
     }
 
     const filteredIncomes = useMemo(() => {
         return incomes.filter(income => {
+            const { searchQuery, clientName, paymentMethod, dateFrom, dateTo } = filters;
             const paymentDate = new Date(income.paymentDate);
-            const startDate = filters.startDate ? new Date(filters.startDate) : null;
-            const endDate = filters.endDate ? new Date(filters.endDate) : null;
+            const startDate = dateFrom ? new Date(dateFrom) : null;
+            const endDate = dateTo ? new Date(dateTo) : null;
 
             if (startDate) startDate.setHours(0, 0, 0, 0);
             if (endDate) endDate.setHours(23, 59, 59, 999);
 
+            const searchMatch = !searchQuery ||
+                income.incomeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                income.projectId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                income.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                income.comments.toLowerCase().includes(searchQuery.toLowerCase());
+
             return (
-                (!filters.clientName || income.clientName === filters.clientName) &&
-                (!filters.paymentMethod || income.paymentMethod === filters.paymentMethod) &&
+                searchMatch &&
+                (clientName === 'All' || income.clientName === clientName) &&
+                (paymentMethod === 'All' || income.paymentMethod === paymentMethod) &&
                 (!startDate || paymentDate >= startDate) &&
                 (!endDate || paymentDate <= endDate)
             );
-        });
+        }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
     }, [incomes, filters]);
 
     const groupedIncomes = useMemo(() => {
-        const groups = filteredIncomes.reduce((acc, income) => {
-            const { projectId } = income;
-            if (!acc[projectId]) {
-                acc[projectId] = {
-                    ...income,
-                    totalAmount: 0,
-                    paymentCount: 0,
-                    payments: [],
-                };
+        if (!groupBy) return null;
+        return filteredIncomes.reduce((acc, income) => {
+            const key = income[groupBy] || 'N/A';
+            if (!acc[key]) {
+                acc[key] = [];
             }
-            acc[projectId].totalAmount += income.amount;
-            acc[projectId].paymentCount += 1;
-            acc[projectId].payments.push(income);
-            // Sort payments by date, most recent first
-            acc[projectId].payments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+            acc[key].push(income);
             return acc;
         }, {});
-        return Object.values(groups).sort((a, b) => a.projectId.localeCompare(b.projectId));
-    }, [filteredIncomes]);
+    }, [filteredIncomes, groupBy]);
 
     const uniqueClients = [...new Set(incomes.map(i => i.clientName))];
     const uniquePaymentMethods = [...new Set(incomes.map(i => i.paymentMethod))];
@@ -183,112 +426,152 @@ const Income = () => {
             <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
             <div style={styles.pageContainer}>
                 <div style={styles.contentArea(isSidebarCollapsed)}>
+                    <div style={{
+                        background: 'white',
+                        borderRadius: 12,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        padding: '24px 32px'
+                    }}>
                     <header style={styles.header}>
+                            <div>
                         <h1 style={styles.title}>Payment Records</h1>
+                                <div style={styles.subtitle}>Track all incoming payments and view transaction history.</div>
+                            </div>
                         <button style={styles.addButton} onClick={() => router.push('/employee/add-income')}>
                            + Record New Payment
                         </button>
                     </header>
-                    <main style={styles.mainContent}>
-                        <div style={styles.filterBar}>
-                            <div style={styles.filterDropdown}>
-                                <button style={styles.filterButton} onClick={() => setShowFilters(!showFilters)}>
-                                    <FaFilter size={14} color="#6b7280" />
+                        <div style={styles.toolbar} ref={dropdownRef}>
+                            <div style={styles.searchFilterContainer}>
+                                <FiSearch size={20} style={styles.searchIcon} />
+
+                                <div ref={tagsContainerRef} style={styles.tagsContainer}>
+                                {activeFilters.map(f => (
+                                    <span key={f.key} style={styles.filterTag}>
+                                    {f.label}
+                                    <button onClick={() => handleRemoveFilter(f.key)} style={styles.removeTagButton}>
+                                        <FiX size={14} />
+                                    </button>
+                                    </span>
+                                ))}
+                                {activeFilters.length > 0 && (
+                                    <button onClick={clearAllFilters} style={styles.clearAllButton}>Clear All</button>
+                                )}
+                                </div>
+
+                                <input
+                                type="text"
+                                placeholder={activeFilters.length > 0 ? '' : "Search by ID, project, client, or notes..."}
+                                style={{ ...styles.searchInput, paddingLeft: inputPaddingLeft }}
+                                value={filters.searchQuery}
+                                onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
+                                />
+                                <button 
+                                style={styles.filterTriggerButton}
+                                onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+                                >
+                                <FiFilter size={16} />
                                     <span>Filters</span>
-                                    <FiChevronDown size={16} />
                                 </button>
-                                {showFilters && (
-                                    <div style={styles.filterMenu}>
-                                        <h4 style={{ margin: '0 0 16px 0', fontWeight: 600 }}>Filter by</h4>
-                                        <select value={filters.clientName} onChange={e => handleFilterChange('clientName', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb', marginBottom: 12 }}>
-                                            <option value="">All Clients</option>
+                            </div>
+
+                            {showAdvancedSearch && (
+                                <div style={styles.advancedSearchDropdown}>
+                                {/* Filters Section */}
+                                <div style={styles.dropdownSection}>
+                                    <h3 style={styles.dropdownSectionTitle}><FiFilter /> Filters</h3>
+                                    
+                                    <select value={filters.clientName} onChange={e => handleFilterChange('clientName', e.target.value)} style={styles.dropdownFormControl}>
+                                        <option value="All">All Clients</option>
                                             {uniqueClients.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
-                                        <select value={filters.paymentMethod} onChange={e => handleFilterChange('paymentMethod', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb', marginBottom: 16 }}>
-                                            <option value="">All Payment Methods</option>
+
+                                    <select value={filters.paymentMethod} onChange={e => handleFilterChange('paymentMethod', e.target.value)} style={styles.dropdownFormControl}>
+                                        <option value="All">All Payment Methods</option>
                                             {uniquePaymentMethods.map(m => <option key={m} value={m}>{m}</option>)}
                                         </select>
-                                        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                                            <div>
-                                                <label style={{ fontSize: 12, fontWeight: 500, color: '#6b7280' }}>From</label>
-                                                <input type="date" value={filters.startDate} onChange={e => handleFilterChange('startDate', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb', marginTop: 4 }}/>
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: 12, fontWeight: 500, color: '#6b7280' }}>To</label>
-                                                <input type="date" value={filters.endDate} onChange={e => handleFilterChange('endDate', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb', marginTop: 4 }}/>
+                                    
+                                    <div style={styles.dateFilterContainer}>
+                                        <input type="date" value={filters.dateFrom} onChange={e => handleFilterChange('dateFrom', e.target.value)} style={styles.dropdownFormControl}/>
+                                        <input type="date" value={filters.dateTo} onChange={e => handleFilterChange('dateTo', e.target.value)} style={styles.dropdownFormControl}/>
                                             </div>
                                         </div>
-                                        <button onClick={clearFilters} style={{ width: '100%', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', textAlign: 'right' }}>Clear all</button>
+                                
+                                {/* Group By Section */}
+                                <div style={{...styles.dropdownSection, borderRight: 'none', paddingRight: 0}}>
+                                    <h3 style={styles.dropdownSectionTitle}><FiColumns /> Group By</h3>
+                                    {['None', 'projectId', 'clientName', 'paymentMethod'].map(group => (
+                                    <div 
+                                        key={group}
+                                        style={{...styles.dropdownItem, background: groupBy === group ? '#eff6ff' : 'none', color: groupBy === group ? '#2563eb' : 'inherit'}} 
+                                        onClick={() => setGroupBy(group === 'None' ? '' : group)}
+                                    >
+                                        {group.charAt(0).toUpperCase() + group.slice(1).replace('Id', ' ID')}
+                                    </div>
+                                    ))}
+                                </div>
                                     </div>
                                 )}
-                            </div>
                         </div>
                        <div style={styles.tableContainer}>
                                                 <table style={styles.table}>
                                                     <thead>
                                                         <tr>
-                                                            <th style={{...styles.th, width: 40}}></th>
                                                             <th style={styles.th}>Project ID</th>
                                                             <th style={styles.th}>Client Name</th>
-                                                            <th style={styles.th}>Total Amount Received</th>
-                                                            <th style={styles.th}>Payments</th>
+                                        <th style={styles.th}>Payment Date</th>
+                                        <th style={styles.th}>Amount</th>
+                                        <th style={styles.th}>Payment Method</th>
+                                        <th style={styles.th}>Proof</th>
+                                        <th style={styles.th}>Notes</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {loading ? (
-                                                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: 48, color: '#6b7280' }}>Loading...</td></tr>
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: 48, color: '#6b7280' }}>Loading...</td></tr>
                                                         ) : error ? (
-                                                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: 48, color: '#ef4444' }}>Error: {error}</td></tr>
-                                                        ) : groupedIncomes.length > 0 ? (
-                                                            groupedIncomes.map((group, index) => (
-                                                              <React.Fragment key={group.projectId}>
-                                                                <tr
-                                                                  style={{ ...styles.expandableRow, backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb' }}
-                                                                  onClick={() => toggleRowExpansion(group.projectId)}
-                                                                >
-                                                                    <td style={styles.td}>
-                                                                      {expandedRows.includes(group.projectId) ? <FiChevronDown/> : <FiChevronRight/>}
+                                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: 48, color: '#ef4444' }}>Error: {error}</td></tr>
+                                    ) : !groupBy && filteredIncomes.length > 0 ? (
+                                        filteredIncomes.map((income, index) => (
+                                          <tr
+                                            key={income.incomeId}
+                                            style={{ backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb' }}
+                                          >
+                                              <td style={styles.td}>{income.projectId}</td>
+                                              <td style={styles.td}>{income.clientName}</td>
+                                              <td style={styles.td}>{formatDate(income.paymentDate)}</td>
+                                              <td style={styles.td}>{formatCurrency(income.amount)}</td>
+                                              <td style={styles.td}>{income.paymentMethod}</td>
+                                              <td style={styles.td}><ProofOfPaymentLink file={income.file} /></td>
+                                              <td style={{...styles.td, whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{income.comments}</td>
+                                          </tr>
+                                        ))
+                                    ) : groupBy && groupedIncomes && Object.keys(groupedIncomes).length > 0 ? (
+                                        Object.keys(groupedIncomes).sort().map(groupKey => (
+                                            <React.Fragment key={groupKey}>
+                                                <tr style={styles.groupHeaderRow} onClick={() => toggleGroup(groupKey)}>
+                                                    <td colSpan="7" style={styles.groupHeaderCell}>
+                                                        {expandedGroups[groupKey] ? <FiChevronDown size={20} /> : <FiChevronRight size={20} />}
+                                                        <span>{groupKey}</span>
+                                                        <span style={{color: '#6b7280', fontWeight: 500}}>({groupedIncomes[groupKey].length} records)</span>
                                                                     </td>
-                                                                    <td style={styles.td}>{group.projectId}</td>
-                                                                    <td style={styles.td}>{group.clientName}</td>
-                                                                    <td style={styles.td}>{formatCurrency(group.totalAmount)}</td>
-                                                                    <td style={styles.td}>{group.paymentCount}</td>
                                                                 </tr>
-                                                                {expandedRows.includes(group.projectId) && (
-                                                                    <tr>
-                                                                        <td colSpan="5" style={styles.expandedContent}>
-                                                                            <div style={{ padding: '16px 24px' }}>
-                                                                                <table style={styles.subTable}>
-                                                                                    <thead>
-                                                                                        <tr>
-                                                                                            <th style={styles.subTh}>Payment Date</th>
-                                                                                            <th style={styles.subTh}>Amount</th>
-                                                                                            <th style={styles.subTh}>Payment Method</th>
-                                                                                            <th style={styles.subTh}>Proof</th>
-                                                                                            <th style={styles.subTh}>Notes</th>
-                                                                                        </tr>
-                                                                                    </thead>
-                                                                                    <tbody>
-                                                                                    {group.payments.map(payment => (
-                                                                                        <tr key={payment.incomeId}>
-                                                                                            <td style={styles.subTd}>{formatDate(payment.paymentDate)}</td>
-                                                                                            <td style={styles.subTd}>{formatCurrency(payment.amount)}</td>
-                                                                                            <td style={styles.subTd}>{payment.paymentMethod}</td>
-                                                                                            <td style={styles.subTd}><ProofOfPaymentLink file={payment.file} /></td>
-                                                                                            <td style={styles.subTd}>{payment.comments}</td>
+                                                {expandedGroups[groupKey] && groupedIncomes[groupKey].map((income, index) => (
+                                                    <tr key={income.incomeId} style={{ backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb' }}>
+                                                        <td style={styles.td}>{income.projectId}</td>
+                                                        <td style={styles.td}>{income.clientName}</td>
+                                                        <td style={styles.td}>{formatDate(income.paymentDate)}</td>
+                                                        <td style={styles.td}>{formatCurrency(income.amount)}</td>
+                                                        <td style={styles.td}>{income.paymentMethod}</td>
+                                                        <td style={styles.td}><ProofOfPaymentLink file={income.file} /></td>
+                                                        <td style={{...styles.td, whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{income.comments}</td>
                                                                                         </tr>
                                                                                     ))}
-                                                                                    </tbody>
-                                                                                </table>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                )}
                                                               </React.Fragment>
                                                             ))
                                                         ) : (
                                                             <tr>
-                                                                <td colSpan="5">
+                                            <td colSpan="7">
                                                                     <div style={styles.emptyState}>
                                                                         <FaSearch size={48} color="#d1d5db" style={{ marginBottom: 16 }}/>
                                                                         <h3 style={{ fontSize: 18, fontWeight: 600, color: '#374151' }}>No matching records found</h3>
@@ -303,7 +586,7 @@ const Income = () => {
                                                     </tbody>
                                                 </table>
                                             </div>
-                                        </main>
+                    </div>
                                     </div>
                                 </div>
                             </>

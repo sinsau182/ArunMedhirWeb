@@ -1,12 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import HradminNavbar from "../../components/HradminNavbar";
 import Sidebar from "../../components/Sidebar";
 import withAuth from "@/components/withAuth";
 import Modal from "@/components/Modal";
 import CreateExpenseForm from "@/components/ProjectManager/CreateExpenseForm";
-import { FiSearch, FiFilter, FiChevronDown, FiX } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiChevronDown, FiX, FiColumns, FiEdit } from 'react-icons/fi';
 import { FaRegTrashAlt, FaPaperPlane } from 'react-icons/fa';
-import AccountantExpenseTable from "@/components/Accountant/AccountantExpenseTable";
 
 const mockExpenses = [
     { id: "EXP-001", createdBy: "Test Name", projectId: "PROJ-001", clientName: "Client Alpha", date: "2023-10-10", description: "Server rack for new office", category: "Hardware", vendorName: "Premium Hardware Supplies", amount: "50000", status: "Paid", paymentProof: "/path/to/proof1.pdf", rejectionComment: "" },
@@ -46,66 +45,201 @@ const styles = {
     transition: "all 0.2s ease-in-out",
   },
   toolbar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
-  },
-  filters: {
-    display: 'flex',
-    gap: '12px',
-    alignItems: 'center',
-  },
-  filterButton: (isActive) => ({
-    padding: '8px 16px',
-    borderRadius: 8,
-    border: `1px solid ${isActive ? '#2563eb' : '#e5e7eb'}`,
-    background: isActive ? '#eff6ff' : '#fff',
-    color: isActive ? '#2563eb' : '#374151',
-    fontWeight: isActive ? 600 : 500,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease-in-out',
-    textDecoration: isActive ? 'underline' : 'none',
-  }),
-  searchContainer: {
     position: 'relative',
-    width: '320px',
+  },
+  searchFilterContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    position: 'relative',
+    background: '#fff',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    width: '520px',
   },
   searchInput: {
     width: '100%',
-    padding: '10px 16px 10px 40px',
-    borderRadius: 8,
-    border: '1px solid #e5e7eb',
+    padding: '12px 140px 12px 48px',
+    border: 'none',
+    borderRadius: '8px',
     fontSize: '1rem',
+    background: 'transparent',
   },
   searchIcon: {
     position: 'absolute',
-    left: 12,
+    left: 16,
     top: '50%',
     transform: 'translateY(-50%)',
     color: '#9ca3af',
   },
-  advancedFilterButton: {
-    padding: '8px 16px',
-    borderRadius: 8,
+  filterTriggerButton: {
+    position: 'absolute',
+    right: 1,
+    top: 1,
+    bottom: 1,
+    background: '#f9fafb',
+    border: 'none',
+    borderLeft: '1px solid #e5e7eb',
+    padding: '0 16px',
+    borderTopRightRadius: '7px',
+    borderBottomRightRadius: '7px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: '#374151',
+    fontWeight: 500,
+  },
+  advancedSearchDropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    width: '600px',
+    background: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+    zIndex: 100,
+    marginTop: '8px',
     border: '1px solid #e5e7eb',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    padding: '24px',
+    gap: '32px',
+  },
+  dropdownSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    borderRight: '1px solid #f3f4f6',
+    paddingRight: '32px',
+  },
+  dropdownSectionTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#111827',
+    marginBottom: '8px'
+  },
+  dropdownItem: {
+    padding: '8px 12px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontWeight: 500
+  },
+  dateFilterContainer: {
+    display: 'flex',
+    gap: '12px'
+  },
+  dropdownFormControl: {
+    padding: '10px 16px',
+    borderRadius: 8,
+    border: '1px solid #d1d5db',
     background: '#fff',
     color: '#374151',
     fontWeight: 500,
     cursor: 'pointer',
+    fontSize: '0.875rem',
+    width: '100%',
+  },
+  tagsContainer: {
+    position: 'absolute',
+    left: 48,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    height: '100%',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px'
+    gap: '6px',
+    maxWidth: 'calc(100% - 150px)',
+    overflow: 'hidden',
   },
-  filterMenu: {
-    position: 'absolute', background: 'white', border: '1px solid #e5e7eb',
-    borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10,
-    top: '110%', width: 300, padding: 16
+  filterTag: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    background: '#eef2ff',
+    color: '#4338ca',
+    fontWeight: 500,
+    padding: '4px 8px',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    whiteSpace: 'nowrap',
   },
-  bulkActionBar: {
-    display: 'flex', alignItems: 'center', gap: '16px',
-    padding: '8px 16px', background: '#eef2ff', borderRadius: 8,
-    border: '1px solid #c7d2fe'
+  removeTagButton: {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
+    lineHeight: 1,
+    color: '#4338ca',
+  },
+  clearAllButton: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#6b7280',
+    fontWeight: 600,
+    textDecoration: 'underline',
+    fontSize: '0.8rem',
+    marginLeft: '4px',
+    whiteSpace: 'nowrap'
+  },
+  tableContainer: { overflowX: 'auto' },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  th: {
+      padding: '16px 24px',
+      textAlign: 'left',
+      fontWeight: 700,
+      color: '#1f2937',
+      borderBottom: '2px solid #e5e7eb',
+      background: '#f9fafb',
+      fontSize: '0.75rem',
+      textTransform: 'uppercase',
+      letterSpacing: '0.05em',
+  },
+  td: {
+      padding: '14px 24px',
+      borderBottom: '1px solid #f3f4f6',
+      color: '#374151',
+      fontSize: '0.875rem',
+      lineHeight: '1.5',
+  },
+  groupHeaderRow: {
+      background: '#f9fafb',
+      cursor: 'pointer',
+  },
+  groupHeaderCell: {
+      padding: '12px 24px',
+      fontWeight: 600,
+      color: '#1f2937',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      borderBottom: '2px solid #e5e7eb',
+  },
+  emptyState: { 
+    textAlign: 'center', padding: '64px 32px', background: 'white', 
+    borderRadius: 12, border: '2px dashed #e5e7eb' 
+  },
+  statusBadge: (status) => {
+    const baseStyle = { padding: '4px 12px', borderRadius: '9999px', fontWeight: 600, fontSize: '0.8rem' };
+    switch(status) {
+        case 'Paid': return { ...baseStyle, background: '#dcfce7', color: '#16a34a' };
+        case 'Pending': return { ...baseStyle, background: '#fef9c3', color: '#ca8a04' };
+        case 'Rejected': return { ...baseStyle, background: '#fee2e2', color: '#ef4444' };
+        default: return { ...baseStyle, background: '#f3f4f6', color: '#4b5563' };
+    }
+  },
+  actionButton: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#6b7280',
+    padding: '4px'
   }
 };
 
@@ -115,12 +249,60 @@ const PMExpensesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
 
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [advFilters, setAdvFilters] = useState({ dateFrom: '', dateTo: '', vendor: '' });
+  const [filters, setFilters] = useState({
+    searchQuery: '',
+    status: 'All',
+    vendor: '',
+    dateFrom: '',
+    dateTo: '',
+  });
+  const [groupBy, setGroupBy] = useState('');
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState({});
+
+  const dropdownRef = useRef(null);
+  const tagsContainerRef = useRef(null);
+  const [inputPaddingLeft, setInputPaddingLeft] = useState(48);
 
   const loggedInUser = "Test Name";
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowAdvancedSearch(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownRef]);
+
+  const activeFilters = useMemo(() => {
+    const active = [];
+    if (filters.status && filters.status !== 'All') active.push({ key: 'status', label: `Status: ${filters.status}` });
+    if (filters.vendor) active.push({ key: 'vendor', label: `Vendor: ${filters.vendor}` });
+    if (filters.dateFrom || filters.dateTo) {
+      const from = filters.dateFrom;
+      const to = filters.dateTo;
+      let label = 'Date: ';
+      if (from && to) label += `${from} to ${to}`;
+      else if (from) label += `From ${from}`;
+      else label += `Up to ${to}`;
+      active.push({ key: 'dateRange', label });
+    }
+    if (groupBy) active.push({ key: 'groupBy', label: `Group by: ${groupBy}` });
+
+    return active;
+  }, [filters, groupBy]);
+
+  useEffect(() => {
+    const basePadding = 48;
+    if (tagsContainerRef.current) {
+      const tagsWidth = tagsContainerRef.current.offsetWidth;
+      setInputPaddingLeft(basePadding + tagsWidth + (tagsWidth > 0 ? 8 : 0));
+    } else {
+      setInputPaddingLeft(basePadding);
+    }
+  }, [activeFilters]);
 
   const handleCreateExpense = () => {
     setEditingExpense(null);
@@ -135,31 +317,55 @@ const PMExpensesPage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingExpense(null);
-  }
+  };
 
-  const handleAdvFilterChange = (e) => {
-    setAdvFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  }
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
-  const clearAdvFilters = () => {
-    setAdvFilters({ dateFrom: '', dateTo: '', vendor: '' });
-    setShowAdvancedFilters(false);
-  }
+  const handleRemoveFilter = (key) => {
+    if (key === 'groupBy') {
+      setGroupBy('');
+    } else if (key === 'dateRange') {
+      setFilters(prev => ({ ...prev, dateFrom: '', dateTo: '' }));
+    } else if (key === 'vendor') {
+      setFilters(prev => ({ ...prev, vendor: '' }));
+    } else {
+      setFilters(prev => ({ ...prev, [key]: 'All' }));
+    }
+  };
+  
+  const clearAllFilters = () => {
+    setFilters(prev => ({
+      searchQuery: prev.searchQuery,
+      status: 'All',
+      vendor: '',
+      dateFrom: '',
+      dateTo: '',
+    }));
+    setGroupBy('');
+    setShowAdvancedSearch(false);
+  };
+
+  const toggleGroup = (groupKey) => {
+    setExpandedGroups(prev => ({...prev, [groupKey]: !prev[groupKey]}));
+  };
 
   const filteredExpenses = useMemo(() => {
     return mockExpenses
       .filter(expense => expense.createdBy === loggedInUser)
       .filter(expense => {
-        const statusMatch = statusFilter === 'All' || expense.status === statusFilter;
+        const { searchQuery, status, vendor, dateFrom, dateTo } = filters;
+        const statusMatch = status === 'All' || expense.status === status;
 
         const date = new Date(expense.date);
-        const dateFrom = advFilters.dateFrom ? new Date(advFilters.dateFrom) : null;
-        const dateTo = advFilters.dateTo ? new Date(advFilters.dateTo) : null;
-        if (dateFrom) dateFrom.setHours(0,0,0,0);
-        if (dateTo) dateTo.setHours(23,59,59,999);
+        const startDate = dateFrom ? new Date(dateFrom) : null;
+        const endDate = dateTo ? new Date(dateTo) : null;
+        if (startDate) startDate.setHours(0,0,0,0);
+        if (endDate) endDate.setHours(23,59,59,999);
 
-        const dateMatch = (!dateFrom || date >= dateFrom) && (!dateTo || date <= dateTo);
-        const vendorMatch = !advFilters.vendor || expense.vendorName === advFilters.vendor;
+        const dateMatch = (!startDate || date >= startDate) && (!endDate || date <= endDate);
+        const vendorMatch = !vendor || expense.vendorName === vendor;
 
         const searchMatch = !searchQuery ||
           Object.values(expense).some(val =>
@@ -168,9 +374,39 @@ const PMExpensesPage = () => {
 
         return statusMatch && searchMatch && dateMatch && vendorMatch;
     });
-  }, [statusFilter, searchQuery, loggedInUser, advFilters]);
+  }, [filters, loggedInUser]);
+
+  const groupedExpenses = useMemo(() => {
+    if (!groupBy) return null;
+    return filteredExpenses.reduce((acc, expense) => {
+        const key = expense[groupBy] || 'N/A';
+        if (!acc[key]) {
+            acc[key] = [];
+        }
+        acc[key].push(expense);
+        return acc;
+    }, {});
+  }, [filteredExpenses, groupBy]);
 
   const uniqueVendors = [...new Set(mockExpenses.map(e => e.vendorName))];
+
+  const ExpenseRow = ({ expense, index }) => (
+    <tr key={expense.id} style={{ backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb' }}>
+        <td style={styles.td}>{expense.id}</td>
+        <td style={styles.td}>{expense.projectId}</td>
+        <td style={styles.td}>{expense.clientName}</td>
+        <td style={styles.td}>{new Date(expense.date).toLocaleDateString()}</td>
+        <td style={styles.td}>{expense.category}</td>
+        <td style={styles.td}>{expense.vendorName}</td>
+        <td style={{...styles.td, textAlign: 'right'}}>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(expense.amount)}</td>
+        <td style={styles.td}><span style={styles.statusBadge(expense.status)}>{expense.status}</span></td>
+        <td style={styles.td}>
+            <button onClick={() => handleEditExpense(expense)} style={styles.actionButton}>
+                <FiEdit size={16} />
+            </button>
+        </td>
+    </tr>
+  );
 
   return (
     <>
@@ -187,58 +423,120 @@ const PMExpensesPage = () => {
           </button>
         </div>
 
-        <div style={styles.toolbar}>
-          <div style={styles.filters}>
-            {['All', 'Paid', 'Pending', 'Rejected'].map(status => (
-              <button key={status} style={styles.filterButton(statusFilter === status)} onClick={() => setStatusFilter(status)}>
-                {status}
-              </button>
-            ))}
-            <div style={{position: 'relative'}}>
-              <button style={styles.advancedFilterButton} onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
-                <FiFilter size={14} />
-                <span>More Filters</span>
-                <FiChevronDown size={16} />
-              </button>
-              {showAdvancedFilters && (
-                <div style={styles.filterMenu}>
-                  <h4 style={{ margin: '0 0 16px 0', fontWeight: 600 }}>Filter by</h4>
-                  <select name="vendor" value={advFilters.vendor} onChange={handleAdvFilterChange} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb', marginBottom: 16 }}>
-                      <option value="">All Vendors</option>
-                      {uniqueVendors.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                      <div>
-                          <label style={{ fontSize: 12, fontWeight: 500, color: '#6b7280' }}>From</label>
-                          <input type="date" name="dateFrom" value={advFilters.dateFrom} onChange={handleAdvFilterChange} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb', marginTop: 4 }}/>
-                      </div>
-                      <div>
-                          <label style={{ fontSize: 12, fontWeight: 500, color: '#6b7280' }}>To</label>
-                          <input type="date" name="dateTo" value={advFilters.dateTo} onChange={handleAdvFilterChange} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb', marginTop: 4 }}/>
-                      </div>
-                  </div>
-                  <button onClick={clearAdvFilters} style={{ width: '100%', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', textAlign: 'right' }}>Clear all</button>
-                </div>
+        <div style={styles.toolbar} ref={dropdownRef}>
+          <div style={styles.searchFilterContainer}>
+            <FiSearch size={20} style={styles.searchIcon} />
+
+            <div ref={tagsContainerRef} style={styles.tagsContainer}>
+              {activeFilters.map(f => (
+                <span key={f.key} style={styles.filterTag}>
+                  {f.label}
+                  <button onClick={() => handleRemoveFilter(f.key)} style={styles.removeTagButton}>
+                    <FiX size={14} />
+                  </button>
+                </span>
+              ))}
+              {activeFilters.length > 0 && (
+                <button onClick={clearAllFilters} style={styles.clearAllButton}>Clear All</button>
               )}
             </div>
-          </div>
-          <div style={styles.searchContainer}>
-            <FiSearch style={styles.searchIcon} />
+
             <input
               type="text"
-              placeholder="Search anything..."
-              style={styles.searchInput}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={activeFilters.length > 0 ? '' : "Search expenses..."}
+              style={{ ...styles.searchInput, paddingLeft: inputPaddingLeft }}
+              value={filters.searchQuery}
+              onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
             />
+            <button style={styles.filterTriggerButton} onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}>
+              <FiFilter size={16} />
+              <span>Filters</span>
+            </button>
           </div>
+
+          {showAdvancedSearch && (
+            <div style={styles.advancedSearchDropdown}>
+              {/* Filters Section */}
+              <div style={styles.dropdownSection}>
+                <h3 style={styles.dropdownSectionTitle}><FiFilter /> Filters</h3>
+                
+                <select value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} style={styles.dropdownFormControl}>
+                  {['All', 'Paid', 'Pending', 'Rejected'].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+
+                <select value={filters.vendor} onChange={e => handleFilterChange('vendor', e.target.value)} style={styles.dropdownFormControl}>
+                  <option value="">All Vendors</option>
+                  {uniqueVendors.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                
+                <div style={styles.dateFilterContainer}>
+                  <input type="date" value={filters.dateFrom} onChange={e => handleFilterChange('dateFrom', e.target.value)} style={styles.dropdownFormControl}/>
+                  <input type="date" value={filters.dateTo} onChange={e => handleFilterChange('dateTo', e.target.value)} style={styles.dropdownFormControl}/>
+                </div>
+              </div>
+              
+              {/* Group By Section */}
+              <div style={{...styles.dropdownSection, borderRight: 'none', paddingRight: 0}}>
+                <h3 style={styles.dropdownSectionTitle}><FiColumns /> Group By</h3>
+                {['None', 'projectId', 'clientName', 'category', 'status'].map(group => (
+                  <div 
+                    key={group}
+                    style={{...styles.dropdownItem, background: groupBy === group ? '#eff6ff' : 'none', color: groupBy === group ? '#2563eb' : 'inherit'}} 
+                    onClick={() => setGroupBy(group === 'None' ? '' : group)}
+                  >
+                    {group.charAt(0).toUpperCase() + group.slice(1).replace('Id', ' ID')}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        <AccountantExpenseTable
-          expenses={filteredExpenses}
-          onEdit={handleEditExpense}
-          preferencesKey="pmExpenseColumns"
-        />
+        <div style={styles.tableContainer}>
+            <table style={styles.table}>
+                <thead>
+                    <tr>
+                        <th style={styles.th}>ID</th>
+                        <th style={styles.th}>Project ID</th>
+                        <th style={styles.th}>Client</th>
+                        <th style={styles.th}>Date</th>
+                        <th style={styles.th}>Category</th>
+                        <th style={styles.th}>Vendor</th>
+                        <th style={{...styles.th, textAlign: 'right'}}>Amount</th>
+                        <th style={styles.th}>Status</th>
+                        <th style={styles.th}>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                  {!groupBy && filteredExpenses.length > 0 ? (
+                      filteredExpenses.map((expense, index) => <ExpenseRow key={expense.id} expense={expense} index={index} />)
+                  ) : groupBy && groupedExpenses && Object.keys(groupedExpenses).length > 0 ? (
+                      Object.keys(groupedExpenses).sort().map(groupKey => (
+                          <React.Fragment key={groupKey}>
+                              <tr style={styles.groupHeaderRow} onClick={() => toggleGroup(groupKey)}>
+                                  <td colSpan="9" style={styles.groupHeaderCell}>
+                                      {expandedGroups[groupKey] ? <FiChevronDown size={20} /> : <FiChevronDown size={20} style={{transform: 'rotate(-90deg)'}}/>}
+                                      <span>{groupKey}</span>
+                                      <span style={{color: '#6b7280', fontWeight: 500}}>({groupedExpenses[groupKey].length} expenses)</span>
+                                  </td>
+                              </tr>
+                              {expandedGroups[groupKey] && groupedExpenses[groupKey].map((expense, index) => <ExpenseRow key={expense.id} expense={expense} index={index} />)}
+                          </React.Fragment>
+                      ))
+                  ) : (
+                      <tr>
+                          <td colSpan="9">
+                              <div style={styles.emptyState}>
+                                  <FiSearch size={48} color="#d1d5db" style={{ marginBottom: 16 }}/>
+                                  <h3 style={{ fontSize: 18, fontWeight: 600, color: '#374151' }}>No matching expenses found</h3>
+                                  <p style={{ color: '#6b7280', marginBottom: 24 }}>Try adjusting your filters or create a new expense.</p>
+                              </div>
+                          </td>
+                      </tr>
+                  )}
+                </tbody>
+            </table>
+        </div>
       </div>
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
           <CreateExpenseForm

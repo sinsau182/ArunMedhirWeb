@@ -1,30 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { updateLead } from '@/redux/slices/leadsSlice';
 
-const JunkReasonModal = ({ isOpen, onClose, onSubmit, leadId }) => {
+const JunkReasonModal = ({ leadId, onClose }) => {
+  const dispatch = useDispatch();
   const [reason, setReason] = useState('');
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    setReason('');
+  }, [leadId]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!reason.trim()) {
       alert("Please provide a reason for marking the lead as junk.");
       return;
     }
-    onSubmit(leadId, reason);
-    setReason(''); // Reset form
-  };
 
-  if (!isOpen) return null;
+    try {
+      await dispatch(updateLead({
+        leadId,
+        status: 'Junk',
+        reasonForJunk: reason.trim()
+      }));
+      onClose();
+    } catch (error) {
+      console.error('Error marking lead as junk:', error);
+      alert('Failed to mark lead as junk. Please try again.');
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Mark Lead as Junk</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

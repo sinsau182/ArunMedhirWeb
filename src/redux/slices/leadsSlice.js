@@ -144,7 +144,12 @@ export const leadsSlice = createSlice({
             })
             .addCase(updateLead.fulfilled, (state, action) => {
                 state.loading = false;
-                state.error = null;
+                const index = state.leads.findIndex(lead => lead.leadId === action.payload.leadId);
+                if (index !== -1) {
+                    state.leads[index] = action.payload;
+                } else {
+                    state.leads.push(action.payload);
+                }
             })
             .addCase(updateLead.rejected, (state, action) => {
                 state.loading = false;
@@ -155,6 +160,7 @@ export const leadsSlice = createSlice({
                 state.loading = true;
             })
             .addCase(createLead.fulfilled, (state, action) => {
+                state.leads.push(action.payload);
                 state.loading = false;
             })
             .addCase(createLead.rejected, (state, action) => {

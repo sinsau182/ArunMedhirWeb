@@ -1,7 +1,8 @@
+import React from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { Provider } from "react-redux";
-import { store } from "../redux/store";
+import { store } from "@/redux/store";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {

@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import HradminNavbar from "../../components/HradminNavbar";
 import Sidebar from "../../components/Sidebar";
 import withAuth from "@/components/withAuth";
 import AccountantExpenseTable from "@/components/Accountant/AccountantExpenseTable";
 import Modal from "@/components/Modal";
 import AccountantExpenseForm from "@/components/Accountant/AccountantExpenseForm";
-import { FiSearch } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiChevronDown, FiStar, FiColumns } from 'react-icons/fi';
 const mockExpenses = [
   {
     id: "EXP-001",
@@ -60,8 +60,8 @@ const mockExpenses = [
 const styles = {
   pageContainer: (isCollapsed) => ({
     marginLeft: isCollapsed ? "80px" : "280px",
-    marginTop: "80px",
-    padding: "32px",
+    marginTop: "40px",
+    padding: "32px 32px 32px 16px",
     background: "#f9fafb",
     minHeight: "100vh",
     transition: "margin-left 0.3s ease",
@@ -88,48 +88,161 @@ const styles = {
     transition: "all 0.2s ease-in-out",
   },
   toolbar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
-    background: '#ffffff',
-    padding: '16px 20px',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-  },
-  filters: {
-    display: 'flex',
-    gap: '12px',
-  },
-  filterButton: (isActive) => ({
-    padding: '8px 16px',
-    borderRadius: 8,
-    border: `1px solid ${isActive ? '#2563eb' : '#e5e7eb'}`,
-    background: isActive ? '#eff6ff' : '#fff',
-    color: isActive ? '#2563eb' : '#374151',
-    fontWeight: 500,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease-in-out',
-    fontSize: '0.875rem',
-  }),
-  searchContainer: {
     position: 'relative',
-    width: '320px',
+  },
+  searchFilterContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    position: 'relative',
+    background: '#fff',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    width: '520px',
   },
   searchInput: {
     width: '100%',
-    padding: '10px 16px 10px 40px',
-    borderRadius: 8,
-    border: '1px solid #e5e7eb',
+    padding: '12px 140px 12px 48px',
+    border: 'none',
+    borderRadius: '8px',
     fontSize: '1rem',
-    background: '#f9fafb'
+    background: 'transparent',
+    '&:focus': {
+      outline: 'none',
+    },
   },
   searchIcon: {
     position: 'absolute',
-    left: 12,
+    left: 16,
     top: '50%',
     transform: 'translateY(-50%)',
     color: '#9ca3af',
+  },
+  filterTriggerButton: {
+    position: 'absolute',
+    right: 1,
+    top: 1,
+    bottom: 1,
+    background: '#f9fafb',
+    border: 'none',
+    borderLeft: '1px solid #e5e7eb',
+    padding: '0 16px',
+    borderTopRightRadius: '7px',
+    borderBottomRightRadius: '7px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: '#374151',
+    fontWeight: 500,
+    transition: 'background 0.2s',
+    '&:hover': {
+      background: '#f3f4f6'
+    }
+  },
+  advancedSearchDropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    width: '600px',
+    background: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+    zIndex: 100,
+    marginTop: '8px',
+    border: '1px solid #e5e7eb',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    padding: '24px',
+    gap: '32px',
+  },
+  dropdownSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    borderRight: '1px solid #f3f4f6',
+    paddingRight: '32px',
+  },
+  dropdownSectionTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#111827',
+    marginBottom: '8px'
+  },
+  dropdownItem: {
+    padding: '8px 12px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    '&:hover': {
+      background: '#f9fafb'
+    },
+    fontWeight: 500
+  },
+  dateFilterContainer: {
+    display: 'flex',
+    gap: '12px'
+  },
+  dropdownFormControl: {
+    padding: '10px 16px',
+    borderRadius: 8,
+    border: '1px solid #d1d5db',
+    background: '#fff',
+    color: '#374151',
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    width: '100%',
+  },
+  tagsContainer: {
+    position: 'absolute',
+    left: 48,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    maxWidth: 'calc(100% - 150px)',
+    overflow: 'hidden',
+  },
+  filterTag: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    background: '#eef2ff',
+    color: '#4338ca',
+    fontWeight: 500,
+    padding: '4px 8px',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    whiteSpace: 'nowrap',
+  },
+  removeTagButton: {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
+    lineHeight: 1,
+    color: '#4338ca',
+    '&:hover': {
+      color: '#c4b5fd'
+    }
+  },
+  clearAllButton: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#6b7280',
+    fontWeight: 600,
+    textDecoration: 'underline',
+    fontSize: '0.8rem',
+    marginLeft: '4px',
+    whiteSpace: 'nowrap'
   },
 };
 
@@ -141,32 +254,66 @@ const AccountantExpensesPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const dropdownRef = useRef(null);
+  const tagsContainerRef = useRef(null);
+  const [inputPaddingLeft, setInputPaddingLeft] = useState(48);
 
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Load user preferences from localStorage
-  const [userPreferences, setUserPreferences] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('accountantExpensePreferences');
-      return saved ? JSON.parse(saved) : { statusFilter: 'All', searchQuery: '' };
-    }
-    return { statusFilter: 'All', searchQuery: '' };
+  const [filters, setFilters] = useState({
+    status: 'All',
+    searchQuery: '',
+    clientName: 'All',
+    projectManager: 'All',
+    category: 'All',
+    dateFrom: '',
+    dateTo: '',
   });
+  const [groupBy, setGroupBy] = useState('');
 
-  // Save user preferences to localStorage
-  const saveUserPreferences = (newPreferences) => {
-    setUserPreferences(newPreferences);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('accountantExpensePreferences', JSON.stringify(newPreferences));
+  const activeFilters = useMemo(() => {
+    const active = [];
+    if (filters.status && filters.status !== 'All') active.push({ key: 'status', label: `Status: ${filters.status}` });
+    if (filters.clientName && filters.clientName !== 'All') active.push({ key: 'clientName', label: `Client: ${filters.clientName}` });
+    if (filters.projectManager && filters.projectManager !== 'All') active.push({ key: 'projectManager', label: `Manager: ${filters.projectManager}` });
+    if (filters.category && filters.category !== 'All') active.push({ key: 'category', label: `Category: ${filters.category}` });
+    if (filters.dateFrom || filters.dateTo) {
+      const from = filters.dateFrom;
+      const to = filters.dateTo;
+      let label = 'Date: ';
+      if (from && to) label += `${from} to ${to}`;
+      else if (from) label += `From ${from}`;
+      else label += `Up to ${to}`;
+      active.push({ key: 'dateRange', label });
     }
-  };
+    if (groupBy) active.push({ key: 'groupBy', label: `Group by: ${groupBy}` });
 
-  // Initialize filters from user preferences
-  React.useEffect(() => {
-    setStatusFilter(userPreferences.statusFilter);
-    setSearchQuery(userPreferences.searchQuery);
-  }, []);
+    return active;
+  }, [filters, groupBy]);
+
+  useEffect(() => {
+    const basePadding = 48;
+    if (tagsContainerRef.current) {
+      const tagsWidth = tagsContainerRef.current.offsetWidth;
+      setInputPaddingLeft(basePadding + tagsWidth + (tagsWidth > 0 ? 8 : 0));
+    } else {
+      setInputPaddingLeft(basePadding);
+    }
+  }, [activeFilters]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowAdvancedSearch(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownRef]);
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleCreateExpense = () => {
     setEditingExpense(null);
@@ -183,52 +330,74 @@ const AccountantExpensesPage = () => {
     setEditingExpense(null);
   };
 
-  const handleStatusFilterChange = (newStatus) => {
-    setStatusFilter(newStatus);
-    saveUserPreferences({ ...userPreferences, statusFilter: newStatus });
-  };
-
-  const handleSearchChange = (newQuery) => {
-    setSearchQuery(newQuery);
-    saveUserPreferences({ ...userPreferences, searchQuery: newQuery });
-  };
-
-  // Simulate loading state for demo
-  const simulateLoading = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to load expenses. Please try again.');
-      setLoading(false);
+  const handleRemoveFilter = (key) => {
+    if (key === 'groupBy') {
+      setGroupBy('');
+    } else if (key === 'dateRange') {
+      setFilters(prev => ({ ...prev, dateFrom: '', dateTo: '' }));
+    } else {
+      setFilters(prev => ({ ...prev, [key]: 'All' }));
     }
   };
 
-  // Show success message
-  const showSuccessMessage = (message) => {
-    setSuccessMessage(message);
-    setTimeout(() => setSuccessMessage(''), 3000);
+  const clearAllFilters = () => {
+    setFilters(prev => ({
+      searchQuery: prev.searchQuery,
+      status: 'All',
+      clientName: 'All',
+      projectManager: 'All',
+      category: 'All',
+      dateFrom: '',
+      dateTo: '',
+    }));
+    setGroupBy('');
   };
 
   const filteredExpenses = useMemo(() => {
     return mockExpenses.filter(expense => {
-      const statusMatch = statusFilter === 'All' || (statusFilter === 'Pending' ? expense.status === 'Yet to be Paid' : expense.status === statusFilter);
+      const { status, searchQuery, clientName, projectManager, category, dateFrom, dateTo } = filters;
+      
+      const statusMatch = status === 'All' || (status === 'Pending' ? expense.status === 'Yet to be Paid' : expense.status === status);
+      
       const searchMatch = !searchQuery ||
         expense.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         expense.projectId.toLowerCase().includes(searchQuery.toLowerCase()) ||
         expense.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         expense.vendorName.toLowerCase().includes(searchQuery.toLowerCase());
-      return statusMatch && searchMatch;
+
+      const clientMatch = clientName === 'All' || expense.clientName === clientName;
+      const pmMatch = projectManager === 'All' || expense.projectManager === projectManager;
+      const categoryMatch = category === 'All' || expense.category === category;
+      
+      const expenseDate = new Date(expense.date);
+      const fromDate = dateFrom ? new Date(dateFrom) : null;
+      const toDate = dateTo ? new Date(dateTo) : null;
+      if(fromDate) fromDate.setHours(0,0,0,0);
+      if(toDate) toDate.setHours(23,59,59,999);
+
+      const dateMatch = (!fromDate || expenseDate >= fromDate) && (!toDate || expenseDate <= toDate);
+
+      return statusMatch && searchMatch && clientMatch && pmMatch && categoryMatch && dateMatch;
     });
-  }, [statusFilter, searchQuery]);
+  }, [filters]);
+
+  const uniqueClients = [...new Set(mockExpenses.map(e => e.clientName))];
+  const uniqueProjectManagers = [...new Set(mockExpenses.map(e => e.projectManager))];
+  const uniqueCategories = [...new Set(mockExpenses.map(e => e.category))];
 
   return (
     <>
       <HradminNavbar />
+      <div style={{ background: '#f9fafb', minHeight: '100vh', width: '100vw' }}>
       <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
       <div style={styles.pageContainer(isSidebarCollapsed)}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 16,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+            padding: '32px',
+            marginBottom: 32,
+          }}>
         <div style={styles.header}>
           <div>
             <h1 style={styles.title}>Accountant Expense Panel</h1>
@@ -239,24 +408,91 @@ const AccountantExpensesPage = () => {
           </button>
         </div>
 
-        <div style={styles.toolbar}>
-          <div style={styles.filters}>
-            {['All', 'Paid', 'Pending', 'Rejected'].map(status => (
-              <button key={status} style={styles.filterButton(statusFilter === status)} onClick={() => handleStatusFilterChange(status)}>
-                {status}
+            <div style={styles.toolbar} ref={dropdownRef}>
+              <div style={styles.searchFilterContainer}>
+                <FiSearch size={20} style={styles.searchIcon} />
+
+                <div ref={tagsContainerRef} style={styles.tagsContainer}>
+                  {activeFilters.map(f => (
+                    <span key={f.key} style={styles.filterTag}>
+                      {f.label}
+                      <button onClick={() => handleRemoveFilter(f.key)} style={styles.removeTagButton}>
+                        &times;
               </button>
+                    </span>
             ))}
+                  {activeFilters.length > 0 && (
+                    <button onClick={clearAllFilters} style={styles.clearAllButton}>Clear All</button>
+                  )}
           </div>
-          <div style={styles.searchContainer}>
-            <FiSearch style={styles.searchIcon} />
+
             <input
               type="text"
-              placeholder="Search by ID, project, client..."
-              style={styles.searchInput}
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-            />
+                  placeholder={activeFilters.length > 0 ? '' : "Search expenses by ID, project, client, or vendor..."}
+                  style={{ ...styles.searchInput, paddingLeft: inputPaddingLeft }}
+                  value={filters.searchQuery}
+                  onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
+                />
+                <button 
+                  style={styles.filterTriggerButton}
+                  onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+                >
+                  <FiFilter size={16} />
+                  <span>Filters</span>
+                </button>
+              </div>
+
+              {showAdvancedSearch && (
+                <div style={styles.advancedSearchDropdown}>
+                  {/* Filters Section */}
+                  <div style={styles.dropdownSection}>
+                    <h3 style={styles.dropdownSectionTitle}><FiFilter /> Filters</h3>
+                    
+                    {/* Status Filter */}
+                    <select value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} style={styles.dropdownFormControl}>
+                      {['All', 'Paid', 'Pending', 'Rejected'].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+
+                    {/* Client Filter */}
+                    <select value={filters.clientName} onChange={e => handleFilterChange('clientName', e.target.value)} style={styles.dropdownFormControl}>
+                      <option value="All">All Clients</option>
+                      {uniqueClients.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+
+                    {/* Project Manager Filter */}
+                    <select value={filters.projectManager} onChange={e => handleFilterChange('projectManager', e.target.value)} style={styles.dropdownFormControl}>
+                      <option value="All">All Project Managers</option>
+                      {uniqueProjectManagers.map(pm => <option key={pm} value={pm}>{pm}</option>)}
+                    </select>
+                    
+                    {/* Category Filter */}
+                    <select value={filters.category} onChange={e => handleFilterChange('category', e.target.value)} style={styles.dropdownFormControl}>
+                      <option value="All">All Categories</option>
+                      {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                    
+                    {/* Date Filter */}
+                    <div style={styles.dateFilterContainer}>
+                      <input type="date" value={filters.dateFrom} onChange={e => handleFilterChange('dateFrom', e.target.value)} style={styles.dropdownFormControl}/>
+                      <input type="date" value={filters.dateTo} onChange={e => handleFilterChange('dateTo', e.target.value)} style={styles.dropdownFormControl}/>
           </div>
+                  </div>
+                  
+                  {/* Group By Section */}
+                  <div style={{...styles.dropdownSection, borderRight: 'none', paddingRight: 0}}>
+                    <h3 style={styles.dropdownSectionTitle}><FiColumns /> Group By</h3>
+                    {['None', 'projectId', 'clientName', 'projectManager', 'status'].map(group => (
+                      <div 
+                        key={group}
+                        style={{...styles.dropdownItem, background: groupBy === group ? '#eff6ff' : 'none', color: groupBy === group ? '#2563eb' : 'inherit'}} 
+                        onClick={() => setGroupBy(group === 'None' ? '' : group)}
+                      >
+                        {group.charAt(0).toUpperCase() + group.slice(1).replace('Id', ' ID')}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
         </div>
 
         {/* Success Message */}
@@ -293,9 +529,10 @@ const AccountantExpensesPage = () => {
           onEdit={handleEditExpense}
           loading={loading}
           error={error}
-          preferencesKey="accountantExpenseColumns"
-          showProjectManager={true}
+              groupBy={groupBy}
         />
+          </div>
+        </div>
       </div>
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
           <AccountantExpenseForm

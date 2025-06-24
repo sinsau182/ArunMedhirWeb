@@ -12,6 +12,7 @@ const Overview = () => {
   const dispatch = useDispatch();
   const employeeId = sessionStorage.getItem("employeeId"); // Retrieve the employee ID from sessionStorage
   const { balance, loading, error } = useSelector((state) => state.leaveBalance);
+  const [displayedBalance, setDisplayedBalance] = useState(0);
   
 
   // Fetch leave balance when component mounts
@@ -23,6 +24,27 @@ const Overview = () => {
       dispatch(resetLeaveBalanceState());
     };
   }, [dispatch, employeeId]);
+
+  useEffect(() => {
+    if (balance && typeof balance.totalAvailableBalance === "number") {
+      let start = 0;
+      const end = balance.totalAvailableBalance;
+      const duration = 1000; // ms
+      const startTime = performance.now();
+
+      function animate(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const value = start + (end - start) * progress;
+        setDisplayedBalance(value);
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+  }, [balance]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -56,7 +78,7 @@ const Overview = () => {
           </div>
 
           {/* Cards Container */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 justify-start ml-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 justify-start">
             {/* Leave Balance Card */}
             <Link href="/employee/leaves">
               <div
@@ -87,11 +109,10 @@ const Overview = () => {
                     </div>
                   )
                 ) : balance ? (
-                  <div className="flex flex-col items-center justify-center w-full mt-4">
+                  <div className="flex flex-col items-start justify-center w-full h-full">
                     <span className="text-5xl font-extrabold text-gray-900">
-                      {Number(balance.totalAvailableBalance).toFixed(2)}
+                      {displayedBalance.toFixed(2)}
                     </span>
-                    <span className="text-base text-gray-500 mt-2">Leave Balance</span>
                   </div>
                 ) : (
                   <div className="text-gray-500">

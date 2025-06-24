@@ -76,6 +76,8 @@ const Leaves = () => {
   const [leavePolicy, setLeavePolicy] = useState(null);
   const [weeklyOffs, setWeeklyOffs] = useState([]);
 
+  const [expandedRow, setExpandedRow] = useState(null);
+
   useEffect(() => {
     dispatch(fetchLeaveHistory());
     dispatch(fetchLeaveBalance(employeeId)); // Pass employeeId to fetchLeaveBalance action
@@ -349,76 +351,86 @@ const Leaves = () => {
                      historyError.message || 'Error loading leave history'}
                   </div>
                 ) : leaveHistory && leaveHistory.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                  <div>
+                    <table className="min-w-full divide-y divide-gray-200 text-xs">
+                      <thead className="bg-gray-50 text-xs">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Request Type
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Shift Type
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Reason
-                          </th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Request Type</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Shift Type</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Reason</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {[...leaveHistory].sort((a, b) => new Date(b.startDate || b.leaveDates?.[0] || 0) - new Date(a.startDate || a.leaveDates?.[0] || 0)).map((leave, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {leave.leaveDates ? (
-                                // New format: display leaveDates array
-                                leave.leaveDates.length === 1 ? 
-                                  new Date(leave.leaveDates[0]).toLocaleDateString() :
-                                  `${new Date(leave.leaveDates[0]).toLocaleDateString()} - ${new Date(leave.leaveDates[leave.leaveDates.length - 1]).toLocaleDateString()} (${leave.leaveDates.length} days)`
-                              ) : (
-                                // Old format: display startDate and endDate
-                                new Date(leave.startDate).toLocaleDateString() +
-                                (leave.startDate !== leave.endDate ? 
-                                  ` - ${new Date(leave.endDate).toLocaleDateString()}` : '')
+                      <tbody className="bg-white divide-y divide-gray-200 text-xs">
+                        {[...leaveHistory].sort((a, b) => new Date(b.leaveDates?.[0] || 0) - new Date(a.leaveDates?.[0] || 0)).map((leave, index) => {
+                          const isExpandable = (leave.leaveDates && leave.leaveDates.length > 1) || (leave.reason && leave.reason.length > 30);
+                          return (
+                            <React.Fragment key={leave.leaveId || index}>
+                              <tr
+                                onMouseEnter={() => setExpandedRow(index)}
+                                onMouseLeave={() => setExpandedRow(null)}
+                              >
+                                <td className="px-4 py-2 whitespace-nowrap cursor-pointer text-xs max-w-[120px] overflow-hidden text-ellipsis">
+                                  {leave.leaveDates && leave.leaveDates.length > 0 ? new Date(leave.leaveDates[0]).toLocaleDateString() : '-'}
+                                  {leave.leaveDates && leave.leaveDates.length > 1 && (
+                                    <> +{leave.leaveDates.length - 1} more</>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-xs">
+                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    ${leave.leaveName === 'Comp-Off' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                                    {leave.leaveName || 'Leave'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-xs">
+                                  {(() => {
+                                    switch (leave.shiftType) {
+                                      case 'FULL_DAY':
+                                      case 'Full Day':
+                                        return 'Full Day';
+                                      case 'FIRST_HALF':
+                                      case 'First Half (Morning)':
+                                        return 'First Half (Morning)';
+                                      case 'SECOND_HALF':
+                                      case 'Second Half (Evening)':
+                                        return 'Second Half (Evening)';
+                                      default:
+                                        return leave.shiftType || '-';
+                                    }
+                                  })()}
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-xs">
+                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    ${leave.status === 'Approved' ? 'bg-green-100 text-green-800' : 
+                                      leave.status === 'Rejected' ? 'bg-red-100 text-red-800' : 
+                                      'bg-yellow-100 text-yellow-800'}`}>
+                                    {leave.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500 max-w-[160px] overflow-hidden text-ellipsis">
+                                  {leave.reason || '-'}
+                                </td>
+                              </tr>
+                              {expandedRow === index && isExpandable && (
+                                <tr>
+                                  <td colSpan={5} className="px-4 py-2 bg-gray-50 text-xs text-gray-700">
+                                    <div className="flex flex-wrap gap-2 mb-1">
+                                      {leave.leaveDates && leave.leaveDates.length > 1 && leave.leaveDates.map((d, i) => (
+                                        <span key={i} className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                          {new Date(d).toLocaleDateString()}
+                                        </span>
+                                      ))}
+                                    </div>
+                                    {leave.reason && leave.reason.length > 30 && (
+                                      <div className="mt-1 text-xs text-gray-700"><b>Reason:</b> {leave.reason}</div>
+                                    )}
+                                  </td>
+                                </tr>
                               )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                ${leave.leaveName === 'Comp-Off' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                                {leave.leaveName || 'Leave'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                            {(() => {
-                                switch (leave.shiftType) {
-                                  case 'FULL_DAY':
-                                    return 'Full Day';
-                                  case 'FIRST_HALF':
-                                    return 'First Half (Morning)';
-                                  case 'SECOND_HALF':
-                                    return 'Second Half (Evening)';
-                                  default:
-                                    return leave.shiftType || '-';
-                                }
-                              })()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                ${leave.status === 'Approved' ? 'bg-green-100 text-green-800' : 
-                                  leave.status === 'Rejected' ? 'bg-red-100 text-red-800' : 
-                                  'bg-yellow-100 text-yellow-800'}`}>
-                                {leave.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {leave.reason || '-'}
-                            </td>
-                          </tr>
-                        ))}
+                            </React.Fragment>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -434,7 +446,7 @@ const Leaves = () => {
             {/* Leave Policies */}
             <div className="bg-white shadow-md rounded-lg p-4">
               <h2 className="text-lg font-semibold mb-3">Leave Policies</h2>
-              <div className="mb-4 bg-gray-50 shadow-md rounded-lg p-3">
+              <div className="mb-4 bg-gray-50 shadow-md rounded-lg p-3 max-h-60 overflow-y-auto pr-2">
                 <h3 className="text-md font-semibold text-gray-800">
                   Annual Leave Policy
                 </h3>
@@ -447,7 +459,7 @@ const Leaves = () => {
                   </li>
                 </ul>
               </div>
-              <div className="bg-gray-50 shadow-md rounded-lg p-3">
+              <div className="bg-gray-50 shadow-md rounded-lg p-3 max-h-60 overflow-y-auto pr-2">
                 <h3 className="text-md font-semibold text-gray-800">
                   Comp-off Leave Policy
                 </h3>
@@ -476,7 +488,7 @@ const Leaves = () => {
                 ) : holidays.length === 0 ? (
                   <div className="text-center py-4 text-gray-500">No public holidays found</div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
                     {holidays.map((holiday) => (
                       <div key={holiday.holidayId} className="border-b border-gray-200 pb-2 last:border-b-0">
                         <div className="flex justify-between items-center">

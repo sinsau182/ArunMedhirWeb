@@ -16,7 +16,14 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk }) => {
     listeners,
     setNodeRef,
     transform,
-  } = useDraggable({ id: lead.leadId });
+    isDragging,
+  } = useDraggable({ 
+    id: lead.leadId,
+    data: {
+      type: 'lead',
+      lead: lead
+    }
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -54,7 +61,12 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk }) => {
       onDoubleClick={handleCardDoubleClick}
       {...attributes}
       {...listeners}
-      className="bg-white p-3 rounded-md shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+      className={`
+        bg-white p-3 rounded-md shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-grab
+        ${isDragging ? 'opacity-50 shadow-lg scale-105 rotate-1' : 'hover:shadow-md'}
+        ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}
+        ${isDragging ? 'z-50' : ''}
+      `}
     >
       <div className="flex justify-between items-start mb-3">
         <h3 className="font-semibold text-gray-800 text-sm leading-tight">{lead.name}</h3>

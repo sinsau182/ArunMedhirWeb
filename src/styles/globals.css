@@ -195,3 +195,59 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Drag and Drop Styles */
+[data-dnd-kit-draggable] {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  transition: all 0.2s ease;
+}
+
+[data-dnd-kit-draggable]:active {
+  cursor: grabbing;
+}
+
+[data-dnd-kit-draggable][data-dnd-kit-dragging] {
+  z-index: 9999 !important;
+  position: relative;
+  pointer-events: none;
+  transform-origin: center;
+  transition: none !important;
+  opacity: 0.5;
+}
+
+[data-dnd-kit-droppable] {
+  transition: all 0.2s ease;
+  min-height: 100px;
+}
+
+[data-dnd-kit-droppable][data-dnd-kit-droppable-over] {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  transform: scale(1.02);
+}
+
+/* Ensure dragged elements are always on top */
+[data-dnd-kit-dragging] {
+  z-index: 9999 !important;
+  position: relative;
+}
+
+/* Smooth transitions for drag operations */
+.dnd-kit-dragging {
+  transition: none !important;
+}
+
+.dnd-kit-dropping {
+  transition: all 0.2s ease;
+}
+
+/* Drag overlay styles */
+[data-dnd-kit-drag-overlay] {
+  z-index: 9999 !important;
+  pointer-events: none;
+  transform-origin: center;
+}

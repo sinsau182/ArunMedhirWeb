@@ -27,6 +27,14 @@ import {
 import { addStage, removeStage } from "@/redux/slices/pipelineSlice";
 import MainLayout from "@/components/MainLayout";
 import { toast } from "sonner";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 
 const defaultLeadData = {
   name: "",
@@ -158,10 +166,237 @@ const DeletePipelineModal = ({ isOpen, onClose, stages, onDeleteStages }) => {
   );
 };
 
+// MOCK DATA: Replace with your own if needed
+const MOCK_LEADS = [
+  {
+    leadId: 'LEAD101',
+    name: 'John Doe',
+    contactNumber: '1234567890',
+    email: 'john@example.com',
+    projectType: 'Residential',
+    propertyType: 'Apartment',
+    address: '123 Main St',
+    area: '1200',
+    budget: '1500000',
+    designStyle: 'Modern',
+    leadSource: 'Website',
+    preferredContact: 'Phone',
+    notes: 'Interested in 2BHK',
+    status: 'New',
+    rating: 2,
+    salesRep: 'Alice',
+    designer: 'Bob',
+    callDescription: null,
+    callHistory: [],
+    nextCall: null,
+    quotedAmount: null,
+    finalQuotation: null,
+    signupAmount: null,
+    paymentDate: null,
+    paymentMode: null,
+    panNumber: null,
+    discount: null,
+    reasonForLost: null,
+    reasonForJunk: null,
+    submittedBy: 'MANAGER',
+    paymentDetailsFileName: null,
+    bookingFormFileName: null,
+  },
+  {
+    leadId: 'LEAD102',
+    name: 'Jane Smith',
+    contactNumber: '9876543210',
+    email: 'jane@example.com',
+    projectType: 'Commercial',
+    propertyType: 'Office',
+    address: '456 Market St',
+    area: '2000',
+    budget: '3000000',
+    designStyle: 'Contemporary',
+    leadSource: 'Referral',
+    preferredContact: 'Email',
+    notes: 'Needs open workspace',
+    status: 'Contacted',
+    rating: 3,
+    salesRep: 'Charlie',
+    designer: 'Dana',
+    callDescription: null,
+    callHistory: [],
+    nextCall: null,
+    quotedAmount: null,
+    finalQuotation: null,
+    signupAmount: null,
+    paymentDate: null,
+    paymentMode: null,
+    panNumber: null,
+    discount: null,
+    reasonForLost: null,
+    reasonForJunk: null,
+    submittedBy: 'MANAGER',
+    paymentDetailsFileName: null,
+    bookingFormFileName: null,
+  },
+  {
+    leadId: 'LEAD103',
+    name: 'Mike Johnson',
+    contactNumber: '5551234567',
+    email: 'mike@example.com',
+    projectType: 'Residential',
+    propertyType: 'Villa',
+    address: '789 Oak Ave',
+    area: '3000',
+    budget: '5000000',
+    designStyle: 'Traditional',
+    leadSource: 'Social Media',
+    preferredContact: 'Phone',
+    notes: 'Looking for luxury villa design',
+    status: 'Qualified',
+    rating: 3,
+    salesRep: 'Eve',
+    designer: 'Frank',
+    callDescription: null,
+    callHistory: [],
+    nextCall: null,
+    quotedAmount: null,
+    finalQuotation: null,
+    signupAmount: null,
+    paymentDate: null,
+    paymentMode: null,
+    panNumber: null,
+    discount: null,
+    reasonForLost: null,
+    reasonForJunk: null,
+    submittedBy: 'MANAGER',
+    paymentDetailsFileName: null,
+    bookingFormFileName: null,
+  },
+  {
+    leadId: 'LEAD104',
+    name: 'Sarah Wilson',
+    contactNumber: '4449876543',
+    email: 'sarah@example.com',
+    projectType: 'Commercial',
+    propertyType: 'Retail',
+    address: '321 Business Blvd',
+    area: '1500',
+    budget: '2000000',
+    designStyle: 'Minimalist',
+    leadSource: 'Cold Call',
+    preferredContact: 'Email',
+    notes: 'Boutique store design needed',
+    status: 'Quoted',
+    rating: 2,
+    salesRep: 'Grace',
+    designer: 'Henry',
+    callDescription: null,
+    callHistory: [],
+    nextCall: null,
+    quotedAmount: '1800000',
+    finalQuotation: null,
+    signupAmount: null,
+    paymentDate: null,
+    paymentMode: null,
+    panNumber: null,
+    discount: null,
+    reasonForLost: null,
+    reasonForJunk: null,
+    submittedBy: 'MANAGER',
+    paymentDetailsFileName: null,
+    bookingFormFileName: null,
+  },
+  {
+    leadId: 'LEAD105',
+    name: 'David Brown',
+    contactNumber: '7778889999',
+    email: 'david@example.com',
+    projectType: 'Residential',
+    propertyType: 'Penthouse',
+    address: '555 Luxury Tower',
+    area: '4000',
+    budget: '8000000',
+    designStyle: 'Luxury',
+    leadSource: 'Website',
+    preferredContact: 'Phone',
+    notes: 'Penthouse renovation project',
+    status: 'Converted',
+    rating: 3,
+    salesRep: 'Ivy',
+    designer: 'Jack',
+    callDescription: null,
+    callHistory: [],
+    nextCall: null,
+    quotedAmount: '7500000',
+    finalQuotation: '7500000',
+    signupAmount: '2000000',
+    paymentDate: '2024-01-15',
+    paymentMode: 'Bank Transfer',
+    panNumber: 'ABCDE1234F',
+    discount: '500000',
+    reasonForLost: null,
+    reasonForJunk: null,
+    submittedBy: 'MANAGER',
+    paymentDetailsFileName: null,
+    bookingFormFileName: null,
+  },
+];
+
+const LeadsTable = ({ leads }) => (
+  <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Contact</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Sales Rep</TableHead>
+          <TableHead>Designer</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {leads.map((lead) => (
+          <TableRow key={lead.leadId}>
+            <TableCell className="font-medium">{lead.name}</TableCell>
+            <TableCell>{lead.contactNumber}</TableCell>
+            <TableCell>{lead.email}</TableCell>
+            <TableCell>{lead.status}</TableCell>
+            <TableCell>{lead.salesRep || <span className="text-gray-400">Unassigned</span>}</TableCell>
+            <TableCell>{lead.designer || <span className="text-gray-400">Unassigned</span>}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+);
+
 const LeadManagementContent = ({ role }) => {
-  const dispatch = useDispatch();
-  const { leads, loading, error } = useSelector((state) => state.leads);
-  const { stages: kanbanStatuses } = useSelector((state) => state.pipeline);
+  // const dispatch = useDispatch();
+  // const { leads, loading, error } = useSelector((state) => state.leads);
+  // const { stages: kanbanStatuses } = useSelector((state) => state.pipeline);
+
+  // Use local state for leads and pipeline stages
+  const [leads, setLeads] = useState(MOCK_LEADS);
+  const [kanbanStatuses, setKanbanStatuses] = useState([
+    'New',
+    'Contacted',
+    'Qualified',
+    'Quoted',
+    'Converted',
+    'Lost',
+    'Junk',
+  ]);
+
+  // Deduplicate leads by leadId (keep first occurrence)
+  const dedupedLeads = React.useMemo(() => {
+    const seen = new Set();
+    return leads.filter(lead => {
+      if (lead && lead.leadId && !seen.has(lead.leadId)) {
+        seen.add(lead.leadId);
+        return true;
+      }
+      return false;
+    });
+  }, [leads]);
 
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
@@ -178,31 +413,28 @@ const LeadManagementContent = ({ role }) => {
   const [isAddingStage, setIsAddingStage] = useState(false);
   const [showPipelineDropdown, setShowPipelineDropdown] = useState(false);
   const [showDeletePipelineModal, setShowDeletePipelineModal] = useState(false);
+  const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'table'
+  const [pendingConversion, setPendingConversion] = useState(null); // {lead, fromStatus}
+  const [pendingLost, setPendingLost] = useState(null); // {lead, fromStatus}
+  const [pendingJunk, setPendingJunk] = useState(null); // {lead, fromStatus}
 
-  useEffect(() => {
-    dispatch(fetchLeads());
-  }, [dispatch]);
+  // Remove backend fetch
+  // useEffect(() => {
+  //   dispatch(fetchLeads());
+  // }, [dispatch]);
 
-  // Handle clicking outside dropdown to close it
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showPipelineDropdown && !event.target.closest('.pipeline-dropdown')) {
-        setShowPipelineDropdown(false);
-      }
-    };
+  // Remove backend pipeline fetch
+  // useEffect(() => {
+  //   ...
+  // }, [showPipelineDropdown]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showPipelineDropdown]);
-
+  // All lead operations now update local state
   const leadsByStatus = useMemo(() => {
     const grouped = {};
     kanbanStatuses.forEach(status => {
       grouped[status] = [];
     });
-    const filteredLeads = leads.filter(lead =>
+    const filteredLeads = dedupedLeads.filter(lead =>
       Object.values(lead).some(value =>
         String(value).toLowerCase().includes(filterText.toLowerCase())
       )
@@ -211,8 +443,6 @@ const LeadManagementContent = ({ role }) => {
       if (grouped[lead.status]) {
         grouped[lead.status].push(lead);
       } else {
-        // If a lead has a status that is not in kanbanStatuses, create a temporary group
-        // This can happen if stages are modified.
         if (!grouped[lead.status]) {
             grouped[lead.status] = [];
         }
@@ -220,29 +450,38 @@ const LeadManagementContent = ({ role }) => {
       }
     });
     return grouped;
-  }, [leads, filterText, kanbanStatuses]);
+  }, [dedupedLeads, filterText, kanbanStatuses]);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
+    if (!over || active.id === over.id) {
+      console.log('DragEnd: No valid drop target or same position', { active, over });
+      return;
+    }
     const leadId = active.id;
     const newStatus = over.id;
-    const lead = leads.find(l => l.leadId === leadId);
-
-    if (lead && lead.status !== newStatus) {
-      if (newStatus === 'Converted') {
-        return handleConvert(lead);
-      }
-      if (newStatus === 'Lost') {
-        return handleMarkLost(lead);
-      }
-      if (newStatus === 'Junk') {
-        return handleMarkJunk(lead);
-      }
-      dispatch(updateLead({ leadId, status: newStatus })).then(() => {
-        dispatch(fetchLeads());
-      });
+    const oldLead = leads.find(l => l.leadId === leadId);
+    console.log('DragEnd:', { leadId, newStatus, oldLead });
+    if (newStatus === 'Converted') {
+      setPendingConversion({ lead: oldLead, fromStatus: oldLead.status });
+      setLeadToConvertId(leadId);
+      setShowConvertModal(true);
+      console.log('Opening Convert Modal', { leadId, newStatus });
+    } else if (newStatus === 'Lost') {
+      setPendingLost({ lead: oldLead, fromStatus: oldLead.status });
+      setLeadToMarkLost(oldLead);
+      setShowLostReasonModal(true);
+      console.log('Opening Lost Modal', { leadId, newStatus });
+    } else if (newStatus === 'Junk') {
+      setPendingJunk({ lead: oldLead, fromStatus: oldLead.status });
+      setLeadToMarkJunkId(leadId);
+      setShowJunkReasonModal(true);
+      console.log('Opening Junk Modal', { leadId, newStatus });
+    } else {
+    setLeads(prevLeads => prevLeads.map(l =>
+      l.leadId === leadId ? { ...l, status: newStatus } : l
+    ));
+      console.log('Moved lead to new status', { leadId, newStatus });
     }
   };
 
@@ -279,24 +518,27 @@ const LeadManagementContent = ({ role }) => {
     const leadData = {
       ...defaultLeadData,
       ...formData,
-      status: formData.status || "New", // Ensure new leads have a status
-      submittedBy: role, // Assuming role contains the current user's role or ID
+      status: formData.status || "New",
+      submittedBy: role,
     };
-
     if (editingLead && editingLead.leadId) {
-      dispatch(updateLead({ leadId: editingLead.leadId, ...leadData })).then(() => {
-        dispatch(fetchLeads());
-      });
+      setLeads(prevLeads => prevLeads.map(l =>
+        l.leadId === editingLead.leadId ? { ...l, ...leadData } : l
+      ));
     } else {
-      dispatch(createLead(leadData)).then(() => {
-        dispatch(fetchLeads());
-      });
+      // Assign a new unique leadId
+      const newId = `LEAD${Math.floor(Math.random() * 100000)}`;
+      setLeads(prevLeads => [
+        ...prevLeads,
+        { ...leadData, leadId: newId },
+      ]);
     }
+    setShowAddLeadModal(false);
   };
 
   const handleAddStage = () => {
     if (newStageName && !kanbanStatuses.includes(newStageName)) {
-      dispatch(addStage(newStageName));
+      setKanbanStatuses(prev => [...prev, newStageName]);
       setNewStageName("");
       setIsAddingStage(false);
     }
@@ -318,19 +560,52 @@ const LeadManagementContent = ({ role }) => {
 
   const handleDeleteStages = (stagesToDelete) => {
     // Check if any leads are currently in the stages being deleted
-    const leadsInStages = leads.filter(lead => stagesToDelete.includes(lead.status));
-    
+    const leadsInStages = dedupedLeads.filter(lead => stagesToDelete.includes(lead.status));
     if (leadsInStages.length > 0) {
       toast.error(`Cannot delete stages with active leads. Please move ${leadsInStages.length} lead(s) to other stages first.`);
       return;
     }
-
-    // Delete each stage
-    stagesToDelete.forEach(stage => {
-      dispatch(removeStage(stage));
-    });
-
+    setKanbanStatuses(prev => prev.filter(stage => !stagesToDelete.includes(stage)));
     toast.success(`Successfully deleted ${stagesToDelete.length} stage(s)`);
+  };
+
+  const handleConvertModalClose = () => {
+    setShowConvertModal(false);
+    setLeadToConvertId(null);
+    setPendingConversion(null);
+  };
+
+  const handleConvertSuccess = (updatedLead) => {
+    setLeads(prevLeads => prevLeads.map(l =>
+      l.leadId === updatedLead.leadId ? { ...l, ...updatedLead, status: 'Converted' } : l
+    ));
+    handleConvertModalClose();
+  };
+
+  const handleLostModalClose = () => {
+    setShowLostReasonModal(false);
+    setLeadToMarkLost(null);
+    setPendingLost(null);
+  };
+
+  const handleLostSuccess = (updatedLead) => {
+    setLeads(prevLeads => prevLeads.map(l =>
+      l.leadId === updatedLead.leadId ? { ...l, ...updatedLead, status: 'Lost' } : l
+    ));
+    handleLostModalClose();
+  };
+
+  const handleJunkModalClose = () => {
+    setShowJunkReasonModal(false);
+    setLeadToMarkJunkId(null);
+    setPendingJunk(null);
+  };
+
+  const handleJunkSuccess = (updatedLead) => {
+    setLeads(prevLeads => prevLeads.map(l =>
+      l.leadId === updatedLead.leadId ? { ...l, ...updatedLead, status: 'Junk' } : l
+    ));
+    handleJunkModalClose();
   };
 
   return (
@@ -387,37 +662,47 @@ const LeadManagementContent = ({ role }) => {
               className="border p-2 rounded-md shadow-sm w-full pl-10 bg-white"
             />
           </div>
-
+          {/* View toggle icons */}
           <div className="flex items-center space-x-1 bg-gray-200 p-1 rounded-md">
-            <button className="p-2 bg-white rounded-md shadow"><FaThLarge className="text-gray-600" /></button>
-            <button className="p-2 hover:bg-white/50 rounded-md"><FaListUl className="text-gray-600" /></button>
-            {/* <button className="p-2 hover:bg-white/50 rounded-md"><FaCalendarAlt className="text-gray-600" /></button>
-            <button className="p-2 hover:bg-white/50 rounded-md"><FaChartBar className="text-gray-600" /></button>
-            <button className="p-2 hover:bg-white/50 rounded-md"><FaMapMarkerAlt className="text-gray-600" /></button>
-            <button className="p-2 hover:bg-white/50 rounded-md"><FaClock className="text-gray-600" /></button> */}
+            <button
+              className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-white shadow text-purple-700' : 'hover:bg-white/50 text-gray-600'}`}
+              onClick={() => setViewMode('kanban')}
+              title="Kanban Board View"
+            >
+              <FaThLarge size={18} />
+            </button>
+            <button
+              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white shadow text-purple-700' : 'hover:bg-white/50 text-gray-600'}`}
+              onClick={() => setViewMode('table')}
+              title="Table View"
+            >
+              <FaListUl size={18} />
+            </button>
           </div>
         </div>
       </div>
 
-      {loading && <p className="text-center">Loading opportunities...</p>}
-      {error && <p className="text-center text-red-500">Error: {error.message || "Could not fetch opportunities."}</p>}
+      {/* {loading && <p className="text-center">Loading opportunities...</p>}
+      {error && <p className="text-center text-red-500">Error: {error.message || "Could not fetch opportunities."}</p>} */}
 
-      {!loading && !error && (
-        <KanbanBoard
-          leadsByStatus={leadsByStatus}
-          onDragEnd={handleDragEnd}
-          statuses={kanbanStatuses}
-          onEdit={handleEdit}
-          onConvert={handleConvert}
-          onMarkLost={handleMarkLost}
-          onMarkJunk={handleMarkJunk}
-          onAddLead={handleOpenAddLeadForm}
-          isAddingStage={isAddingStage}
-          newStageName={newStageName}
-          setNewStageName={setNewStageName}
-          onAddStage={handleAddStage}
-          onCancelAddStage={handleCancelAddStage}
-        />
+      {viewMode === 'kanban' ? (
+      <KanbanBoard
+        leadsByStatus={leadsByStatus}
+        onDragEnd={handleDragEnd}
+        statuses={kanbanStatuses}
+        onEdit={handleEdit}
+        onConvert={handleConvert}
+        onMarkLost={handleMarkLost}
+        onMarkJunk={handleMarkJunk}
+        onAddLead={handleOpenAddLeadForm}
+        isAddingStage={isAddingStage}
+        newStageName={newStageName}
+        setNewStageName={setNewStageName}
+        onAddStage={handleAddStage}
+        onCancelAddStage={handleCancelAddStage}
+      />
+      ) : (
+        <LeadsTable leads={dedupedLeads} />
       )}
 
       <AddLeadModal
@@ -428,9 +713,28 @@ const LeadManagementContent = ({ role }) => {
         isManagerView={false}
       />
 
-      {showConvertModal && <ConvertLeadModal leadId={leadToConvertId} onClose={() => setShowConvertModal(false)} />}
-      {showLostReasonModal && <LostLeadModal lead={leadToMarkLost} onClose={() => setShowLostReasonModal(false)} />}
-      {showJunkReasonModal && <JunkReasonModal leadId={leadToMarkJunkId} onClose={() => setShowJunkReasonModal(false)} />}
+      {/* Only show ConvertLeadModal for drag-to-Converted or explicit convert */}
+      {showConvertModal && (
+        <ConvertLeadModal
+          lead={pendingConversion?.lead}
+          onClose={handleConvertModalClose}
+          onSuccess={pendingConversion ? handleConvertSuccess : undefined}
+        />
+      )}
+      {showLostReasonModal && (
+        <LostLeadModal
+          lead={pendingLost?.lead}
+          onClose={handleLostModalClose}
+          onSuccess={pendingLost ? handleLostSuccess : undefined}
+        />
+      )}
+      {showJunkReasonModal && (
+        <JunkReasonModal
+          lead={pendingJunk?.lead}
+          onClose={handleJunkModalClose}
+          onSuccess={pendingJunk ? handleJunkSuccess : undefined}
+        />
+      )}
       
       <DeletePipelineModal
         isOpen={showDeletePipelineModal}

@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { DndContext } from '@dnd-kit/core';
+import React, { useEffect, useRef, useState } from 'react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import KanbanColumn from './KanbanColumn';
+import LeadCard from './LeadCard';
 
 const KanbanBoard = ({
   leadsByStatus,
@@ -18,6 +19,17 @@ const KanbanBoard = ({
   onCancelAddStage
 }) => {
   const inputRef = useRef(null);
+  const [activeLead, setActiveLead] = useState(null);
+
+  // Configure sensors for better drag detection
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // Reduced minimum distance to start dragging
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
 
   useEffect(() => {
     if (isAddingStage && inputRef.current) {
@@ -41,8 +53,28 @@ const KanbanBoard = ({
     };
   }, [isAddingStage, onCancelAddStage]);
 
+  const handleDragStart = (event) => {
+    const { active } = event;
+    
+    // Find the lead being dragged
+    const leadId = active.id;
+    const allLeads = Object.values(leadsByStatus).flat();
+    const draggedLead = allLeads.find(lead => lead.leadId === leadId);
+    setActiveLead(draggedLead);
+  };
+
+  const handleDragEnd = (event) => {
+    setActiveLead(null);
+    onDragEnd(event);
+  };
+
   return (
-    <DndContext onDragEnd={onDragEnd}>
+    <DndContext 
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="flex space-x-4 overflow-x-auto pb-4">
         {Array.isArray(statuses) && statuses.map(status => (
           <KanbanColumn
@@ -81,6 +113,20 @@ const KanbanBoard = ({
           </div>
         )}
       </div>
+      
+      <DragOverlay zIndex={9999}>
+        {activeLead ? (
+          <div className="transform rotate-2 scale-105 shadow-2xl">
+            <LeadCard
+              lead={activeLead}
+              onEdit={onEdit}
+              onConvert={onConvert}
+              onMarkLost={onMarkLost}
+              onMarkJunk={onMarkJunk}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 };

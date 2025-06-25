@@ -204,7 +204,7 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-2xl max-h-[90vh] h-[90vh] flex flex-col">
           <div className="flex items-center justify-between p-6 border-b">
             <Dialog.Title className="text-xl font-semibold text-gray-900">
               {initialData?.leadId ? 'Edit Lead' : 'Add New Lead'}
@@ -216,7 +216,8 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
             </Dialog.Close>
           </div>
 
-          <div className="p-6 space-y-4">
+          {/* Scrollable form content with extra bottom padding */}
+          <div className="p-6 space-y-4 flex-1 overflow-y-auto pb-32">
             {/* Name Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -386,45 +387,46 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
             </div>
 
             {/* Sales Person and Designer Assignment Fields - Show in both views */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assign Sales Person {isManagerView && '*'}
-                </label>
-                <select
-                  value={formData.salesRep || ''}
-                  onChange={(e) => handleInputChange('salesRep', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.salesRep ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select sales person</option>
-                  {salesPersons.map(person => (
-                    <option key={person.id} value={person.name}>{person.name}</option>
-                  ))}
-                </select>
-                {errors.salesRep && <p className="text-red-500 text-sm mt-1">{errors.salesRep}</p>}
+            {isManagerView && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assign Sales Person *
+                  </label>
+                  <select
+                    value={formData.salesRep || ''}
+                    onChange={(e) => handleInputChange('salesRep', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.salesRep ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select sales person</option>
+                    {salesPersons.map(person => (
+                      <option key={person.id} value={person.name}>{person.name}</option>
+                    ))}
+                  </select>
+                  {errors.salesRep && <p className="text-red-500 text-sm mt-1">{errors.salesRep}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assign Designer *
+                  </label>
+                  <select
+                    value={formData.designer || ''}
+                    onChange={(e) => handleInputChange('designer', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.designer ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select designer</option>
+                    {designers.map(designer => (
+                      <option key={designer.id} value={designer.name}>{designer.name}</option>
+                    ))}
+                  </select>
+                  {errors.designer && <p className="text-red-500 text-sm mt-1">{errors.designer}</p>}
+                </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assign Designer {isManagerView && '*'}
-                </label>
-                <select
-                  value={formData.designer || ''}
-                  onChange={(e) => handleInputChange('designer', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.designer ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select designer</option>
-                  {designers.map(designer => (
-                    <option key={designer.id} value={designer.name}>{designer.name}</option>
-                  ))}
-                </select>
-                {errors.designer && <p className="text-red-500 text-sm mt-1">{errors.designer}</p>}
-              </div>
-            </div>
+            )}
 
             {/* Notes Field */}
             <div>
@@ -441,7 +443,8 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 p-6 border-t">
+          {/* Sticky footer for action buttons, outside scrollable area */}
+          <div className="bg-white border-t shadow-lg flex items-center justify-end gap-3 p-6 z-10">
             <button
               type="button"
               onClick={onClose}

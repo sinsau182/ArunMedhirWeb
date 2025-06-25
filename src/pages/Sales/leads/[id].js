@@ -1,14 +1,45 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchLeads, updateLead } from '@/redux/slices/leadsSlice';
-import {
-    FaStar, FaRegStar, FaUser, FaEnvelope, FaPhone, FaBuilding, FaMapMarkerAlt,
+import { FaStar, FaRegStar, FaUser, FaEnvelope, FaPhone, FaBuilding, FaMapMarkerAlt,
     FaRupeeSign, FaBullseye, FaUserTie, FaTasks, FaHistory, FaPaperclip, FaUserCircle,
-    FaCheck, FaUsers, FaFileAlt, FaTimes, FaPencilAlt, FaRegSmile, FaExpandAlt, FaChevronDown
+    FaCheck, FaUsers, FaFileAlt, FaTimes, FaPencilAlt, FaRegSmile, FaExpandAlt, FaChevronDown, FaClock
 } from 'react-icons/fa';
 import MainLayout from '@/components/MainLayout';
 import { toast } from 'sonner';
+
+// Add these lists for dropdowns/selects
+const salesPersons = [
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+  { id: 3, name: 'Charlie' },
+  { id: 4, name: 'Dana' },
+];
+const designers = [
+  { id: 1, name: 'Bob' },
+  { id: 2, name: 'Dana' },
+  { id: 3, name: 'Frank' },
+  { id: 4, name: 'Jack' },
+];
+const projectTypes = [
+  'Residential', 'Commercial', 'Modular Kitchen', 'Office Interior', 'Retail Space', 'Other'
+];
+const propertyTypes = [
+  'Apartment', 'Villa', 'Independent House', 'Duplex', 'Penthouse', 'Studio', 'Office', 'Shop', 'Warehouse', 'Plot', 'Other'
+];
+
+// Utility function for date/time formatting
+function formatDateTime(dateStr, timeStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr + (timeStr ? 'T' + timeStr : ''));
+  if (isNaN(date.getTime())) return dateStr + (timeStr ? ' ' + timeStr : '');
+  const options = { day: '2-digit', month: 'short', year: 'numeric' };
+  const datePart = date.toLocaleDateString(undefined, options);
+  let timePart = '';
+  if (timeStr) {
+    timePart = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+  return timePart ? `${datePart}, ${timePart}` : datePart;
+}
 
 // --- Sub-components for the new Odoo-style layout ---
 
@@ -60,35 +91,49 @@ const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, isEditing, onEdi
     );
 };
 
-const PlannedActivityItem = ({ activity, onEditActivity }) => (
-    <div className="flex items-start gap-3 p-3 border-t">
-        <div className="flex flex-col items-center gap-1">
-            <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center text-white font-bold">{activity.user.charAt(0)}</div>
-            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                <FaCheck size={12} />
-            </div>
+const PlannedActivityItem = ({ activity, onEditActivity, onDeleteActivity, onMarkDone }) => (
+  <div className={`relative flex flex-col bg-white rounded-xl shadow border ${activity.status === 'done' ? 'border-green-200 bg-green-50' : 'border-gray-100'} p-2 min-w-[220px] max-w-[340px] transition-all`}>  
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-2 relative">
+        {activity.status === 'done' && (
+          <span className="absolute -top-2 -left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow z-10">Done</span>
+        )}
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-lg">
+          {activity.type === 'To-Do' && <FaCheck />}
+          {activity.type === 'Email' && <FaEnvelope />}
+          {activity.type === 'Call' && <FaPhone />}
+          {activity.type === 'Meeting' && <FaUsers />}
+          {activity.type === 'Document' && <FaFileAlt />}
+        </span>
+        <span className="text-xs font-semibold text-blue-700">{activity.type}</span>
+      </div>
+      {activity.status !== 'done' && (
+        <div className="flex items-center gap-1 ml-2">
+          <button onClick={() => onMarkDone(activity.id)} title="Mark as Done" className="p-1.5 rounded-full hover:bg-green-100 text-green-600 transition"><FaCheck size={14} /></button>
+          <button onClick={() => onEditActivity(activity)} title="Edit" className="p-1.5 rounded-full hover:bg-blue-100 text-blue-600 transition"><FaPencilAlt size={14} /></button>
+          <button onClick={() => onDeleteActivity(activity.id)} title="Delete" className="p-1.5 rounded-full hover:bg-red-100 text-red-500 transition"><FaTimes size={14} /></button>
         </div>
-        <div className="flex-grow">
-            <p className="text-sm">
-                <span className="font-bold text-green-600">{activity.dueDateText}:</span>
-                <span className="font-semibold ml-1">"{activity.type}"</span>
-                <span className="text-gray-500"> for {activity.user}</span>
-            </p>
-            <div className="flex items-center gap-4 text-xs text-gray-600 mt-1">
-                <button className="hover:text-black flex items-center gap-1"><FaCheck /> Mark Done</button>
-                <button className="hover:text-black flex items-center gap-1" onClick={() => onEditActivity(activity)}><FaPencilAlt /> Edit</button>
-                <button className="hover:text-black flex items-center gap-1"><FaTimes /> Cancel</button>
-            </div>
-        </div>
+      )}
     </div>
+    <div className="font-bold text-base mb-1 truncate" title={activity.summary}>{activity.summary}</div>
+    <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+      <FaClock className="inline mr-1" />
+      <span className={`font-medium ${activity.status === 'done' ? 'text-gray-400' : (new Date(activity.dueDate) < new Date() ? 'text-red-500' : 'text-green-600')}`}>{formatDateTime(activity.dueDate, activity.dueTime)}</span>
+    </div>
+    <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+      <FaUserCircle className="inline mr-1 text-blue-400" />
+      <span className="font-medium text-gray-700">{activity.user}</span>
+    </div>
+  </div>
 );
 
-const OdooDetailBody = ({ lead, isEditing, onFieldChange, onScheduleActivity, conversionData, showConversionDetails, onToggleConversionDetails, onConversionFieldChange }) => {
+const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onScheduleActivity, conversionData, showConversionDetails, onToggleConversionDetails, onConversionFieldChange, activities, onEditActivity, onDeleteActivity, onMarkDone, timelineEvents }) => {
     const [isLoggingNote, setIsLoggingNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
     const [previewFile, setPreviewFile] = useState(null); // for file preview popup
     const [isEditingConversion, setIsEditingConversion] = useState(false);
     const [conversionEdit, setConversionEdit] = useState(conversionData || {});
+    const [activeTab, setActiveTab] = useState('notes'); // 'notes' or 'conversion'
 
     useEffect(() => {
         setConversionEdit(conversionData || {});
@@ -136,268 +181,478 @@ const OdooDetailBody = ({ lead, isEditing, onFieldChange, onScheduleActivity, co
     };
     const handleClosePreview = () => setPreviewFile(null);
 
-    // Mock data for timeline and activities
-    const timelineEvents = [
-        { user: 'hjhjj', time: '11:55 am', action: 'Stage changed', details: 'Proposition → Qualif' },
-        { user: 'hjhjj', time: '11:55 am', action: 'Stage changed', details: 'New → Proposition (Stage)' },
-    ];
-    const plannedActivities = [
-        { id: 1, dueDateText: 'Due in 5 days', type: 'To-Do', user: 'hjhjj' }
-    ];
-
     return (
         <div className="flex-grow p-4">
             {/* Spread/sectioned lead details */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-4 text-sm">
                     <div>
-                        <strong>Expected Budget</strong>
-                        <div>₹ {lead.budget || '0.00'}</div>
+                        <span className="block text-xs text-gray-700 mb-1">Expected Budget</span>
+                        {isEditing ? (
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><FaRupeeSign /></span>
+                                <input
+                                    type="number"
+                                    value={editedFields.budget}
+                                    onChange={e => onFieldChange('budget', e.target.value)}
+                                    className="w-full pl-8 pr-2 py-2 border rounded-md bg-white text-gray-900 font-medium text-base focus:outline-none"
+                                    placeholder="0"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center text-base font-semibold text-gray-900">
+                                <FaRupeeSign className="mr-1 text-base text-gray-500" />
+                                {lead.budget || '0.00'}
+                            </div>
+                        )}
                     </div>
                     <div>
-                        <strong>Project Type</strong>
-                        <div>{lead.projectType || 'N/A'}</div>
+                        <span className="block text-xs text-gray-700 mb-1">Project Type</span>
+                        {isEditing ? (
+                            <select
+                                value={editedFields.projectType}
+                                onChange={e => onFieldChange('projectType', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                            >
+                                <option value="">Select Project Type</option>
+                                {projectTypes.map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div>{lead.projectType || 'N/A'}</div>
+                        )}
                     </div>
                     <div>
-                        <strong>Property Type</strong>
-                        <div>{lead.propertyType || 'N/A'}</div>
+                        <span className="block text-xs text-gray-700 mb-1">Property Type</span>
+                        {isEditing ? (
+                            <select
+                                value={editedFields.propertyType}
+                                onChange={e => onFieldChange('propertyType', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                            >
+                                <option value="">Select Property Type</option>
+                                {propertyTypes.map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div>{lead.propertyType || 'N/A'}</div>
+                        )}
                     </div>
                     <div>
-                        <strong>Location</strong>
-                        <div>{lead.address || 'N/A'}</div>
+                        <span className="block text-xs text-gray-700 mb-1">Location</span>
+                        {isEditing ? (
+                            <input
+                                type="text"
+                                value={editedFields.address}
+                                onChange={e => onFieldChange('address', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                                placeholder="Enter address"
+                            />
+                        ) : (
+                            <div>{lead.address || 'N/A'}</div>
+                        )}
                     </div>
                 </div>
                 <div className="space-y-4 text-sm">
                     <div>
-                        <strong>Contact</strong>
-                        <div>{lead.name || 'N/A'}, {lead.contactNumber || 'N/A'}</div>
+                        <span className="block text-xs text-gray-700 mb-1">Contact</span>
+                        {isEditing ? (
+                            <input
+                                type="text"
+                                value={editedFields.name}
+                                onChange={e => onFieldChange('name', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base mb-2"
+                                placeholder="Name"
+                            />
+                        ) : (
+                            <div>{lead.name || 'N/A'}, {lead.contactNumber || 'N/A'}</div>
+                        )}
+                        {isEditing ? (
+                            <input
+                                type="text"
+                                value={editedFields.contactNumber}
+                                onChange={e => onFieldChange('contactNumber', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                                placeholder="Contact Number"
+                            />
+                        ) : null}
                     </div>
                     <div>
-                        <strong>Email</strong>
-                        <div>{lead.email || 'N/A'}</div>
+                        <span className="block text-xs text-gray-700 mb-1">Email</span>
+                        {isEditing ? (
+                            <input
+                                type="email"
+                                value={editedFields.email}
+                                onChange={e => onFieldChange('email', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                                placeholder="Email"
+                            />
+                        ) : (
+                            <div>{lead.email || 'N/A'}</div>
+                        )}
                     </div>
                     <div>
-                        <strong>Phone</strong>
-                        <div>{lead.contactNumber || 'N/A'}</div>
+                        <span className="block text-xs text-gray-700 mb-1">Phone</span>
+                        {isEditing ? (
+                            <input
+                                type="text"
+                                value={editedFields.contactNumber}
+                                onChange={e => onFieldChange('contactNumber', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                                placeholder="Phone"
+                            />
+                        ) : (
+                            <div>{lead.contactNumber || 'N/A'}</div>
+                        )}
                     </div>
                 </div>
                 <div className="space-y-4 text-sm">
                     <div>
-                        <strong>Salesperson</strong>
-                        <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                {lead.salesRep ? lead.salesRep.charAt(0).toUpperCase() : 'U'}
+                        <span className="block text-xs text-gray-700 mb-1">Salesperson</span>
+                        {isEditing ? (
+                            <select
+                                value={editedFields.salesRep}
+                                onChange={e => onFieldChange('salesRep', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                            >
+                                <option value="">Select Salesperson</option>
+                                {salesPersons.map(person => (
+                                    <option key={person.id} value={person.name}>{person.name}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                    {lead.salesRep ? lead.salesRep.charAt(0).toUpperCase() : 'U'}
+                                </div>
+                                <span>{lead.salesRep || 'Unassigned'}</span>
                             </div>
-                            <span>{lead.salesRep || 'Unassigned'}</span>
-                        </div>
+                        )}
                     </div>
                     <div>
-                        <strong>Designer</strong>
-                        <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                {lead.designer ? lead.designer.charAt(0).toUpperCase() : 'U'}
+                        <span className="block text-xs text-gray-700 mb-1">Designer</span>
+                        {isEditing ? (
+                            <select
+                                value={editedFields.designer}
+                                onChange={e => onFieldChange('designer', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                            >
+                                <option value="">Select Designer</option>
+                                {designers.map(designer => (
+                                    <option key={designer.id} value={designer.name}>{designer.name}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                    {lead.designer ? lead.designer.charAt(0).toUpperCase() : 'U'}
+                                </div>
+                                <span>{lead.designer || 'Unassigned'}</span>
                             </div>
-                            <span>{lead.designer || 'Unassigned'}</span>
-                        </div>
+                        )}
                     </div>
                     <div>
-                        <strong>Expected Closing</strong>
-                        <div>{lead.nextCall ? new Date(lead.nextCall).toLocaleDateString() : 'No closing date'}</div>
+                        <span className="block text-xs text-gray-700 mb-1">Expected Closing</span>
+                        {isEditing ? (
+                            <input
+                                type="date"
+                                value={editedFields.nextCall || ''}
+                                onChange={e => onFieldChange('nextCall', e.target.value)}
+                                className="w-full border rounded-md px-2 py-2 text-base"
+                            />
+                        ) : (
+                            <div>{lead.nextCall ? new Date(lead.nextCall).toLocaleDateString() : 'No closing date'}</div>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
-                        {renderStars(lead.rating || 0)}
+                        {renderStars(isEditing ? editedFields.rating : lead.rating || 0)}
                     </div>
                 </div>
             </div>
 
-            {/* Note and Activity Buttons */}
-            <div className="mt-6 flex gap-2">
-                <button
-                    onClick={() => setIsLoggingNote(true)}
-                    className="bg-white border border-gray-300 px-4 py-2 text-sm rounded-md shadow-sm hover:bg-gray-50"
-                >
-                    Log Note
-                </button>
-                <button
-                    onClick={onScheduleActivity}
-                    className="bg-white border border-gray-300 px-4 py-2 text-sm rounded-md shadow-sm hover:bg-gray-50"
-                >
-                    Activity
-                </button>
+            {/* Divider before actions */}
+            <hr className="my-8 border-gray-200" />
+
+            {/* Tab Toggle for Notes and Conversion Details */}
+            <div className="border-b border-gray-200 mb-0">
+                <nav className="flex space-x-2" aria-label="Tabs">
+                    <button
+                        className={`px-6 py-2 text-sm font-medium border-b-2 transition-all duration-150 focus:outline-none ${activeTab === 'notes' ? 'border-blue-600 text-blue-700 bg-white' : 'border-transparent text-gray-500 hover:text-blue-700 hover:bg-gray-50'}`}
+                        onClick={() => setActiveTab('notes')}
+                    >
+                        Notes
+                    </button>
+                    <button
+                        className={`px-6 py-2 text-sm font-medium border-b-2 transition-all duration-150 focus:outline-none ${activeTab === 'conversion' ? 'border-blue-600 text-blue-700 bg-white' : 'border-transparent text-gray-500 hover:text-blue-700 hover:bg-gray-50'}`}
+                        onClick={() => setActiveTab('conversion')}
+                        disabled={!conversionData}
+                    >
+                        View Conversion Details
+                    </button>
+                </nav>
             </div>
-            {isLoggingNote && (
-                <div className="mt-4 flex items-start gap-2">
-                    <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center text-white font-bold">N</div>
-                    <div className="flex-grow">
-                        <div className="relative">
-                            <textarea
-                                className="w-full p-2 border rounded-md bg-gray-50"
-                                placeholder="Write a note..."
-                                value={noteContent}
-                                onChange={(e) => setNoteContent(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
+
+            {/* Tab Content Area */}
+            <div className="bg-gray-50 min-h-[160px] border-b border-gray-200 px-4 py-6">
+                {activeTab === 'notes' && (
+                    <div>
+                        <label className="block text-xs font-normal text-gray-500 mb-2">Log Note</label>
+                        <textarea
+                            className="w-full p-3 border rounded-md bg-white min-h-[100px] text-gray-700"
+                            placeholder="Add a description..."
+                            value={noteContent}
+                            onChange={(e) => setNoteContent(e.target.value)}
+                        />
+                        <div className="flex items-center gap-2 mt-3">
                             <button
                                 onClick={() => {
                                     // Save note logic here
                                     setIsLoggingNote(false);
                                     setNoteContent('');
                                 }}
-                                className="bg-purple-600 text-white px-4 py-1.5 text-sm rounded-md"
+                                className="bg-purple-600 text-white px-4 py-2 text-sm rounded-md"
                                 disabled={!noteContent.trim()}
                             >
                                 Save
                             </button>
                             <button
-                                onClick={() => {
-                                    setIsLoggingNote(false);
-                                    setNoteContent('');
-                                }}
-                                className="ml-2 text-gray-500 hover:text-gray-700 text-sm"
+                                onClick={() => setNoteContent('')}
+                                className="text-gray-500 hover:text-gray-700 text-sm px-4 py-2"
                             >
                                 Cancel
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {/* Conversion Details Section */}
-            {conversionData && (
-                <div className="mt-6 bg-white border rounded-lg p-4 shadow">
-                    <div className="flex items-center gap-2 mb-2">
-                        <button
-                            className="px-4 py-2 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200 hover:bg-blue-100 transition"
-                            onClick={onToggleConversionDetails}
-                        >
-                            {showConversionDetails ? 'Hide Conversion Details' : 'View Conversion Details'}
-                        </button>
-                        {showConversionDetails && !isEditingConversion && (
-                            <button
-                                className="px-4 py-2 rounded bg-yellow-50 text-yellow-700 font-semibold border border-yellow-200 hover:bg-yellow-100 transition"
-                                onClick={() => setIsEditingConversion(true)}
-                            >
-                                Edit
-                            </button>
-                        )}
-                        {showConversionDetails && isEditingConversion && (
-                            <>
+                )}
+                {activeTab === 'conversion' && conversionData && (
+                    <div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            {/* Initial Quoted Amount */}
+                            <div>
+                                <span className="block text-xs text-gray-700 mb-1">Initial Quoted Amount:</span>
+                                {isEditing ? (
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><FaRupeeSign /></span>
+                                        <input
+                                            type="number"
+                                            value={conversionEdit.initialQuote || ''}
+                                            onChange={e => handleConversionFieldChange('initialQuote', e.target.value)}
+                                            className="w-full pl-8 pr-2 py-2 border rounded-md bg-white text-gray-900 font-medium text-base focus:outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="flex items-center text-base font-semibold text-gray-900">
+                                        <FaRupeeSign className="mr-1 text-base text-gray-500" />
+                                        {conversionData.initialQuote ? (
+                                            <span>{conversionData.initialQuote}</span>
+                                        ) : (
+                                            <span className="text-gray-400">N/A</span>
+                                        )}
+                                    </span>
+                                )}
+                            </div>
+                            {/* Final Quotation */}
+                            <div>
+                                <span className="block text-xs text-gray-700 mb-1">Final Quotation:</span>
+                                {isEditing ? (
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><FaRupeeSign /></span>
+                                        <input
+                                            type="number"
+                                            value={conversionEdit.finalQuotation || ''}
+                                            onChange={e => handleConversionFieldChange('finalQuotation', e.target.value)}
+                                            className="w-full pl-8 pr-2 py-2 border rounded-md bg-white text-gray-900 font-medium text-base focus:outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="flex items-center text-base font-semibold text-gray-900">
+                                        <FaRupeeSign className="mr-1 text-base text-gray-500" />
+                                        {conversionData.finalQuotation ? (
+                                            <span>{conversionData.finalQuotation}</span>
+                                        ) : (
+                                            <span className="text-gray-400">N/A</span>
+                                        )}
+                                    </span>
+                                )}
+                            </div>
+                            {/* Sign-up Amount */}
+                            <div>
+                                <span className="block text-xs text-gray-700 mb-1">Sign-up Amount:</span>
+                                {isEditing ? (
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><FaRupeeSign /></span>
+                                        <input
+                                            type="number"
+                                            value={conversionEdit.signUpAmount || ''}
+                                            onChange={e => handleConversionFieldChange('signUpAmount', e.target.value)}
+                                            className="w-full pl-8 pr-2 py-2 border rounded-md bg-white text-gray-900 font-medium text-base focus:outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="flex items-center text-base font-semibold text-gray-900">
+                                        <FaRupeeSign className="mr-1 text-base text-gray-500" />
+                                        {conversionData.signUpAmount ? (
+                                            <span>{conversionData.signUpAmount}</span>
+                                        ) : (
+                                            <span className="text-gray-400">N/A</span>
+                                        )}
+                                    </span>
+                                )}
+                            </div>
+                            {/* Payment Date */}
+                            <div>
+                                <span className="block text-xs text-gray-700 mb-1">Payment Date:</span>
+                                {isEditing ? (
+                                    <input
+                                        type="date"
+                                        value={conversionEdit.paymentDate || ''}
+                                        onChange={e => handleConversionFieldChange('paymentDate', e.target.value)}
+                                        className="w-full border rounded-md px-2 py-2 text-base"
+                                    />
+                                ) : (
+                                    <span className={`block text-base font-semibold ${conversionData.paymentDate ? 'text-gray-900' : 'text-gray-400'}`}>{conversionData.paymentDate || 'N/A'}</span>
+                                )}
+                            </div>
+                            {/* Payment Mode */}
+                            <div>
+                                <span className="block text-xs text-gray-700 mb-1">Payment Mode:</span>
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        value={conversionEdit.paymentMode || ''}
+                                        onChange={e => handleConversionFieldChange('paymentMode', e.target.value)}
+                                        className="w-full border rounded-md px-2 py-2 text-base"
+                                        placeholder="e.g., UPI, Bank Transfer"
+                                    />
+                                ) : (
+                                    <span className={`block text-base font-semibold ${conversionData.paymentMode ? 'text-gray-900' : 'text-gray-400'}`}>{conversionData.paymentMode || 'N/A'}</span>
+                                )}
+                            </div>
+                            {/* PAN Number */}
+                            <div>
+                                <span className="block text-xs text-gray-700 mb-1">PAN Number:</span>
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        value={conversionEdit.panNumber || ''}
+                                        onChange={e => handleConversionFieldChange('panNumber', e.target.value)}
+                                        className="w-full border rounded-md px-2 py-2 text-base"
+                                        placeholder="PAN Number"
+                                    />
+                                ) : (
+                                    <span className={`block text-base font-semibold ${conversionData.panNumber ? 'text-gray-900' : 'text-gray-400'}`}>{conversionData.panNumber || 'N/A'}</span>
+                                )}
+                            </div>
+                            {/* Project Timeline */}
+                            <div>
+                                <span className="block text-xs text-gray-700 mb-1">Project Timeline:</span>
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        value={conversionEdit.projectTimeline || ''}
+                                        onChange={e => handleConversionFieldChange('projectTimeline', e.target.value)}
+                                        className="w-full border rounded-md px-2 py-2 text-base"
+                                        placeholder="e.g., 6 Months, Jan-Mar 2025"
+                                    />
+                                ) : (
+                                    <span className={`block text-base font-semibold ${conversionData.projectTimeline ? 'text-gray-900' : 'text-gray-400'}`}>{conversionData.projectTimeline || 'N/A'}</span>
+                                )}
+                            </div>
+                            {/* Discount */}
+                            <div>
+                                <span className="block text-xs text-gray-700 mb-1">Discount:</span>
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        value={conversionEdit.discount || ''}
+                                        onChange={e => handleConversionFieldChange('discount', e.target.value)}
+                                        className="w-full border rounded-md px-2 py-2 text-base"
+                                        placeholder="Discount"
+                                    />
+                                ) : (
+                                    <span className={`block text-base font-semibold ${conversionData.discount ? 'text-gray-900' : 'text-gray-400'}`}>{conversionData.discount || 'N/A'}</span>
+                                )}
+                            </div>
+                        </div>
+                        {isEditing && (
+                            <div className="flex gap-2 mt-6">
                                 <button
-                                    className="px-4 py-2 rounded bg-green-50 text-green-700 font-semibold border border-green-200 hover:bg-green-100 transition"
                                     onClick={handleSaveConversion}
+                                    className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium"
                                 >
                                     Save
                                 </button>
                                 <button
-                                    className="px-4 py-2 rounded bg-gray-50 text-gray-700 font-semibold border border-gray-200 hover:bg-gray-100 transition"
                                     onClick={() => { setIsEditingConversion(false); setConversionEdit(conversionData); }}
+                                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md font-medium"
                                 >
                                     Cancel
                                 </button>
-                            </>
+                            </div>
                         )}
                     </div>
-                    {showConversionDetails && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <strong>Final Quotation:</strong>
-                                {isEditingConversion ? (
-                                    <input
-                                        type="number"
-                                        className="w-full p-1 border rounded mt-1"
-                                        value={conversionEdit.finalQuotation || ''}
-                                        onChange={e => handleConversionFieldChange('finalQuotation', e.target.value)}
-                                    />
-                                ) : (
-                                    <div>{conversionData.finalQuotation || 'N/A'}</div>
-                                )}
-                            </div>
-                            <div>
-                                <strong>Sign-up Amount:</strong>
-                                {isEditingConversion ? (
-                                    <input
-                                        type="number"
-                                        className="w-full p-1 border rounded mt-1"
-                                        value={conversionEdit.signUpAmount || ''}
-                                        onChange={e => handleConversionFieldChange('signUpAmount', e.target.value)}
-                                    />
-                                ) : (
-                                    <div>{conversionData.signUpAmount || 'N/A'}</div>
-                                )}
-                            </div>
-                            <div>
-                                <strong>Payment Date:</strong>
-                                {isEditingConversion ? (
-                                    <input
-                                        type="date"
-                                        className="w-full p-1 border rounded mt-1"
-                                        value={conversionEdit.paymentDate || ''}
-                                        onChange={e => handleConversionFieldChange('paymentDate', e.target.value)}
-                                    />
-                                ) : (
-                                    <div>{conversionData.paymentDate || 'N/A'}</div>
-                                )}
-                            </div>
-                            <div>
-                                <strong>Payment Mode:</strong>
-                                {isEditingConversion ? (
-                                    <input
-                                        type="text"
-                                        className="w-full p-1 border rounded mt-1"
-                                        value={conversionEdit.paymentMode || ''}
-                                        onChange={e => handleConversionFieldChange('paymentMode', e.target.value)}
-                                    />
-                                ) : (
-                                    <div>{conversionData.paymentMode || 'N/A'}</div>
-                                )}
-                            </div>
-                            <div>
-                                <strong>PAN Number:</strong>
-                                {isEditingConversion ? (
-                                    <input
-                                        type="text"
-                                        className="w-full p-1 border rounded mt-1"
-                                        value={conversionEdit.panNumber || ''}
-                                        onChange={e => handleConversionFieldChange('panNumber', e.target.value)}
-                                    />
-                                ) : (
-                                    <div>{conversionData.panNumber || 'N/A'}</div>
-                                )}
-                            </div>
-                            <div>
-                                <strong>Project Timeline:</strong>
-                                {isEditingConversion ? (
-                                    <input
-                                        type="text"
-                                        className="w-full p-1 border rounded mt-1"
-                                        value={conversionEdit.projectTimeline || ''}
-                                        onChange={e => handleConversionFieldChange('projectTimeline', e.target.value)}
-                                    />
-                                ) : (
-                                    <div>{conversionData.projectTimeline || 'N/A'}</div>
-                                )}
-                            </div>
-                            <div>
-                                <strong>Discount:</strong>
-                                {isEditingConversion ? (
-                                    <input
-                                        type="text"
-                                        className="w-full p-1 border rounded mt-1"
-                                        value={conversionEdit.discount || ''}
-                                        onChange={e => handleConversionFieldChange('discount', e.target.value)}
-                                    />
-                                ) : (
-                                    <div>{conversionData.discount || 'N/A'}</div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
+                )}
+            </div>
 
             {/* Actions & Activity Log */}
             <div className="mt-6 border-t pt-4">
+                {/* Log Note and Activity Buttons - now just above Planned Activities */}
+                <div className="mb-6 flex gap-2">
+                    <button
+                        onClick={() => setIsLoggingNote(true)}
+                        className="bg-white border border-gray-300 px-4 py-2 text-sm rounded-md shadow-sm hover:bg-gray-50"
+                    >
+                        Log Note
+                    </button>
+                    <button
+                        onClick={onScheduleActivity}
+                        className="bg-white border border-gray-300 px-4 py-2 text-sm rounded-md shadow-sm hover:bg-gray-50"
+                    >
+                        Activity
+                    </button>
+                </div>
+                {isLoggingNote && (
+                    <div className="mt-4 flex items-start gap-2">
+                        <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center text-white font-bold">N</div>
+                        <div className="flex-grow">
+                            <div className="relative">
+                                <textarea
+                                    className="w-full p-2 border rounded-md bg-gray-50"
+                                    placeholder="Write a note..."
+                                    value={noteContent}
+                                    onChange={(e) => setNoteContent(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                                <button
+                                    onClick={() => {
+                                        // Save note logic here
+                                        setIsLoggingNote(false);
+                                        setNoteContent('');
+                                    }}
+                                    className="bg-purple-600 text-white px-4 py-1.5 text-sm rounded-md"
+                                    disabled={!noteContent.trim()}
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setIsLoggingNote(false);
+                                        setNoteContent('');
+                                    }}
+                                    className="ml-2 text-gray-500 hover:text-gray-700 text-sm"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {/* Planned Activities Section */}
                 <div className="mt-6">
                     <details open className="w-full group">
@@ -405,33 +660,55 @@ const OdooDetailBody = ({ lead, isEditing, onFieldChange, onScheduleActivity, co
                             <FaChevronDown className="group-open:rotate-0 -rotate-90 transition-transform" />
                             Planned Activities
                         </summary>
-                        <div className="mt-2">
-                            {plannedActivities.map(activity => (
-                                <PlannedActivityItem key={activity.id} activity={activity} onEditActivity={onScheduleActivity} />
-                            ))}
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {activities.length === 0 ? (
+                                <div className="text-gray-400 text-sm italic py-4 col-span-full">No planned activities.</div>
+                            ) : (
+                                activities.map(activity => (
+                                    <PlannedActivityItem
+                                        key={activity.id}
+                                        activity={activity}
+                                        onEditActivity={onEditActivity}
+                                        onDeleteActivity={onDeleteActivity}
+                                        onMarkDone={onMarkDone}
+                                    />
+                                ))
+                            )}
                         </div>
                     </details>
                 </div>
-
                 {/* Timeline */}
                 <div className="mt-8">
                     <h3 className="text-sm font-semibold text-gray-500 mb-4">TODAY</h3>
-                    <div className="space-y-6 border-l-2 border-gray-200 ml-2">
-                        {timelineEvents.map((event, index) => (
-                            <div key={index} className="relative">
-                                <div className="absolute -left-[1.3rem] top-0 flex items-center">
-                                    <div className="h-2 w-2 bg-blue-600 rounded-full ring-4 ring-white"></div>
-                                    <div className="ml-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                        {event.user ? event.user.charAt(0).toUpperCase() : 'U'}
-                                    </div>
-                                </div>
-                                <div className="ml-8">
-                                    <p className="text-sm font-semibold">{event.user} <span className="text-gray-500 font-normal text-xs ml-2">{event.time}</span></p>
-                                    <p className="text-sm mt-1">{event.action}</p>
-                                    <p className="text-sm text-gray-500 ml-4">• {event.details}</p>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="w-full overflow-x-auto">
+                        <div className="flex items-center gap-0 min-w-[600px] pb-2">
+                            {timelineEvents.length === 0 ? (
+                                <div className="text-gray-400 text-sm italic py-4">No events today.</div>
+                            ) : (
+                                timelineEvents.map((event, idx) => (
+                                    <React.Fragment key={event.id}>
+                                        <div className={`flex flex-col items-center min-w-[180px] ${idx === 0 ? 'border-blue-400 border-2 rounded-xl bg-blue-50' : ''} p-2`}>
+                                            <div className="flex flex-col items-center">
+                                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white text-lg font-bold border-2 border-white shadow">
+                                                    {event.user ? event.user.charAt(0).toUpperCase() : 'U'}
+                                                </div>
+                                                <span className="text-xs text-gray-400 mt-1">{event.time}</span>
+                                            </div>
+                                            <div className="mt-2 bg-white rounded-lg shadow px-4 py-2 w-full text-center border border-blue-50">
+                                                <div className="text-sm font-semibold text-blue-700">{event.action}</div>
+                                                <div className="text-xs text-gray-500 mt-1">{event.details}</div>
+                                            </div>
+                                            {idx === 0 && <span className="mt-1 text-xs text-blue-500 font-bold">Start</span>}
+                                        </div>
+                                        {idx !== timelineEvents.length - 1 && (
+                                            <div className="flex items-center justify-center h-10">
+                                                <FaChevronDown className="rotate-[-90deg] text-blue-300 text-2xl mx-2" />
+                                            </div>
+                                        )}
+                                    </React.Fragment>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -439,7 +716,7 @@ const OdooDetailBody = ({ lead, isEditing, onFieldChange, onScheduleActivity, co
     );
 };
 
-const AddActivityModal = ({ isOpen, onClose, leadId, initialData }) => {
+const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity }) => {
   if (!isOpen) return null;
 
   const [activeType, setActiveType] = useState('To-Do');
@@ -478,21 +755,25 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData }) => {
 
   const summary = activeType === 'Call' ? 'Call Information' : activeType;
 
-  const handleSave = () => {
-      let activityDetails = `Activity Saved for lead ${leadId}:
-Type: ${activeType}
-Summary: ${summary}
-Due: ${dueDate} ${dueTime}`;
-      if (activeType === 'Meeting') {
-          activityDetails += `\nMeeting Link: ${meetingLink}`;
-          activityDetails += `\nAttendees: ${attendees.map(a => a.name).join(', ')}`;
-      }
-      if (activeType === 'Call') {
-          activityDetails += `\nPurpose: ${callPurpose}`;
-          if (callOutcome) activityDetails += `\nOutcome: ${callOutcome}`;
-      }
-      alert(activityDetails);
-      onClose();
+  const handleSave = (statusOverride) => {
+    const activity = {
+      id: initialData && initialData.id ? initialData.id : undefined,
+      type: activeType,
+      summary,
+      dueDate,
+      dueTime,
+      user: 'hjhjj', // Replace with actual user if needed
+      status: statusOverride || 'pending',
+      meetingLink,
+      attendees,
+      callPurpose,
+      callOutcome,
+      nextFollowUpDate,
+      nextFollowUpTime,
+      meetingVenue,
+    };
+    if (onSaveActivity) onSaveActivity(activity);
+    onClose();
   };
 
   const handleAddAttendee = () => {
@@ -670,8 +951,8 @@ Due: ${dueDate} ${dueTime}`;
         </div>
 
         <div className="bg-gray-50 px-6 py-3 flex justify-end items-center gap-2 rounded-b-lg">
-            <button onClick={handleSave} className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm">Save</button>
-            <button className="bg-white border px-4 py-2 rounded-md text-sm">Mark Done</button>
+            <button onClick={() => handleSave()} className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm">Save</button>
+            <button onClick={() => handleSave('done')} className="bg-green-600 text-white px-4 py-2 rounded-md text-sm">Mark Done</button>
             <button onClick={onClose} className="bg-white border px-4 py-2 rounded-md text-sm">Discard</button>
         </div>
 
@@ -760,7 +1041,17 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold">Initial Quoted Amount</label>
-                        <input type="number" name="initialQuote" value={form.initialQuote} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400" />
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><FaRupeeSign /></span>
+                            <input
+                                type="number"
+                                name="initialQuote"
+                                value={form.initialQuote}
+                                onChange={handleChange}
+                                className="w-full p-2 pl-8 border rounded focus:ring-2 focus:ring-blue-400"
+                                min="0"
+                            />
+                        </div>
                     </div>
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold">Final Quotation (₹) <span className="text-red-500">*</span></label>
@@ -906,10 +1197,79 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
           // --- Main View Component ---
           const LeadDetailContent = () => {
               const router = useRouter();
-              const dispatch = useDispatch();
               const { id } = router.query;
 
-              const { leads, loading, error } = useSelector((state) => state.leads);
+              // Use local state for leads
+              const [leads, setLeads] = useState([
+                  {
+                      leadId: 'LEAD101',
+                      name: 'John Doe',
+                      contactNumber: '1234567890',
+                      email: 'john@example.com',
+                      projectType: 'Residential',
+                      propertyType: 'Apartment',
+                      address: '123 Main St',
+                      area: '1200',
+                      budget: '1500000',
+                      designStyle: 'Modern',
+                      leadSource: 'Website',
+                      preferredContact: 'Phone',
+                      notes: 'Interested in 2BHK',
+                      status: 'New',
+                      rating: 2,
+                      salesRep: 'Alice',
+                      designer: 'Bob',
+                      callDescription: null,
+                      callHistory: [],
+                      nextCall: null,
+                      quotedAmount: null,
+                      finalQuotation: null,
+                      signupAmount: null,
+                      paymentDate: null,
+                      paymentMode: null,
+                      panNumber: null,
+                      discount: null,
+                      reasonForLost: null,
+                      reasonForJunk: null,
+                      submittedBy: 'MANAGER',
+                      paymentDetailsFileName: null,
+                      bookingFormFileName: null,
+                  },
+                  {
+                      leadId: 'LEAD102',
+                      name: 'Jane Smith',
+                      contactNumber: '9876543210',
+                      email: 'jane@example.com',
+                      projectType: 'Commercial',
+                      propertyType: 'Office',
+                      address: '456 Market St',
+                      area: '2000',
+                      budget: '3000000',
+                      designStyle: 'Contemporary',
+                      leadSource: 'Referral',
+                      preferredContact: 'Email',
+                      notes: 'Needs open workspace',
+                      status: 'Contacted',
+                      rating: 3,
+                      salesRep: 'Charlie',
+                      designer: 'Dana',
+                      callDescription: null,
+                      callHistory: [],
+                      nextCall: null,
+                      quotedAmount: null,
+                      finalQuotation: null,
+                      signupAmount: null,
+                      paymentDate: null,
+                      paymentMode: null,
+                      panNumber: null,
+                      discount: null,
+                      reasonForLost: null,
+                      reasonForJunk: null,
+                      submittedBy: 'MANAGER',
+                      paymentDetailsFileName: null,
+                      bookingFormFileName: null,
+                  },
+              ]);
               const stages = ['New', 'Contacted', 'Qualified', 'Quoted', 'Converted'];
               const lead = leads.find(l => l.leadId === id);
 
@@ -922,28 +1282,28 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               const [conversionData, setConversionData] = useState(null);
               const [showConversionDetails, setShowConversionDetails] = useState(false);
               const [editingActivity, setEditingActivity] = useState(null);
+              const [activities, setActivities] = useState([
+                // Example initial activity
+                { id: 1, type: 'To-Do', summary: 'Follow up with client', dueDate: '2025-06-24', dueTime: '', user: 'hjhjj', status: 'pending' }
+              ]);
+              const [timelineEvents, setTimelineEvents] = useState([
+                { id: 1, user: 'hjhjj', time: '11:55 am', action: 'Stage changed', details: 'Proposition → Qualif' },
+                { id: 2, user: 'hjhjj', time: '11:55 am', action: 'Stage changed', details: 'New → Proposition (Stage)' },
+              ]);
 
-              useEffect(() => {
-                  if (!leads.length) {
-                      dispatch(fetchLeads());
-                  }
-              }, [dispatch, leads.length]);
-
+              // --- Status change logic (local only) ---
               const handleStatusChange = (newStatus) => {
                   if (newStatus === 'Converted') {
                       setIsConversionModalOpen(true);
                       return;
                   }
                   if (lead && newStatus !== lead.status) {
-                      dispatch(updateLead({ leadId: lead.leadId, status: newStatus }))
-                        .unwrap()
-                        .then(() => {
-                            toast.success(`Lead moved to ${newStatus}`);
-                            router.push('/Sales/LeadManagement');
-                        })
-                        .catch((err) => {
-                            toast.error(err.message || 'Failed to update lead status');
-                        });
+                      setLeads(prevLeads => prevLeads.map(l =>
+                          l.leadId === lead.leadId ? { ...l, status: newStatus } : l
+                      ));
+                      // Optionally, navigate back to list
+                      // router.push('/Sales/LeadManagement');
+                      toast.success(`Lead moved to ${newStatus}`);
                   }
               };
 
@@ -953,7 +1313,9 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
 
               const handleLostReasonSubmit = (reason) => {
                   if (lead) {
-                      dispatch(updateLead({ leadId: lead.leadId, status: 'Lost', reasonForLost: reason }));
+                      setLeads(prevLeads => prevLeads.map(l =>
+                          l.leadId === lead.leadId ? { ...l, status: 'Lost', reasonForLost: reason } : l
+                      ));
                       setIsLostReasonModalOpen(false);
                   }
               };
@@ -961,7 +1323,10 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               // --- Edit/Save logic ---
               const handleEditToggle = () => {
                   if (isEditing) {
-                      // Just exit edit mode, do not dispatch or update anything
+                      // Save changes to local state
+                      setLeads(prevLeads => prevLeads.map(l =>
+                          l.leadId === lead.leadId ? { ...l, ...editedFields } : l
+                      ));
                       setIsEditing(false);
                   } else {
                       // Enter edit mode, initialize editedFields with current lead values
@@ -989,8 +1354,9 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               // Confirm conversion handler
               const handleConfirmConversion = (formData) => {
                   setConversionData(formData);
-                  // Mark as converted (local only)
-                  // Optionally, update local lead status here if needed
+                  setLeads(prevLeads => prevLeads.map(l =>
+                      l.leadId === lead.leadId ? { ...l, status: 'Converted', ...formData } : l
+                  ));
                   setIsConversionModalOpen(false);
                   toast.success('Lead marked as Converted!');
               };
@@ -1004,8 +1370,20 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                   setIsActivityModalOpen(true);
               };
 
-              if (loading && !lead) return <div className="p-6 text-center">Loading...</div>;
-              if (error) return <div className="p-6 text-center text-red-500">Error: {error.message}</div>;
+              const handleAddOrEditActivity = (activity) => {
+                setActivities(prev => {
+                  if (activity.id) {
+                    // Edit
+                    return prev.map(a => a.id === activity.id ? activity : a);
+                  } else {
+                    // Add
+                    return [...prev, { ...activity, id: Date.now(), status: 'pending' }];
+                  }
+                });
+              };
+              const handleDeleteActivity = (id) => setActivities(prev => prev.filter(a => a.id !== id));
+              const handleMarkDone = (id) => setActivities(prev => prev.map(a => a.id === id ? { ...a, status: 'done' } : a));
+
               if (!lead) return <div className="p-6 text-center">Lead not found.</div>;
 
               return (
@@ -1021,6 +1399,7 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                       <OdooDetailBody
                           lead={isEditing ? { ...lead, ...editedFields } : lead}
                           isEditing={isEditing}
+                          editedFields={editedFields}
                           onFieldChange={handleFieldChange}
                           onScheduleActivity={() => setIsActivityModalOpen(true)}
                           conversionData={conversionData}
@@ -1029,12 +1408,18 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                           onConversionFieldChange={(field, value) => {
                               setConversionData(prev => ({ ...prev, [field]: value }));
                           }}
+                          activities={activities}
+                          onEditActivity={handleEditActivity}
+                          onDeleteActivity={handleDeleteActivity}
+                          onMarkDone={handleMarkDone}
+                          timelineEvents={timelineEvents}
                       />
                       <AddActivityModal
                           isOpen={isActivityModalOpen}
                           onClose={() => { setIsActivityModalOpen(false); setEditingActivity(null); }}
                           leadId={lead.leadId}
                           initialData={editingActivity}
+                          onSaveActivity={handleAddOrEditActivity}
                       />
                       <LostReasonModal
                           isOpen={isLostReasonModalOpen}
@@ -1060,3 +1445,4 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
           };
 
           export default LeadDetailPage;
+

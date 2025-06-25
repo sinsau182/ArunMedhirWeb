@@ -1,16 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaSave, FaTimes, FaPlus, FaTrash, FaChevronDown, FaChevronRight, FaBuilding, FaUser, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCreditCard, FaFileAlt, FaInfoCircle } from 'react-icons/fa';
 import Sidebar from '../Sidebar';
 import HradminNavbar from '../HradminNavbar';
+import { useDispatch, useSelector } from 'react-redux';
+import { addVendor } from '../../redux/slices/vendorSlice';
+import { toast } from 'sonner';
 
 const AddVendorForm = ({ onSubmit, onCancel }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const dispatch = useDispatch();
+  const { loading, error } = useSelector((state) => state.vendors);
+
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
+
   const [formData, setFormData] = useState({
     // Basic Information
     vendorName: '',
+    companyId: 'CID101',
     companyType: 'Company', // Company or Individual
     gstin: '',
     pan: '',
@@ -27,7 +35,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
     vendorTags: [],
     
     // Contacts & Addresses
-    contacts: [],
+    contactAddresses: [],
     
     // Banking Details
     bankName: '',
@@ -50,7 +58,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
 
   const [errors, setErrors] = useState({});
   const [collapsedSections, setCollapsedSections] = useState({
-    contacts: true,
+    contactAddresses: true,
     banking: true,
     salesPurchase: true,
     accounting: true,
@@ -127,7 +135,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
   const handleContactChange = (index, field, value) => {
     setFormData(prev => ({
       ...prev,
-      contacts: prev.contacts.map((contact, i) => 
+      contactAddresses: prev.contactAddresses.map((contact, i) => 
         i === index ? { ...contact, [field]: value } : contact
       )
     }));
@@ -136,7 +144,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
   const addContact = () => {
     setFormData(prev => ({
       ...prev,
-      contacts: [...prev.contacts, {
+      contactAddresses: [...prev.contactAddresses, {
         id: Date.now(),
         name: '',
         phone: '',
@@ -149,7 +157,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
   const removeContact = (index) => {
     setFormData(prev => ({
       ...prev,
-      contacts: prev.contacts.filter((_, i) => i !== index)
+      contactAddresses: prev.contactAddresses.filter((_, i) => i !== index)
     }));
   };
 
@@ -220,7 +228,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
@@ -231,7 +239,15 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
         createdAt: new Date().toISOString()
       };
       
-      onSubmit(submitData);
+      try {
+        const result = await dispatch(addVendor(submitData)).unwrap();
+        if (result) {
+          toast.success('Vendor added successfully!');
+          onCancel();
+        }
+      } catch (err) {
+        toast.error(err);
+      }
     }
   };
 
@@ -583,7 +599,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
               </button>
             </div>
             
-            {formData.contacts.map((contact, index) => (
+            {formData.contactAddresses.map((contact, index) => (
               <div key={contact.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="font-medium text-gray-900">Contact #{index + 1}</h4>
@@ -646,7 +662,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
               </div>
             ))}
             
-            {formData.contacts.length === 0 && (
+            {formData.contactAddresses.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 <FaPhone className="mx-auto text-4xl mb-2 text-gray-300" />
                 <p>No contacts added yet</p>

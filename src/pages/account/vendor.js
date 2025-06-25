@@ -1,13 +1,22 @@
 // Vendor page implementation based on PRD
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch } from 'react-icons/fa';
 import Modal from '../../components/Modal';
 import { AddBillForm, BulkPaymentForm, AddVendorForm } from '../../components/Forms';
 import Sidebar from "../../components/Sidebar";
 import HradminNavbar from "../../components/HradminNavbar";
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchVendors } from '../../redux/slices/vendorSlice';
+import { toast } from 'sonner';
 
 const Vendor = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const dispatch = useDispatch();
+  const { vendors, loading, error } = useSelector((state) => state.vendors);
+
+  useEffect(() => {
+    dispatch(fetchVendors());
+  }, []);
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
@@ -89,50 +98,7 @@ const Vendor = () => {
     }
   ]);
 
-  const [vendors, setVendors] = useState([
-    {
-      id: 1,
-      vendorName: 'Acme Ltd.',
-      companyType: 'Company',
-      gstin: '29ABCDE1234F1Z5',
-      pan: 'AAAPL1234C',
-      phone: '080-123456',
-      email: 'info@acme.com',
-      city: 'Bengaluru',
-      state: 'Karnataka',
-      paymentTerms: '30 Days',
-      vendorTags: ['Critical Supplier', 'Preferred Vendor'],
-      status: 'Active'
-    },
-    {
-      id: 2,
-      vendorName: 'XYZ Traders',
-      companyType: 'Individual',
-      gstin: '27XYZE5678K9Z2',
-      pan: 'AAAAA9999A',
-      phone: '022-987654',
-      email: 'xyz@traders.com',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      paymentTerms: '15 Days',
-      vendorTags: ['Local Supplier'],
-      status: 'Active'
-    },
-    {
-      id: 3,
-      vendorName: 'Tech Solutions Inc',
-      companyType: 'Company',
-      gstin: '29TECH5678K9Z3',
-      pan: 'AAAPL5678D',
-      phone: '080-555123',
-      email: 'contact@techsolutions.com',
-      city: 'Bengaluru',
-      state: 'Karnataka',
-      paymentTerms: '45 Days',
-      vendorTags: ['Service Provider', 'International Supplier'],
-      status: 'Active'
-    }
-  ]);
+  const [vendorsList, setVendorsList] = useState(vendors);
 
   const handleTabClick = (tab) => {
     setActiveTab(tab);
@@ -218,7 +184,7 @@ const Vendor = () => {
 
   const handleVendorSubmit = (vendorData) => {
     // Add the new vendor to the vendors array
-    setVendors(prev => [...prev, {
+    setVendorsList(prev => [...prev, {
       id: prev.length + 1,
       vendorName: vendorData.vendorName,
       companyType: vendorData.companyType,
@@ -232,9 +198,11 @@ const Vendor = () => {
       vendorTags: vendorData.vendorTags,
       status: vendorData.status
     }]);
-    
+    toast.success('Vendor added successfully!');
+    dispatch(fetchVendors());
     // Close the modal
     setIsVendorModalOpen(false);
+
     
     // You could also show a success message here
     console.log('Vendor added successfully:', vendorData);
@@ -587,14 +555,14 @@ const Vendor = () => {
                       </td> */}
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1">
-                          {vendor.vendorTags.slice(0, 2).map((tag, index) => (
+                          {vendor.vendorTags?.slice(0, 2).map((tag, index) => (
                             <span key={index} className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
                               {tag}
                             </span>
                           ))}
-                          {vendor.vendorTags.length > 2 && (
+                          {vendor.vendorTags?.length > 2 && (
                             <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-600">
-                              +{vendor.vendorTags.length - 2}
+                              +{vendor.vendorTags?.length - 2}
                             </span>
                           )}
                         </div>
@@ -707,6 +675,9 @@ const Vendor = () => {
       >
         <AddVendorForm
           onSubmit={handleVendorSubmit}
+          onSuccess={() => {
+            toast.success('Vendor added successfully!');
+          }}
           onCancel={handleCloseVendorModal}
         />
       </Modal>

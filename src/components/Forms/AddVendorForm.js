@@ -7,7 +7,6 @@ import { useDispatch, useSelector } from 'react-redux';
 const AddVendorForm = ({ onSubmit, onCancel }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const dispatch = useDispatch();
-  const { status, error } = useSelector((state) => state.vendors);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);

@@ -3,7 +3,6 @@ import { FaSave, FaTimes, FaPlus, FaTrash, FaChevronDown, FaChevronRight, FaBuil
 import Sidebar from '../Sidebar';
 import HradminNavbar from '../HradminNavbar';
 import { useDispatch, useSelector } from 'react-redux';
-import { addVendor } from '../../redux/slices/vendorSlice';
 
 const AddVendorForm = ({ onSubmit, onCancel }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

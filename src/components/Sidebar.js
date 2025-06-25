@@ -9,6 +9,7 @@ import {
   FaAngleLeft,
   FaAngleRight,
   FaTasks,
+  FaUserTie,
 } from "react-icons/fa";
 import {
   Briefcase,
@@ -55,6 +56,8 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     MANAGER: "Manager",
     HRADMIN: "HR Admin",
     SALES: "Sales Employee",
+    ACCOUNTADMIN: "Accountant",
+    PROJECTADMIN: "Project Admin",
     ACCOUNTANT: "Accountant",
     PROJECTMANAGER: "Project Manager"
   };
@@ -133,6 +136,12 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       link: "/manager/attendance",
       roles: ["MANAGER"],
     },
+    {
+      label: "Lead Management",
+      icon: <FaTasks />,
+      link: "/manager/leads",
+      roles: ["MANAGER"],
+    },
 
     {
       label: "Dashboard",
@@ -146,12 +155,24 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       link: "/employee/leaves",
       roles: ["EMPLOYEE"],
     },
-     {
-       label: "Reimbursement",
-       icon: <CreditCard />,
-       link: "/employee/reimbursement",
-       roles: ["EMPLOYEE"],
-     },
+    //  {
+    //    label: "Reimbursement",
+    //    icon: <CreditCard />,
+    //    link: "/employee/reimbursement",
+    //    roles: ["EMPLOYEE"],
+    //  },
+//    {
+//      label: "Expenses",
+//      icon: <ReceiptIcon />,
+//      link: "/employee/expenses",
+//      roles: ["EMPLOYEE"],
+//    },
+//    {
+//      label: "Income",
+//      icon: <Wallet />,
+//      link: "/employee/income",
+//      roles: ["EMPLOYEE"],
+//    },
     {
       label: "Attendance",
       icon: <Clock />,
@@ -164,32 +185,30 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       link: "/employee/mypayslip",
       roles: ["EMPLOYEE"],
     },
-
-    // Add Sales Role Item
     {
       label: "Lead Management",
       icon: <FaTasks />,
-      link: "/Sales/LeadManagement",
-      roles: ["SALES"],
-    },
-    {
-      label: "Manager",
-      icon: <FaUsers />,
-      link: "/Sales/Manager",
-      roles: ["SALES"],
+      link: "/employee/leads",
+      roles: ["EMPLOYEE"],
     },
 
     // Add Account Admin items
     {
-      label: "Expenses",
-      icon: <ReceiptIcon />,
-      link: "/account/accountantExpense",
+      label: "Customers",
+      icon: <FaUsers />,
+      link: "/account/customers",
       roles: ["ACCOUNTANT"],
     },
     {
-      label: "Income",
-      icon: <Wallet />,
-      link: "/project_Manager/income",
+      label: "Vendor",
+      icon: <FaBuilding />,
+      link: "/account/vendor",
+      roles: ["ACCOUNTANT"],
+    },
+    {
+      label: "Employee",
+      icon: <FaUserTie />,
+      link: "/account/employee",
       roles: ["ACCOUNTANT"],
     },
 
@@ -211,7 +230,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
   // Filter menu items based on currentRole and department
   const filteredMenu = menuItems.filter((item) => {
     if (item.label === "Lead Management") {
-      return item.roles.includes(currentRole);
+      return item.roles.includes(currentRole) && department === "Sales";
     }
     return item.roles.includes(currentRole);
   });
@@ -243,7 +262,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             rounded-full bg-white text-gray-600
             hover:text-blue-600 shadow-md 
             transition-all duration-300
-            border border-gray-200
+            border border-gray-200 sticky top-16
           `}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >

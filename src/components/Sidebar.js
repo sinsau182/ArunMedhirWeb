@@ -9,6 +9,7 @@ import {
   FaAngleLeft,
   FaAngleRight,
   FaTasks,
+  FaUserTie,
 } from "react-icons/fa";
 import {
   Briefcase,
@@ -193,15 +194,21 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
 
     // Add Account Admin items
     {
-      label: "Expenses",
-      icon: <ReceiptIcon />,
-      link: "/account/accountantExpense",
+      label: "Customers",
+      icon: <FaUsers />,
+      link: "/account/customers",
       roles: ["ACCOUNTANT"],
     },
     {
-      label: "Income",
-      icon: <Wallet />,
-      link: "/project_Manager/income",
+      label: "Vendor",
+      icon: <FaBuilding />,
+      link: "/account/vendor",
+      roles: ["ACCOUNTANT"],
+    },
+    {
+      label: "Employee",
+      icon: <FaUserTie />,
+      link: "/account/employee",
       roles: ["ACCOUNTANT"],
     },
 
@@ -255,7 +262,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             rounded-full bg-white text-gray-600
             hover:text-blue-600 shadow-md 
             transition-all duration-300
-            border border-gray-200
+            border border-gray-200 sticky top-16
           `}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >

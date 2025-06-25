@@ -77,7 +77,7 @@ const RoleToggle = () => {
       } else if (role === "EMPLOYEE") {
         router.push("/employee/dashboard");
       } else if (role === "ACCOUNTANT") {
-        router.push("/account/accountantExpense");
+        router.push("/account/customers");
       } else if (role === "PROJECTMANAGER") {
         router.push("/project_Manager/expense");
       }

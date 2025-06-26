@@ -14,9 +14,9 @@ const Vendor = () => {
   const dispatch = useDispatch();
   const { vendors, loading, error } = useSelector((state) => state.vendors);
 
-  useEffect(() => {
-    dispatch(fetchVendors());
-  }, []);
+    useEffect(() => {
+      dispatch(fetchVendors());
+    }, []);
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };

@@ -192,6 +192,20 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       roles: ["EMPLOYEE"],
     },
 
+    {
+      label: "Lead Management",
+      icon: <FaTasks />,
+      link: "/Sales/LeadManagement",
+      roles: ["SALES"],
+    },
+    {
+      label: "Manager",
+      icon: <FaUsers />,
+      link: "/Sales/Manager",
+      roles: ["SALES"],
+    },
+    
+
     // Add Account Admin items
     {
       label: "Customers",
@@ -229,9 +243,9 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
 
   // Filter menu items based on currentRole and department
   const filteredMenu = menuItems.filter((item) => {
-    if (item.label === "Lead Management") {
-      return item.roles.includes(currentRole) && department === "Sales";
-    }
+    // if (item.label === "Lead Management") {
+    //   return item.roles.includes(currentRole) && department === "Salesjhvjh";
+    // }
     return item.roles.includes(currentRole);
   });
 

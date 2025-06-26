@@ -62,7 +62,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
           )}
 
           {/* Close button for full-screen modal */}
-          {size === 'full' && (
+          {/* {size === 'full' && (
             <button
               onClick={onClose}
               className="fixed top-4 right-4 z-[10000] p-3 bg-white rounded-full shadow-lg text-gray-600 hover:text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 mt-16"
@@ -70,7 +70,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
             >
               <FaTimes className="h-6 w-6" />
             </button>
-          )}
+          )} */}
           
           {/* Content */}
           <div className={size === 'full' ? '' : 'px-6 py-4'}>

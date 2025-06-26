@@ -9,7 +9,7 @@ const roleLabels = {
   HRADMIN: "HR Admin",
   SALES: "Sales",
   ACCOUNTANT: "Accountant",
-  PROJECTMANAGER: "Project Manager"
+  PROJECTMANAGER: "Project Manager",
 };
 
 const roleColors = {
@@ -20,11 +20,18 @@ const roleColors = {
   ACCOUNTADMIN: "bg-indigo-500 text-white",
   PROJECTADMIN: "bg-orange-500 text-white",
   ACCOUNTANT: "bg-indigo-500 text-white",
-  PROJECTMANAGER: "bg-orange-500 text-white"
+  PROJECTMANAGER: "bg-orange-500 text-white",
 };
 
 // Define the desired order of roles
-const roleOrder = ["EMPLOYEE", "MANAGER", "HRADMIN", "ACCOUNTANT", "PROJECTMANAGER", "SALES"];
+const roleOrder = [
+  "EMPLOYEE",
+  "MANAGER",
+  "HRADMIN",
+  "ACCOUNTANT",
+  "PROJECTMANAGER",
+  "SALES",
+];
 
 const RoleToggle = () => {
   const router = useRouter();
@@ -34,12 +41,12 @@ const RoleToggle = () => {
 
   useEffect(() => {
     const roles = JSON.parse(sessionStorage.getItem("roles") || "[]");
-    
+
     if (roles.length > 0) {
       // Sort roles according to the defined order
-      const sortedRoles = roleOrder.filter(role => roles.includes(role));
+      const sortedRoles = roleOrder.filter((role) => roles.includes(role));
       setAvailableRoles(sortedRoles);
-      
+
       const storedRole = sessionStorage.getItem("currentRole");
       if (storedRole && roles.includes(storedRole)) {
         setCurrentRole(storedRole);
@@ -78,7 +85,9 @@ const RoleToggle = () => {
           size="sm"
           className={cn(
             "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-            role === currentRole ? roleColors[role] : "bg-gray-200 text-gray-700"
+            role === currentRole
+              ? roleColors[role]
+              : "bg-gray-200 text-gray-700"
           )}
           onClick={() => switchRole(role)}
         >

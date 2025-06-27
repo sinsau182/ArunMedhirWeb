@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { FaEdit, FaCheck, FaTimes, FaPlus } from 'react-icons/fa';
 
 const projectTypes = [
   'Residential',
@@ -429,17 +430,18 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
             )}
 
             {/* Notes Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                placeholder="Enter any additional notes or requirements"
-                value={formData.notes}
-                onChange={(e) => handleInputChange('notes', e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
+            <div className="bg-white rounded-xl shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold">Notes</h2>
+                <button className="flex items-center gap-2 bg-black text-white px-3 py-1 rounded font-medium text-sm">
+                  <FaPlus /> Add Note
+                </button>
+              </div>
+              <div className="space-y-3">
+                {formData.notes.map(note => (
+                  <div className="bg-gray-50 rounded p-3 text-sm border">{note.text}<div className="text-xs text-gray-400 mt-1">{note.date}</div></div>
+                ))}
+              </div>
             </div>
           </div>
 

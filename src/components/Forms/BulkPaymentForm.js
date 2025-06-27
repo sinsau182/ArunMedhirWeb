@@ -74,9 +74,9 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
 
   useEffect(() => {
     if (formData.vendor) {
-      setAvailableBills(unpaidBills);
       const selectedVendor = vendors.find(v => v.name === formData.vendor);
       if (selectedVendor) {
+        setAvailableBills(unpaidBills.filter(bill => bill.vendorId === selectedVendor.id));
         setFormData(prev => ({ ...prev, gstin: selectedVendor.gstin }));
       }
     } else {
@@ -84,7 +84,7 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
       setSelectedBills([]);
       setFormData(prev => ({ ...prev, gstin: '' }));
     }
-  }, [formData.vendor]);
+  }, [formData.vendor, unpaidBills, vendors]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

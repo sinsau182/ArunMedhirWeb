@@ -45,30 +45,29 @@ function formatDateTime(dateStr, timeStr) {
 
 const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, isEditing, onEditToggle }) => {
     const currentIndex = stages.indexOf(lead.status);
+    // Priority and Next Action helpers
+    const getPriorityLabel = (rating) => {
+        if (rating >= 3) return 'High';
+        if (rating === 2) return 'Medium';
+        if (rating === 1) return 'Low';
+        return 'No';
+    };
+    const getNextAction = () => {
+        // This is a placeholder; you may want to use your actual logic for next action
+        return lead.nextAction || 'N/A';
+    };
+    const priorityLabel = getPriorityLabel(lead.rating);
     return (
-        <div className="bg-white rounded-xl shadow px-8 py-8 mb-6 border-b border-gray-100 min-h-[140px] flex flex-col gap-1 justify-center">
-            {/* First line: Lead name and ID */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 mb-6">
-                <div className="flex items-center gap-3 mt-[-8px]">
-                    <h1 className="text-2xl font-bold text-gray-900 leading-tight">{lead.name}'s Opportunity</h1>
-                    {lead.leadId && (
-                        <span className="bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full">ID: {lead.leadId}</span>
-                    )}
-                    <span className="text-sm text-black rounded px-6 py-1 min-w-[120px] text-center tracking-wide shadow-none font-normal bg-transparent ml-6">
-                        {currentIndex + 1} of {stages.length} completed
-                    </span>
-                    </div>
-                <div className="flex gap-2 mt-[-8px] md:mt-0">
-                    <button
-                        onClick={onEditToggle}
-                        className="flex items-center gap-2 px-5 py-2 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-sm font-semibold shadow hover:bg-yellow-100 transition"
-                    >
-                        <FaPencilAlt className="w-4 h-4" />
-                        {isEditing ? 'Save' : 'Edit'}
-                    </button>
+        <div className="bg-white border-b border-gray-100 px-8 pt-8 pb-4 mb-2"> {/* Increased pt and pb for more height */}
+            {/* Top Row: Centered Name/Type, Buttons on right */}
+            <div className="flex flex-row items-center justify-center mb-4 relative"> {/* Increased mb for more gap */}
+                <div className="flex-1 flex justify-center">
+                    <span className="text-xl font-semibold text-gray-900">{lead.name} &ndash; {lead.projectType}</span>
+                </div>
+                <div className="absolute right-0 top-0 flex gap-2">
                     <button
                         onClick={onMarkLost}
-                        className="flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold shadow hover:bg-red-700 transition"
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-md text-sm font-semibold shadow-sm hover:bg-red-50 transition"
                         disabled={lead.status === 'Won' || lead.status === 'Lost'}
                     >
                         <FaTimes className="w-4 h-4" />
@@ -76,45 +75,40 @@ const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, isEditing, onEdi
                     </button>
                 </div>
             </div>
-            {/* Second line: Progress and Stepper */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <div className="flex-1 flex flex-col">
-                    <div className="flex items-center gap-0 md:gap-4 justify-center">
-                        {stages.map((stage, idx) => {
-                            const isActive = stage === lead.status;
-                            const isCompleted = idx < currentIndex;
-                            const isBlue = idx <= currentIndex;
-                            const isClickable = !isActive && typeof onStatusChange === 'function';
-                            let circleClasses = '';
-                            let textClasses = '';
-                            if (isBlue) {
-                                circleClasses = 'bg-blue-600 text-white border-blue-600';
-                                textClasses = 'text-blue-600';
-                            } else {
-                                circleClasses = 'bg-gray-100 text-gray-400 border-gray-200';
-                                textClasses = 'text-gray-400';
-                            }
-                            return (
-                                <React.Fragment key={stage}>
-                                    <div className="flex items-center min-w-[120px] gap-2">
-                                        <button
-                                            type="button"
-                                            disabled={!isClickable}
-                                            onClick={() => isClickable && onStatusChange(stage)}
-                                            className={`flex items-center justify-center rounded-full border-2 w-10 h-10 text-base font-medium transition-all duration-200 focus:outline-none ${circleClasses} ${isClickable ? 'cursor-pointer hover:scale-105 hover:shadow-md' : 'cursor-default'}`}
-                                            aria-label={`Go to ${stage}`}
-                                        >
-                                            {idx + 1}
-                                        </button>
-                                        <span className={`ml-1 text-sm ${textClasses}`}>{stage}</span>
-                                    </div>
-                                    {idx !== stages.length - 1 && (
-                                        <div className={`flex-1 h-1 ${idx === 0 ? 'ml-0' : 'mx-1'} ${idx < currentIndex ? 'bg-blue-600' : 'bg-gray-200'}`} />
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
-                    </div>
+            {/* Horizontal line with extra margin above */}
+            <div className="w-full border-t border-gray-200 mb-2" style={{ marginTop: 16 }} />
+            {/* Stepper Row with Priority/NextAction on left, stepper centered */}
+            <div className="flex flex-row items-center md:justify-between">
+                {/* Left: Priority and Next Action */}
+                <div className="flex items-center gap-4 min-w-[220px]">
+                    <span className="text-sm text-gray-700 font-medium">Priority: <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${priorityLabel === 'High' ? 'bg-orange-100 text-orange-700' : priorityLabel === 'Medium' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{priorityLabel}</span></span>
+                    <span className="text-sm text-gray-700 font-medium">Next Action: <span className="text-blue-700 underline cursor-pointer">{getNextAction()}</span></span>
+                </div>
+                {/* Center: Stepper, centered */}
+                <div className="flex items-center justify-center gap-2 py-2">
+                    {stages.map((stage, idx) => {
+                        const isActive = stage === lead.status;
+                        const isCompleted = idx < currentIndex;
+                        return (
+                            <React.Fragment key={stage}>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={isActive}
+                                        onClick={() => !isActive && onStatusChange(stage)}
+                                        className={`flex items-center justify-center rounded-full border-2 w-8 h-8 text-base font-medium transition-all duration-200 focus:outline-none ${isCompleted ? 'bg-black text-white border-black' : isActive ? 'bg-black text-white border-black' : 'bg-white text-gray-400 border-gray-300'} ${!isActive ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-default'}`}
+                                        aria-label={`Go to ${stage}`}
+                                    >
+                                        {isCompleted || isActive ? <FaCheck className="w-4 h-4" /> : idx + 1}
+                                    </button>
+                                    <span className={`text-sm font-semibold ${isActive ? 'text-black' : 'text-gray-500'}`}>{stage}</span>
+                                </div>
+                                {idx !== stages.length - 1 && (
+                                    <span className="mx-2 text-gray-300">&gt;</span>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
                 </div>
             </div>
         </div>
@@ -167,7 +161,7 @@ const formatRelativeTime = (date) => {
   return d.toLocaleString();
 };
 
-const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onScheduleActivity, conversionData, showConversionDetails, onToggleConversionDetails, onConversionFieldChange, activities, onEditActivity, onDeleteActivity, onMarkDone, timelineEvents, onAddTimelineEvent, notes = [], onAddNote }) => {
+const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onScheduleActivity, conversionData, showConversionDetails, onToggleConversionDetails, onConversionFieldChange, activities, onEditActivity, onDeleteActivity, onMarkDone, timelineEvents, onAddTimelineEvent, notes = [], onAddNote, onEditToggle }) => {
     const [isLoggingNote, setIsLoggingNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
     const [previewFile, setPreviewFile] = useState(null); // for file preview popup
@@ -256,129 +250,64 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
 
     return (
         <div className="flex-grow ">
-            {/* Info Cards Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                {/* Expected Budget */}
-                <div className="bg-white rounded-xl shadow flex flex-col items-center justify-center py-6 px-4 border border-blue-50">
-                    <div className="flex items-center gap-2 text-blue-600 text-2xl font-bold">
-                        <FaRupeeSign />
-                        <span>{lead.budget ? Number(lead.budget).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '₹0'}</span>
-                    </div>
-                    <span className="text-xs text-gray-500 mt-1">Expected Budget</span>
-                    </div>
-                {/* Priority */}
-                <div className="bg-white rounded-xl shadow flex flex-col items-center justify-center py-6 px-4 border border-blue-50">
-                    <div className="flex items-center gap-1 text-blue-600 text-xl font-bold">
-                        <FaBullseye />
-                        <span>{priorityLabel}</span>
-                    </div>
-                    <div className="flex gap-1 mt-1">{renderStars(lead.rating)}</div>
-                    <span className="text-xs text-gray-500 mt-1">Priority</span>
-                    </div>
-                {/* Next Action */}
-                <div className="bg-white rounded-xl shadow flex flex-col items-center justify-center py-6 px-4 border border-blue-50">
-                    <div className="flex items-center gap-2 text-blue-600 text-xl font-bold">
-                        <FaTasks />
-                        <span>
-                          {nextActivity
-                            ? nextActivity.summary
-                            : <span className="text-gray-400 font-normal">No pending action</span>}
-                        </span>
-                </div>
-                    <span className="text-xs text-gray-500 mt-1">Next Action</span>
-                    </div>
-                {/* Overdue */}
-                <div className="bg-white rounded-xl shadow flex flex-col items-center justify-center py-6 px-4 border border-blue-50">
-                    <div className={`flex items-center gap-2 text-xl font-bold ${overdueActivity ? 'text-red-600' : 'text-blue-600'}`}> 
-                        <FaClock />
-                        <span>
-                          {overdueActivity
-                            ? 'Overdue'
-                            : 'On Track'}
-                        </span>
-                    </div>
-                    <span className="text-xs text-gray-500 mt-1">
-                      {overdueActivity
-                        ? `Due: ${formatDateTime(overdueActivity.dueDate, overdueActivity.dueTime)}`
-                        : nextActivity
-                          ? `Due: ${formatDateTime(nextActivity.dueDate, nextActivity.dueTime)}`
-                          : 'No activities'}
-                    </span>
-                    </div>
-                </div>
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: Project Info, Tabs, Notes */}
                 <div className="lg:col-span-2 flex flex-col gap-6">
                     {/* Project Information Card */}
                     <div className="bg-white rounded-xl shadow p-6 border border-blue-50 mb-2">
-                        <div className="mb-4">
-                            <h3 className="text-lg font-bold text-gray-900 mb-2">Project Information</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-gray-900">Project Details</h3>
+                            <button
+                                onClick={onEditToggle}
+                                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md text-sm font-semibold shadow-sm hover:bg-gray-100 transition"
+                            >
+                                <FaPencilAlt className="w-4 h-4" /> Edit
+                            </button>
+                        </div>
+                        <div className="border border-gray-200 rounded-lg p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-12">
+                                {/* Column 1 */}
+                                <div className="flex flex-col gap-6">
+                                    <div>
+                                        <div className="font-semibold text-sm mb-1">Project Type</div>
+                                        <div className="text-base text-gray-900">{lead.projectType || <span className='text-gray-400'>N/A</span>}</div>
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-sm mb-1">Property Type</div>
+                                        <div className="text-base text-gray-900">{lead.propertyType || <span className='text-gray-400'>N/A</span>}</div>
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-sm mb-1">Address</div>
+                                        <div className="text-base text-gray-900">{lead.address || <span className='text-gray-400'>N/A</span>}</div>
+                                    </div>
+                                </div>
+                                {/* Column 2 */}
+                                <div className="flex flex-col gap-6">
+                                    <div>
+                                        <div className="font-semibold text-sm mb-1">Expected Closing Date</div>
+                                        <div className="text-base text-gray-900">{lead.nextCall ? new Date(lead.nextCall).toLocaleDateString() : <span className='text-gray-400'>N/A</span>}</div>
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-sm mb-1">Budget</div>
+                                        <div className="text-base text-gray-900">
+                                            <FaRupeeSign className="inline mr-1 text-gray-400" />
+                                            {lead.budget ? Number(lead.budget).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : <span className='text-gray-400'>N/A</span>}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-sm mb-1">Lead Source <span className="text-red-500">*</span></div>
+                                        <div className="text-base text-gray-900">{lead.leadSource || <span className='text-gray-400'>N/A</span>}</div>
+                                    </div>
+                                </div>
+                                {/* Column 3 */}
+                                <div className="flex flex-col gap-6">
+                                    <div>
+                                        <div className="font-semibold text-sm mb-1">Design Style</div>
+                                        <div className="text-base text-gray-900">{lead.designStyle || <span className='text-gray-400'>N/A</span>}</div>
+                                    </div>
+                                </div>
                             </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                                <div className="text-xs text-gray-500 mb-1">Project Type</div>
-                                {isEditing ? (
-                                    <select
-                                        className="w-full p-2 border rounded-md bg-gray-50 text-gray-800"
-                                        value={editedFields.projectType}
-                                        onChange={e => onFieldChange('projectType', e.target.value)}
-                                    >
-                                        <option value="">Select Project Type</option>
-                                        {projectTypes.map(type => (
-                                            <option key={type} value={type}>{type}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <div className="text-base font-semibold text-gray-900">{lead.projectType || <span className='text-gray-400'>N/A</span>}</div>
-                                )}
-                    </div>
-                    <div>
-                                <div className="text-xs text-gray-500 mb-1">Property Type</div>
-                                {isEditing ? (
-                                    <select
-                                        className="w-full p-2 border rounded-md bg-gray-50 text-gray-800"
-                                        value={editedFields.propertyType}
-                                        onChange={e => onFieldChange('propertyType', e.target.value)}
-                                    >
-                                        <option value="">Select Property Type</option>
-                                        {propertyTypes.map(type => (
-                                            <option key={type} value={type}>{type}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <div className="text-base font-semibold text-gray-900">{lead.propertyType || <span className='text-gray-400'>N/A</span>}</div>
-                                )}
-                    </div>
-                            <div className="mt-4">
-                                <div className="text-xs text-gray-500 mb-1">Location</div>
-                                {isEditing ? (
-                                    <input
-                                        type="text"
-                                        className="w-full p-2 border rounded-md bg-gray-50 text-gray-800"
-                                        value={editedFields.address}
-                                        onChange={e => onFieldChange('address', e.target.value)}
-                                    />
-                                ) : (
-                    <div className="flex items-center gap-2">
-                                        <FaMapMarkerAlt className="text-gray-400" />
-                                        <span className="text-sm text-gray-800">{lead.address || <span className='text-gray-400'>N/A</span>}</span>
-                    </div>
-                                )}
-                </div>
-                            <div className="mt-4">
-                                <div className="text-xs text-gray-500 mb-1">Expected Closing</div>
-                                {isEditing ? (
-                                    <input
-                                        type="date"
-                                        className="w-full p-2 border rounded-md bg-gray-50 text-gray-800"
-                                        value={editedFields.nextCall || ''}
-                                        onChange={e => onFieldChange('nextCall', e.target.value)}
-                                    />
-                                ) : (
-                                    <div className="text-base text-gray-800">{lead.nextCall ? new Date(lead.nextCall).toLocaleDateString() : <span className='text-gray-400'>No closing date set</span>}</div>
-                                )}
-            </div>
                         </div>
                     </div>
                     {/* Tabs and Tab Content */}
@@ -460,53 +389,70 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
                 </div>
             )}
                         {activeTab === 'activity' && (
-                            <div>
-                                <div className="mb-2 flex items-center gap-2">
-                                    {/* <span className="text-lg font-bold text-blue-700">Activity Log</span> */}
-                                </div>
-                                {timelineEvents && timelineEvents.length > 0 ? (
-                                    <div className="relative pl-8">
-                                        {/* Most Recent label and arrow in normal flow */}
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <svg width="22" height="22" fill="none" viewBox="0 0 22 22"><path d="M11 19V5M11 5l-4 4M11 5l4 4" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                            <span className="text-xs text-blue-600 font-semibold">Most Recent</span>
-                                        </div>
-                                        {/* Timeline line starts below the label */}
-                                        <div className="absolute left-3 top-10 bottom-0 w-1 bg-blue-100 rounded-full" />
-                                        <ul className="flex flex-col gap-4">
-                                            {(viewMore ? timelineEvents : timelineEvents.slice(-5)).map((event, idx, arr) => (
-                                                <li key={event.id} className="relative flex gap-4 items-start">
-                                                    <span className="absolute -left-5 top-4 w-3.5 h-3.5 rounded-full bg-blue-400 border-2 border-white shadow-sm" />
+                            <div className="relative pl-8">
+                                {/* Timeline vertical line */}
+                                <div className="absolute left-3 top-0 bottom-0 w-1 bg-blue-100 rounded-full" />
+                                <ul className="flex flex-col gap-6">
+                                    {activities && activities.length > 0 ? (
+                                        activities.map((activity, idx) => {
+                                            const isDone = activity.status === 'done';
+                                            // Icon and badge color
+                                            let icon = <FaTasks />;
+                                            let badge = 'To-Do';
+                                            let badgeColor = 'bg-gray-200 text-gray-700';
+                                            if (activity.type === 'Call') { icon = <FaPhone />; badge = 'Call'; badgeColor = 'bg-gray-100 text-blue-700'; }
+                                            if (activity.type === 'Email') { icon = <FaEnvelope />; badge = 'Email'; badgeColor = 'bg-green-100 text-green-700'; }
+                                            if (activity.type === 'Meeting') { icon = <FaUsers />; badge = 'Meeting'; badgeColor = 'bg-blue-100 text-blue-700'; }
+                                            if (activity.type === 'Document') { icon = <FaFileAlt />; badge = 'Document'; badgeColor = 'bg-yellow-100 text-yellow-700'; }
+                                            return (
+                                                <li key={activity.id} className="relative flex gap-4 items-start">
+                                                    {/* Timeline dot */}
+                                                    <span className={`absolute -left-5 top-4 w-4 h-4 rounded-full border-2 flex items-center justify-center ${isDone ? 'bg-green-100 border-green-400' : 'bg-white border-blue-400'}`}>{isDone ? <FaCheck className="text-green-500 text-xs" /> : icon}</span>
                                                     <div className="flex-1 bg-white rounded-lg shadow p-4 border border-blue-50">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <FaUserCircle className="text-blue-400" />
-                                                            <span className="font-semibold text-gray-700">{event.user}</span>
-                                                            <span className="text-xs text-gray-400 ml-2">{event.time}</span>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${badgeColor}`}>{badge}</span>
+                                                                <span className="font-bold text-gray-900 text-base">{activity.summary}</span>
+                                                            </div>
+                                                            <span className="text-xs text-gray-500 font-medium">{activity.dueDate}{activity.dueTime ? ' ' + activity.dueTime : ''}</span>
                                                         </div>
-                                                        <div className="text-base text-blue-700 font-semibold mb-1">{event.action}</div>
-                                                        <div className="text-sm text-gray-700">{event.details}</div>
+                                                        {activity.callPurpose && (
+                                                            <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Purpose:</span> {activity.callPurpose}</div>
+                                                        )}
+                                                        {activity.callOutcome && (
+                                                            <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Outcome:</span> {activity.callOutcome}</div>
+                                                        )}
+                                                        {activity.notes && (
+                                                            <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Notes:</span> {activity.notes}</div>
+                                                        )}
+                                                        {/* For Meeting type, show meetingVenue, attendees, meetingLink */}
+                                                        {activity.type === 'Meeting' && (
+                                                            <>
+                                                                {activity.meetingVenue && <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Venue:</span> {activity.meetingVenue}</div>}
+                                                                {activity.attendees && activity.attendees.length > 0 && <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Attendees:</span> {activity.attendees.map(a => a.name).join(', ')}</div>}
+                                                                {activity.meetingLink && <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Link:</span> <a href={activity.meetingLink} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">{activity.meetingLink}</a></div>}
+                                                            </>
+                                                        )}
+                                                        {/* Action icons */}
+                                                        <div className="flex items-center gap-2 mt-2">
+                                                            {isDone ? (
+                                                                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">Done</span>
+                                                            ) : (
+                                                                <>
+                                                                    <button onClick={() => onMarkDone(activity.id)} title="Mark as Done" className="p-1.5 rounded-full hover:bg-green-100 text-green-600 transition"><FaCheck size={14} /></button>
+                                                                    <button onClick={() => onEditActivity(activity)} title="Edit" className="p-1.5 rounded-full hover:bg-blue-100 text-blue-600 transition"><FaPencilAlt size={14} /></button>
+                                                                    <button onClick={() => onDeleteActivity(activity.id)} title="Delete" className="p-1.5 rounded-full hover:bg-red-100 text-red-500 transition"><FaTimes size={14} /></button>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </li>
-                                            ))}
-                                        </ul>
-                                        <div className="mt-6 flex items-center gap-1 text-xs text-gray-400">
-                                            <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M8 14V2m0 0l-3 3m3-3l3 3" stroke="#a3a3a3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                            Oldest
-                                        </div>
-                                        {timelineEvents.length > 5 && (
-                                            <div className="flex justify-center mt-4">
-                        <button
-                                                    className="px-4 py-1.5 rounded bg-blue-50 text-blue-700 font-semibold text-xs border border-blue-200 hover:bg-blue-100 transition"
-                                                    onClick={() => setViewMore(v => !v)}
-                        >
-                                                    {viewMore ? 'View Less' : 'View More'}
-                        </button>
-                                            </div>
-                        )}
-                    </div>
-                                ) : (
-                                    <div className="text-gray-400 text-sm">No activity log yet.</div>
-                                )}
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-gray-400 text-sm">No activity log yet.</div>
+                                    )}
+                                </ul>
                             </div>
                         )}
                         {activeTab === 'conversion' && (
@@ -594,64 +540,32 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
                 </div>
                 {/* Right: Contact Info, Team Assignment, Planned Activities */}
                 <div className="flex flex-col gap-6">
-                    {/* Contact Information Card */}
-                    <div className="bg-white rounded-xl shadow p-9 border border-blue-50 mb-3.5">
-                        <div className="mb-4">
-                            <h3 className="text-base font-bold text-gray-900 mb-2">Contact Information</h3>
-                        </div>
-                        <div className="flex flex-row items-start gap-6">
-                            {/* Left: Name & Phone */}
-                            <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <FaUser className="text-gray-400" />
-                                    {isEditing ? (
-                                    <input
-                                        type="text"
-                                            className="font-semibold text-gray-900 truncate w-full p-2 border rounded-md bg-gray-50"
-                                            value={editedFields.name}
-                                            onChange={e => onFieldChange('name', e.target.value)}
-                                    />
+                    {/* Contact Details Card */}
+                    <div className="bg-white rounded-xl shadow p-6 border border-blue-50 mb-4">
+                        <h3 className="text-base font-bold text-gray-900 mb-4">Contact Details</h3>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-2">
+                                <FaUser className="text-gray-400" />
+                                <span className="font-semibold text-gray-900">{lead.name || <span className='text-gray-400'>N/A</span>}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <FaPhone className="text-gray-400" />
+                                {lead.contactNumber ? (
+                                    <a href={`tel:+91${lead.contactNumber}`} className="text-blue-600 font-medium hover:underline">+91 {lead.contactNumber}</a>
                                 ) : (
-                                        <span className="font-semibold text-gray-900 truncate">{lead.name || <span className='text-gray-400'>N/A</span>}</span>
+                                    <span className="text-gray-400">N/A</span>
                                 )}
                             </div>
-                                <div className="text-xs text-gray-500 mb-1.5">Primary Contact</div>
-                                <div className="flex items-center gap-2">
-                                    <FaPhone className="text-green-500" />
-                                    {isEditing ? (
-                                    <input
-                                        type="text"
-                                            className="text-gray-900 truncate w-full p-2 border rounded-md bg-gray-50"
-                                            value={editedFields.contactNumber}
-                                            onChange={e => onFieldChange('contactNumber', e.target.value)}
-                                    />
+                            <div className="flex items-center gap-2">
+                                <FaEnvelope className="text-gray-400" />
+                                {lead.email ? (
+                                    <a href={`mailto:${lead.email}`} className="text-blue-600 font-medium hover:underline">{lead.email}</a>
                                 ) : (
-                                        <span className="text-gray-900 truncate">{lead.contactNumber ? `+91 ${lead.contactNumber}` : <span className='text-gray-400'>N/A</span>}</span>
+                                    <span className="text-gray-400">N/A</span>
                                 )}
                             </div>
-                                <div className="text-xs text-gray-500">Mobile</div>
-                            </div>
-                            {/* Divider */}
-                            <div className="w-px bg-gray-200 h-12 mx-2 self-center" />
-                            {/* Right: Email */}
-                            <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <FaEnvelope className="text-blue-500" />
-                                    {isEditing ? (
-                                    <input
-                                            type="email"
-                                            className="text-gray-900 truncate w-full p-2 border rounded-md bg-gray-50"
-                                            value={editedFields.email}
-                                            onChange={e => onFieldChange('email', e.target.value)}
-                                    />
-                                ) : (
-                                        <span className="text-gray-900 truncate">{lead.email || <span className='text-gray-400'>N/A</span>}</span>
-                                )}
-                            </div>
-                                <div className="text-xs text-gray-500">Email</div>
                         </div>
-                </div>
-                        </div>
+                    </div>
                     {/* Team Assignment Card */}
                     <div className="bg-white rounded-xl shadow p-6 border border-blue-50 mb-4">
                     <h3 className="text-base font-bold text-gray-900 mb-4">Team Assignment</h3>
@@ -734,8 +648,6 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
 };
 
 const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity }) => {
-  if (!isOpen) return null;
-
   const [activeType, setActiveType] = useState('To-Do');
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueTime, setDueTime] = useState('');
@@ -761,6 +673,8 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
       setMeetingVenue(initialData.meetingVenue || 'In Office');
     }
   }, [initialData, isOpen]);
+
+  if (!isOpen) return null;
 
   const activityTypes = [
     { name: 'To-Do', icon: <FaCheck /> },
@@ -979,9 +893,9 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
 };
 
 const LostReasonModal = ({ isOpen, onClose, onSubmit }) => {
-    if (!isOpen) return null;
-
     const [reason, setReason] = useState('');
+
+    if (!isOpen) return null;
 
     const handleSubmit = () => {
         if (reason) {
@@ -1023,6 +937,9 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
         bookingForm: null,
     });
     const [previewFile, setPreviewFile] = useState(null); // { file: File, type: string } | null
+    
+    if (!isOpen) return null;
+
     const handleChange = (e) => {
         const { name, value, files } = e.target;
         if (files) {
@@ -1049,7 +966,6 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
         e.preventDefault();
         onConfirm(form);
     };
-    if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-8 relative">

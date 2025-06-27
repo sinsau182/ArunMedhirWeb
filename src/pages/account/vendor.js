@@ -16,7 +16,7 @@ const Vendor = () => {
 
     useEffect(() => {
       dispatch(fetchVendors());
-    }, []);
+    }, [dispatch]);
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };

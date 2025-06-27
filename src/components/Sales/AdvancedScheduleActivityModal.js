@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { FaCheck, FaEnvelope, FaPhone, FaUsers, FaFileAlt, FaTimes } from 'react-icons/fa';
 
 const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onSuccess }) => {
-  if (!isOpen) return null;
-
   const [activeType, setActiveType] = useState('To-Do');
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueTime, setDueTime] = useState('');
@@ -29,6 +27,8 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
       setMeetingVenue(initialData.meetingVenue || 'In Office');
     }
   }, [initialData, isOpen]);
+
+  if (!isOpen) return null;
 
   const activityTypes = [
     { name: 'To-Do', icon: <FaCheck /> },

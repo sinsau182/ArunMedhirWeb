@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaSave, FaTimes, FaPlus, FaTrash, FaChevronDown, FaChevronRight, FaBuilding, FaUser, FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCreditCard, FaFileAlt, FaInfoCircle } from 'react-icons/fa';
-import Sidebar from '../Sidebar';
-import HradminNavbar from '../HradminNavbar';
 import { useDispatch, useSelector } from 'react-redux';
 import { addVendor } from '../../redux/slices/vendorSlice';
 import { toast } from 'sonner';
@@ -13,14 +11,12 @@ const steps = [
 ];
 
 const AddVendorForm = ({ onSubmit, onCancel }) => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.vendors);
   const [step, setStep] = useState(1);
-
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
+  const formRef = useRef(null);
+  const [isAtBottom, setIsAtBottom] = useState(false);
+  const sentinelRef = useRef(null);
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -302,30 +298,29 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
   const renderStepContent = () => {
     switch (step) {
       case 1:
-  return (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
-            <div className="p-6">
-              <div className="flex items-center mb-6">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <FaBuilding className="text-gray-400" /> Basic Details
-                </h2>
-              </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Vendor Name */}
+        return (
+          <>
+            <div className="flex items-center mb-6">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <FaBuilding className="text-gray-400" /> Basic Details
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              {/* Vendor Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Name <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                name="vendorName"
-                value={formData.vendorName}
-                onChange={handleChange}
+                <input
+                  type="text"
+                  name="vendorName"
+                  value={formData.vendorName}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="Enter vendor name"
-              />
-            </div>
+                  placeholder="Enter vendor name"
+                />
+              </div>
               {/* Vendor Type */}
-            <div>
+              <div className="flex flex-col justify-end">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Type <span className="text-red-500">*</span></label>
                 <div className="flex items-center gap-6 h-full">
                   <label className="inline-flex items-center">
@@ -335,61 +330,61 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                   <label className="inline-flex items-center">
                     <input type="radio" name="companyType" value="Individual" checked={formData.companyType === 'Individual'} onChange={handleChange} className="form-radio text-blue-600" />
                     <span className="ml-2">Individual</span>
-              </label>
+                  </label>
                 </div>
               </div>
               {/* Vendor Category */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Category <span className="text-red-500">*</span></label>
-              <select
+                <select
                   name="vendorCategory"
                   value={formData.vendorCategory || ''}
-                onChange={handleChange}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
+                >
                   <option value="">Select vendor category</option>
                   <option value="Goods">Goods</option>
                   <option value="Services">Services</option>
                   <option value="Consultant">Consultant</option>
                   <option value="Contractor">Contractor</option>
                   {/* Add more categories as needed */}
-              </select>
-            </div>
-            {/* GSTIN */}
-            <div>
+                </select>
+              </div>
+              {/* GSTIN */}
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">GSTIN <span className="text-gray-400 ml-1"><FaInfoCircle title="15-digit Goods and Services Tax Identification Number" /></span></label>
-              <input
-                type="text"
-                name="gstin"
-                value={formData.gstin}
-                onChange={handleChange}
+                <input
+                  type="text"
+                  name="gstin"
+                  value={formData.gstin}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Enter GSTIN"
                   maxLength={15}
-              />
+                />
                 <div className="text-xs text-gray-400 mt-1">15-digit Goods and Services Tax Identification Number</div>
-            </div>
-            {/* PAN */}
-            <div>
+              </div>
+              {/* PAN */}
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">PAN <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                name="pan"
-                value={formData.pan}
-                onChange={handleChange}
+                <input
+                  type="text"
+                  name="pan"
+                  value={formData.pan}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Enter PAN"
                   maxLength={10}
-              />
+                />
                 <div className="text-xs text-gray-400 mt-1">10-character Permanent Account Number</div>
-            </div>
+              </div>
               {/* Tax Treatment */}
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tax Treatment</label>
-              <select
+                <select
                   name="taxTreatment"
                   value={formData.taxTreatment || ''}
-                onChange={handleChange}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
                   <option value="">Select tax treatment</option>
@@ -398,183 +393,174 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                   <option value="Composition">Composition</option>
                   <option value="Consumer">Consumer</option>
                   {/* Add more as needed */}
-              </select>
+                </select>
               </div>
             </div>
-            </div>
-            </div>
+          </>
         );
       case 2:
         return (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
-            <div className="p-6">
-              <div className="flex items-center mb-6">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <FaUser className="text-gray-400" /> Contact & Address Information
-                </h2>
-              </div>
-
-              {/* Contact Information Section */}
-              <div className="flex items-center mb-4">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* Contact Name */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Name <span className="text-red-500">*</span></label>
-              <input
-                  type="text"
-                  name="contactName"
-                  value={formData.contactName || ''}
-                onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter full name"
-              />
-            </div>
-              {/* Email Address */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address <span className="text-red-500">*</span></label>
-              <input
-                type="email"
-                  name="contactEmail"
-                  value={formData.contactEmail || ''}
-                onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="contact@vendor.com"
-              />
-              </div>
-              {/* Phone Number */}
-              <div className="flex gap-2 items-end">
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Contact Information (Left Column) */}
+              <div>
+                <div className="flex items-center mb-4">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                  <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+                </div>
+                <div className="space-y-6">
+                  {/* Contact Name */}
                   <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number <span className="text-red-500">*</span></label>
-                  <div className="flex">
-                    <select className="border border-gray-300 rounded-l-lg px-3 py-2 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" disabled>
-                      <option>+91</option>
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Contact Name <span className="text-red-500">*</span></label>
                     <input
-                      type="tel"
-                      name="contactPhone"
-                      value={formData.contactPhone || ''}
+                      type="text"
+                      name="contactName"
+                      value={formData.contactName || ''}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 text-base border-t border-b border-r border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Enter phone number"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Enter full name"
+                    />
+                  </div>
+                  {/* Email Address */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      name="contactEmail"
+                      value={formData.contactEmail || ''}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="contact@vendor.com"
+                    />
+                  </div>
+                  {/* Phone Number */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number <span className="text-red-500">*</span></label>
+                    <div className="flex">
+                      <select className="border border-gray-300 rounded-l-lg px-3 py-2 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" disabled>
+                        <option>+91</option>
+                      </select>
+                      <input
+                        type="tel"
+                        name="contactPhone"
+                        value={formData.contactPhone || ''}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 text-base border-t border-b border-r border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+                  </div>
+                  {/* Alternate Phone Number */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Alternate Phone Number</label>
+                    <div className="flex">
+                      <select className="border border-gray-300 rounded-l-lg px-3 py-2 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" disabled>
+                        <option>+91</option>
+                      </select>
+                      <input
+                        type="tel"
+                        name="alternatePhone"
+                        value={formData.alternatePhone || ''}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 text-base border-t border-b border-r border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Enter alternate phone number"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Address Information (Right Column) */}
+              <div>
+                <div className="flex items-center mb-4">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
+                  <h3 className="text-lg font-semibold text-gray-900">Address Information</h3>
+                </div>
+                <div className="space-y-6">
+                  {/* Address Line 1 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Address Line 1 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="addressLine1"
+                      value={formData.addressLine1 || ""}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Building name, street address"
+                    />
+                  </div>
+                  {/* Address Line 2 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Address Line 2
+                    </label>
+                    <input
+                      type="text"
+                      name="addressLine2"
+                      value={formData.addressLine2 || ""}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Apartment, suite, unit, building, floor, etc."
+                    />
+                  </div>
+                  {/* City & State/Province */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        City <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={formData.city || ""}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Enter city"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        State/Province <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="state"
+                        value={formData.state || ""}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Enter state or province"
+                      />
+                    </div>
+                  </div>
+                  {/* PIN/ZIP Code */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      PIN/ZIP Code <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="pinCode"
+                      value={formData.pinCode || ""}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Enter PIN or ZIP code"
                     />
                   </div>
                 </div>
               </div>
-              {/* Mobile Number */}
-              <div className="flex gap-2 items-end">
-                  <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
-                  <div className="flex">
-                    <select className="border border-gray-300 rounded-l-lg px-3 py-2 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" disabled>
-                      <option>+91</option>
-                    </select>
-                    <input
-                      type="tel"
-                      name="mobile"
-                      value={formData.mobile || ''}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-base border-t border-b border-r border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Enter mobile number"
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
-
-            {/* Address Information Section */}
-            <div className="flex items-center mb-4 mt-8">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
-              <h3 className="text-lg font-semibold text-gray-900">Address Information</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Address Line 1 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Address Line 1 <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="addressLine1"
-                  value={formData.addressLine1 || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Building name, street address"
-                />
-              </div>
-              {/* Address Line 2 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Address Line 2</label>
-                <input
-                  type="text"
-                  name="addressLine2"
-                  value={formData.addressLine2 || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Apartment, suite, unit, building, floor, etc."
-                />
-          </div>
-              {/* City */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">City <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                  name="city"
-                  value={formData.city || ''}
-                onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter city"
-              />
-            </div>
-              {/* State/Province */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">State/Province <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                  name="state"
-                  value={formData.state || ''}
-                onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter state or province"
-              />
-            </div>
-              {/* PIN/ZIP Code */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">PIN/ZIP Code <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                  name="pinCode"
-                  value={formData.pinCode || ''}
-                onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter PIN or ZIP code"
-              />
-              </div>
-            </div>
-            </div>
-            </div>
+          </>
         );
       case 3:
         return (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
-            <div className="p-6">
-              <div className="flex items-center mb-6">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <FaCreditCard className="text-gray-400" /> Compliance & Banking
-                </h2>
-              </div>
-              <p className="text-gray-500 mb-6">
-                Please provide the vendor's banking information for payments and transactions.
-              </p>
-              {/* Bank Account Information Section */}
-              <div className="flex items-center mb-4">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
-                <h3 className="text-lg font-semibold text-gray-900">Bank Account Information</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Account Holder Name */}
+          <>
+            <div className="flex items-center mb-2 mt-0">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
+              <h3 className="text-lg font-semibold text-gray-900">Bank Account Information</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 space-y-0">
+              {/* Account Holder Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder Name <span className="text-red-500">*</span></label>
                 <input
@@ -599,14 +585,14 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                 />
               </div>
               {/* Bank Name */}
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name <span className="text-red-500">*</span></label>
-              <select
+                <select
                   name="bankName"
                   value={formData.bankName || ''}
-                onChange={handleChange}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
+                >
                   <option value="">Select bank</option>
                   <option value="SBI">State Bank of India</option>
                   <option value="HDFC">HDFC Bank</option>
@@ -614,24 +600,24 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                   <option value="Axis">Axis Bank</option>
                   <option value="PNB">Punjab National Bank</option>
                   {/* Add more banks as needed */}
-              </select>
-            </div>
+                </select>
+              </div>
               {/* Account Type */}
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Account Type <span className="text-red-500">*</span></label>
-              <select
+                <select
                   name="accountType"
                   value={formData.accountType || ''}
-                onChange={handleChange}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
+                >
                   <option value="">Select account type</option>
                   <option value="Savings">Savings</option>
                   <option value="Current">Current</option>
                   <option value="OD">Overdraft</option>
                   {/* Add more types as needed */}
-              </select>
-            </div>
+                </select>
+              </div>
               {/* Account Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Account Number <span className="text-red-500">*</span></label>
@@ -671,7 +657,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                 <div className="text-xs text-gray-400 mt-1">11-character alphanumeric code</div>
               </div>
               {/* UPI ID */}
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">UPI ID <span className="text-xs text-gray-400 font-normal ml-1">(Optional)</span></label>
                 <input
                   type="text"
@@ -684,8 +670,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                 <div className="text-xs text-gray-400 mt-1">For quick digital payments</div>
               </div>
             </div>
-            </div>
-            </div>
+          </>
         );
       default:
         return null;
@@ -694,21 +679,36 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
 
   // --- Progress Bar ---
   const renderProgressBar = () => (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-6">
       <div className="flex items-center justify-between">
         {steps.map((s, idx) => {
           const isActive = step === idx + 1;
           const isCompleted = step > idx + 1;
+          const isClickable = true; // allow clicking any step
           return (
             <div key={s.label} className="flex-1 flex items-center">
-              <div className="flex flex-col items-center w-[60%]"> 
-                <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all duration-300 ${isActive ? 'bg-blue-600 border-blue-600 text-white' : isCompleted ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}>
+              <button
+                type="button"
+                onClick={() => isClickable && setStep(idx + 1)}
+                className={`flex flex-col items-center w-[60%] focus:outline-none group`}
+                tabIndex={0}
+                aria-current={isActive ? 'step' : undefined}
+              >
+                <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all duration-300
+                  ${isActive || isCompleted ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300 text-gray-400'}
+                  group-hover:border-blue-500 group-hover:text-blue-600
+                `}>
                   <span className="font-bold text-sm">{idx + 1}</span>
-              </div>
-                <span className={`mt-2 text-xs font-medium ${isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`}>{s.label}</span>
-              </div>
+                </div>
+                <span className={`mt-2 text-xs font-medium
+                  ${isActive || isCompleted ? 'text-blue-600' : 'text-gray-500'}
+                  group-hover:text-blue-600
+                `}>{s.label}</span>
+              </button>
               {idx < steps.length - 1 && (
-                <div className={`flex-1 h-1 mx-4 rounded ${step > idx + 1 ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+                <div className={`flex-1 h-1 mx-4 rounded transition-all duration-300
+                  ${(idx + 1) < step ? 'bg-blue-600' : 'bg-gray-200'}
+                `}></div>
               )}
             </div>
           );
@@ -717,10 +717,32 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
     </div>
   );
 
-  // --- Navigation Buttons ---
-  const renderNavButtons = () => (
-    <div className="border-t border-gray-200 bg-white px-6 py-4 sticky bottom-0 z-10">
-      <div className="flex justify-between items-center">
+  useEffect(() => {
+    const observer = new window.IntersectionObserver(
+      ([entry]) => setIsAtBottom(entry.isIntersecting),
+      { root: null, threshold: 0.99 }
+    );
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  console.log(steps)
+  console.log(step)
+
+  return (
+    <form ref={formRef} className="w-full bg-white border border-gray-200 shadow-lg p-0 flex flex-col relative pb-6">
+      {/* Progress Bar */}
+      <div className="w-full px-8 pt-2">
+        {renderProgressBar()}
+      </div>
+      {/* Step Content */}
+      <div className="w-full px-8 pb-8 pt-2 flex-1">
+        {renderStepContent()}
+      </div>
+      {/* Sentinel for IntersectionObserver */}
+      <div ref={sentinelRef} style={{ height: 1 }} />
+      {/* Sticky Action Bar (full width, flush with form edges) */}
+      <div className="sticky bottom-0 z-20 w-full bg-white px-8 py-2 flex justify-between items-center">
         <button
           type="button"
           onClick={() => setStep((s) => Math.max(1, s - 1))}
@@ -737,78 +759,25 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
             Save Draft
           </button>
           {step < steps.length ? (
-              <button
-                type="button"
+            <button
+              type="button"
               onClick={() => setStep((s) => Math.min(steps.length, s + 1))}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
+            >
               Next
-              </button>
+            </button>
           ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
+            <button
+              type="button"
+              onClick={handleSubmit}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
+            >
               Submit
-              </button>
+            </button>
           )}
         </div>
       </div>
-    </div>
-  );
-
-  console.log(steps)
-  console.log(step)
-
-  return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        toggleSidebar={toggleSidebar}
-        currentRole={"accounting"}
-      />
-      {/* Navbar */}
-      <HradminNavbar />
-      {/* Main Content */}
-      <div
-        className={`flex-1 ${
-          isSidebarCollapsed ? "ml-16" : "ml-56"
-        } transition-all duration-300 overflow-x-auto`}
-      >
-        <div className="min-h-screen bg-gray-50">
-          {/* Fixed Header */}
-          <div className="sticky top-16 z-10 bg-white/80 backdrop-blur-md border-b border-gray-200/50 shadow-sm">
-            <div className="px-8 py-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <FaBuilding className="text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-gray-900">Add New Vendor</h1>
-                    <p className="text-sm text-gray-500">Register vendor with GST and compliance details</p>
-                  </div>
-                </div>
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full font-medium">Draft</span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Form Content */}
-          <div className="px-4 py-8 max-w-7xl mx-auto pb-24">
-            {/* Progress Bar */}
-            {renderProgressBar()}
-            {/* Step Content */}
-            {renderStepContent()}
-          </div>
-          
-          {/* Navigation Buttons - Sticky Bottom */}
-          {renderNavButtons()}
-        </div>
-      </div>
-    </div>
+    </form>
   );
 };
 

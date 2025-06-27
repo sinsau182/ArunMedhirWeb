@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import Sidebar from '../Sidebar';
-import HradminNavbar from '../HradminNavbar';
 
 const BulkPaymentForm = ({ onSubmit, onCancel }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
   const [vendorSearch, setVendorSearch] = useState('');
   const vendorInputRef = useRef(null);
+  const [activeTab, setActiveTab] = useState('bills'); // 'bills' | 'notes'
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -208,276 +207,187 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        toggleSidebar={toggleSidebar}
-        currentRole="accounting"
-      />
-      <HradminNavbar />
-      
-      <div className={`flex-1 ${isSidebarCollapsed ? "ml-16" : "ml-56"} transition-all duration-300 overflow-auto`}>
-        {/* Header */}
-        <div className="bg-white shadow-sm border border-gray-200 rounded-lg mx-4 mt-20 mb-4 px-6 py-4" style={{
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-          background: '#f9fff9'
-        }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-lg">$</span>
+    <div className="w-full px-0">
+      <div className="space-y-6">
+        {/* Payment Details */}
+        <div>
+          <div className="flex items-center mb-6">
+            <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+            <h2 className="text-lg font-semibold text-gray-900">Payment Details</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left column */}
+            <div className="space-y-6">
+              {/* Vendor */}
+              <div className="relative" ref={vendorInputRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vendor <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      errors.vendor ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Select vendor"
+                    value={vendorSearch || formData.vendor}
+                    onChange={handleVendorInput}
+                    onFocus={() => setShowVendorDropdown(true)}
+                    autoComplete="off"
+                  />
+                  {showVendorDropdown && (
+                    <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {filteredVendors.map(vendor => (
+                        <div
+                          key={vendor.id}
+                          className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                          onClick={() => handleVendorSelect(vendor)}
+                        >
+                          <div className="font-medium text-gray-900">{vendor.name}</div>
+                          <div className="text-xs text-gray-500">{vendor.gstin}</div>
+                        </div>
+                      ))}
+                      {filteredVendors.length === 0 && (
+                        <div className="px-4 py-3 text-gray-400">No vendors found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {errors.vendor && <p className="text-red-500 text-xs mt-1">{errors.vendor}</p>}
               </div>
+              {/* Vendor GSTIN */}
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Add Vendor Payment</h1>
-                <p className="text-sm text-gray-500">Process bulk payments to vendors</p>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Vendor GSTIN</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                  value={formData.gstin}
+                  placeholder="Auto-filled from vendor"
+                  readOnly
+                />
+              </div>
+              {/* Bank Account */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bank Account</label>
+                <select
+                  name="bankAccount"
+                  value={formData.bankAccount}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                    errors.bankAccount ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">Select bank account</option>
+                  {bankAccounts.map(account => (
+                    <option key={account} value={account}>{account}</option>
+                  ))}
+                </select>
+                {errors.bankAccount && <p className="text-red-500 text-xs mt-1">{errors.bankAccount}</p>}
               </div>
             </div>
-            <button 
-              onClick={onCancel}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            {/* Right column */}
+            <div className="space-y-6">
+              {/* Payment Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  name="paymentDate"
+                  value={formData.paymentDate}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                    errors.paymentDate ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.paymentDate && <p className="text-red-500 text-xs mt-1">{errors.paymentDate}</p>}
+              </div>
+              {/* Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Method <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="paymentMethod"
+                  value={formData.paymentMethod}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                    errors.paymentMethod ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">Select payment method</option>
+                  {paymentMethods.map(method => (
+                    <option key={method} value={method}>{method}</option>
+                  ))}
+                </select>
+                {errors.paymentMethod && <p className="text-red-500 text-xs mt-1">{errors.paymentMethod}</p>}
+              </div>
+              {/* Payment Transaction ID (was Reference) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Transaction ID</label>
+                <input
+                  type="text"
+                  name="reference"
+                  value={formData.reference}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="e.g., June 2025 settlement"
+                />
+              </div>
+            </div>
+          </div>
+          {/* TDS/TCS Checkbox */}
+          <div className="mt-6">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                name="tdsApplied"
+                checked={formData.tdsApplied}
+                onChange={handleChange}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm text-gray-700">TDS/TCS Applied</span>
+            </label>
           </div>
         </div>
 
-        {/* Main Content Container - This will contain the bottom bar */}
-        <div className="max-w-6xl mx-auto px-4 mb-4">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            
-            {/* Form Content */}
-            <div className="p-6 space-y-6">
-              {/* Payment Details */}
+        {/* Bills & Notes Tabbed Section */}
+        <div className="w-full mt-8">
+          {/* Tab Buttons */}
+          <div className="flex border-b border-gray-200 mb-0">
+            <button
+              type="button"
+              className={`px-6 py-3 font-semibold text-lg focus:outline-none transition-colors border-b-2
+                ${activeTab === 'bills' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-blue-600'}`}
+              onClick={() => setActiveTab('bills')}
+              style={{ borderTopLeftRadius: 8, borderTopRightRadius: 0 }}
+            >
+              Bills
+            </button>
+            <button
+              type="button"
+              className={`px-6 py-3 font-semibold text-lg focus:outline-none transition-colors border-b-2
+                ${activeTab === 'notes' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-blue-600'}`}
+              onClick={() => setActiveTab('notes')}
+              style={{ borderTopLeftRadius: 0, borderTopRightRadius: 8 }}
+            >
+              Notes
+            </button>
+          </div>
+          {/* Tab Content */}
+          <div className="bg-white p-6 border border-t-0 border-gray-200 min-h-[300px]">
+            {activeTab === 'bills' && (
               <div>
                 <div className="flex items-center mb-6">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                  <h2 className="text-lg font-semibold text-gray-900">Payment Details</h2>
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                  <h2 className="text-lg font-semibold text-gray-900">Select Bills to Pay</h2>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Vendor */}
-                  <div className="relative" ref={vendorInputRef}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Vendor <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                      </div>
-                      <input
-                        type="text"
-                        className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                          errors.vendor ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        placeholder="Select vendor"
-                        value={vendorSearch || formData.vendor}
-                        onChange={handleVendorInput}
-                        onFocus={() => setShowVendorDropdown(true)}
-                        autoComplete="off"
-                      />
-                      {showVendorDropdown && (
-                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                          {filteredVendors.map(vendor => (
-                            <div
-                              key={vendor.id}
-                              className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-                              onClick={() => handleVendorSelect(vendor)}
-                            >
-                              <div className="font-medium text-gray-900">{vendor.name}</div>
-                              <div className="text-xs text-gray-500">{vendor.gstin}</div>
-                            </div>
-                          ))}
-                          {filteredVendors.length === 0 && (
-                            <div className="px-4 py-3 text-gray-400">No vendors found</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {errors.vendor && <p className="text-red-500 text-xs mt-1">{errors.vendor}</p>}
-                  </div>
-
-                  {/* Vendor GSTIN */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Vendor GSTIN</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                      value={formData.gstin}
-                      placeholder="Auto-filled from vendor"
-                      readOnly
-                    />
-                  </div>
-
-                  {/* Payment Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Payment Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="paymentDate"
-                      value={formData.paymentDate}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                        errors.paymentDate ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.paymentDate && <p className="text-red-500 text-xs mt-1">{errors.paymentDate}</p>}
-                  </div>
-
-                  {/* Company */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
-                    <select
-                      name="company"
-                      value={formData.company}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      {companies.map(company => (
-                        <option key={company} value={company}>{company}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Journal */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Journal <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="journal"
-                      value={formData.journal}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                        errors.journal ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Select journal</option>
-                      {journals.map(journal => (
-                        <option key={journal} value={journal}>{journal}</option>
-                      ))}
-                    </select>
-                    {errors.journal && <p className="text-red-500 text-xs mt-1">{errors.journal}</p>}
-                  </div>
-
-                  {/* Payment Method */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Payment Method <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="paymentMethod"
-                      value={formData.paymentMethod}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                        errors.paymentMethod ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Select payment method</option>
-                      {paymentMethods.map(method => (
-                        <option key={method} value={method}>{method}</option>
-                      ))}
-                    </select>
-                    {errors.paymentMethod && <p className="text-red-500 text-xs mt-1">{errors.paymentMethod}</p>}
-                  </div>
-
-                  {/* Bank Account */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Bank Account</label>
-                    <select
-                      name="bankAccount"
-                      value={formData.bankAccount}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                        errors.bankAccount ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Select bank account</option>
-                      {bankAccounts.map(account => (
-                        <option key={account} value={account}>{account}</option>
-                      ))}
-                    </select>
-                    {errors.bankAccount && <p className="text-red-500 text-xs mt-1">{errors.bankAccount}</p>}
-                  </div>
-
-                  {/* Currency */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-                    <select
-                      name="currency"
-                      value={formData.currency}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    >
-                      {currencies.map(currency => (
-                        <option key={currency} value={currency}>{currency}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Reference */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Reference</label>
-                    <input
-                      type="text"
-                      name="reference"
-                      value={formData.reference}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="e.g., June 2025 settlement"
-                    />
-                  </div>
-                </div>
-
-                {/* TDS/TCS Checkbox */}
-                <div className="mt-6">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      name="tdsApplied"
-                      checked={formData.tdsApplied}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">TDS/TCS Applied</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Notes Section */}
-              <div>
-                <div className="flex items-center mb-4">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
-                  <h2 className="text-lg font-semibold text-gray-900">Notes</h2>
-                </div>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Add payment notes (optional)"
-                />
-              </div>
-
-              {/* Bills Table Section */}
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                    <h2 className="text-lg font-semibold text-gray-900">Select Bills to Pay</h2>
-                  </div>
-                  <div className="flex gap-4">
-                    <button type="button" className="text-gray-500 text-sm hover:underline transition-colors">Filter</button>
-                    <button type="button" className="text-gray-500 text-sm hover:underline transition-colors">Export</button>
-                  </div>
-                </div>
-
                 {!formData.vendor ? (
                   <div className="text-center py-16">
                     <div className="text-6xl mb-4">📋</div>
@@ -573,40 +483,51 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
                   </>
                 )}
               </div>
-            </div>
+            )}
+            {activeTab === 'notes' && (
+              <div>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  rows={6}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Add payment notes (optional)"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-            {/* Bottom Bar - Now part of the form container */}
-            <div className="border-t border-gray-200 bg-white px-6 py-4">
-              <form onSubmit={handleSubmit}>
-                <div className="flex justify-between items-center">
-                  <div className="text-lg font-bold">
-                    Total: {formatCurrency(getTotalPaymentAmount())}
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      className="px-6 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-                      onClick={() => alert('Draft saved!')}
-                    >
-                      Save Draft
-                    </button>
-                    <button
-                      type="button"
-                      className="px-6 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-                      onClick={() => alert('Preview opened!')}
-                    >
-                      Preview
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
-                    >
-                      Confirm Payment
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
+      {/* Sticky Action Bar */}
+      <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 sticky bottom-0 z-20">
+        <div className="flex justify-between items-center">
+          <div className="text-lg font-bold">
+            Total: {formatCurrency(getTotalPaymentAmount())}
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              className="px-6 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={() => alert('Draft saved!')}
+            >
+              Save Draft
+            </button>
+            <button
+              type="button"
+              className="px-6 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={() => alert('Preview opened!')}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
+              onClick={handleSubmit}
+            >
+              Confirm Payment
+            </button>
           </div>
         </div>
       </div>

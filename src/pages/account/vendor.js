@@ -1,6 +1,6 @@
 // Vendor page implementation based on PRD
 import { useState, useEffect } from 'react';
-import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch } from 'react-icons/fa';
+import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch, FaArrowLeft } from 'react-icons/fa';
 import Modal from '../../components/Modal';
 import { AddBillForm, BulkPaymentForm, AddVendorForm } from '../../components/Forms';
 import Sidebar from "../../components/Sidebar";
@@ -21,9 +21,7 @@ const Vendor = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
   const [activeTab, setActiveTab] = useState('bills'); // Default to bills tab
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(null); // 'bill' | 'refund' | 'payment' | 'vendor' | null
   const [bills, setBills] = useState([
     {
       id: 1,
@@ -104,32 +102,25 @@ const Vendor = () => {
     setActiveTab(tab);
   };
 
-  const handleAddBill = () => {
-    setIsModalOpen(true);
+  // Context-aware Add button handler
+  const handleAddClick = () => {
+    if (activeTab === 'bills') {
+      setShowAddForm('bill');
+    } else if (activeTab === 'refunds') {
+      setShowAddForm('refund');
+    } else if (activeTab === 'payments') {
+      setShowAddForm('payment');
+    } else if (activeTab === 'vendors') {
+      setShowAddForm('vendor');
+    }
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
-
-  const handleAddPayment = () => {
-    setIsPaymentModalOpen(true);
-  };
-
-  const handleClosePaymentModal = () => {
-    setIsPaymentModalOpen(false);
-  };
-
-  const handleAddVendor = () => {
-    setIsVendorModalOpen(true);
-  };
-
-  const handleCloseVendorModal = () => {
-    setIsVendorModalOpen(false);
+  // Back button handler for forms
+  const handleBackFromForm = () => {
+    setShowAddForm(null);
   };
 
   const handlePaymentSubmit = (paymentData) => {
-    // Add the new payment to the payments array
     setPayments(prev => [...prev, {
       id: prev.length + 1,
       paymentNo: `PAY-${String(prev.length + 1001).padStart(4, '0')}`,
@@ -147,16 +138,11 @@ const Vendor = () => {
       paymentReference: paymentData.reference,
       attachments: 'No'
     }]);
-    
-    // Close the modal
-    setIsPaymentModalOpen(false);
-    
-    // You could also show a success message here
+    setShowAddForm(null);
     console.log('Payment added successfully:', paymentData);
   };
 
   const handleBillSubmit = (billData) => {
-    // Add the new bill to the bills array
     setBills(prev => [...prev, {
       id: prev.length + 1,
       billNo: billData.billReference || `VB-${String(prev.length + 1001).padStart(4, '0')}`,
@@ -174,16 +160,11 @@ const Vendor = () => {
       reverseCharge: billData.reverseCharge ? 'Yes' : 'No',
       attachments: 'No'
     }]);
-    
-    // Close the modal
-    setIsModalOpen(false);
-    
-    // You could also show a success message here
+    setShowAddForm(null);
     console.log('Bill added successfully:', billData);
   };
 
   const handleVendorSubmit = (vendorData) => {
-    // Add the new vendor to the vendors array
     setVendorsList(prev => [...prev, {
       id: prev.length + 1,
       vendorName: vendorData.vendorName,
@@ -200,11 +181,7 @@ const Vendor = () => {
     }]);
     toast.success('Vendor added successfully!');
     dispatch(fetchVendors());
-    // Close the modal
-    setIsVendorModalOpen(false);
-
-    
-    // You could also show a success message here
+    setShowAddForm(null);
     console.log('Vendor added successfully:', vendorData);
   };
 
@@ -215,7 +192,95 @@ const Vendor = () => {
     { id: 'vendors', label: 'Vendors List', icon: FaBuilding },
   ];
 
+  // Context-aware Add button label
+  const getAddButtonLabel = () => {
+    switch (activeTab) {
+      case 'bills': return 'Add Bill';
+      case 'refunds': return 'Add Refund';
+      case 'payments': return 'Add Payment';
+      case 'vendors': return 'Add Vendor';
+      default: return 'Add';
+    }
+  };
+
+  // Context-aware Add button icon
+  const getAddButtonIcon = () => <FaPlus className="w-4 h-4" />;
+
+  // Inline Add Form renderers
+  const renderAddForm = () => {
+    switch (showAddForm) {
+      case 'bill':
+        return (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center mb-4">
+              <button onClick={handleBackFromForm} className="mr-4 text-gray-600 hover:text-blue-600 flex items-center gap-2">
+                <FaArrowLeft className="w-5 h-5" /> <span>Back</span>
+              </button>
+              <h2 className="text-xl font-bold text-gray-900">Add New Bill</h2>
+            </div>
+            <AddBillForm
+              onSubmit={handleBillSubmit}
+              onCancel={handleBackFromForm}
+            />
+          </div>
+        );
+      case 'payment':
+        return (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center mb-4">
+              <button onClick={handleBackFromForm} className="mr-4 text-gray-600 hover:text-blue-600 flex items-center gap-2">
+                <FaArrowLeft className="w-5 h-5" /> <span>Back</span>
+              </button>
+              <h2 className="text-xl font-bold text-gray-900">Add Vendor Payment</h2>
+            </div>
+            <BulkPaymentForm
+              onSubmit={handlePaymentSubmit}
+              onCancel={handleBackFromForm}
+            />
+          </div>
+        );
+      case 'vendor':
+        return (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center mb-4">
+              <button onClick={handleBackFromForm} className="mr-4 text-gray-600 hover:text-blue-600 flex items-center gap-2">
+                <FaArrowLeft className="w-5 h-5" /> <span>Back</span>
+              </button>
+              <h2 className="text-xl font-bold text-gray-900">Add New Vendor</h2>
+            </div>
+            <AddVendorForm
+              onSubmit={handleVendorSubmit}
+              onSuccess={() => {
+                toast.success('Vendor added successfully!');
+              }}
+              onCancel={handleBackFromForm}
+            />
+          </div>
+        );
+      case 'refund':
+        return (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center mb-4">
+              <button onClick={handleBackFromForm} className="mr-4 text-gray-600 hover:text-blue-600 flex items-center gap-2">
+                <FaArrowLeft className="w-5 h-5" /> <span>Back</span>
+              </button>
+              <h2 className="text-xl font-bold text-gray-900">Add Refund</h2>
+            </div>
+            <div className="text-center text-gray-500 py-12">
+              <div className="text-5xl mb-4">⏳</div>
+              <p className="text-lg font-medium">Refund form coming soon...</p>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   const renderContent = () => {
+    if (showAddForm) {
+      return renderAddForm();
+    }
     switch (activeTab) {
       case 'bills':
         return (
@@ -229,13 +294,6 @@ const Vendor = () => {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
                 />
               </div>
-              <button 
-                onClick={handleAddBill}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <FaPlus className="w-4 h-4" />
-                <span>Add Bill</span>
-              </button>
             </div>
             <div className="overflow-x-auto bg-white rounded-lg shadow">
               <table className="min-w-full">
@@ -345,10 +403,6 @@ const Vendor = () => {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
                 />
               </div>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
-                <FaPlus className="w-4 h-4" />
-                <span>Add Refund</span>
-              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white">
@@ -386,13 +440,6 @@ const Vendor = () => {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
                 />
               </div>
-              <button 
-                onClick={handleAddPayment}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <FaPlus className="w-4 h-4" />
-                <span>Add Payment</span>
-              </button>
             </div>
             <div className="overflow-x-auto bg-white rounded-lg shadow">
               <table className="min-w-full">
@@ -496,13 +543,6 @@ const Vendor = () => {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
                 />
               </div>
-              <button 
-                onClick={handleAddVendor}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <FaPlus className="w-4 h-4" />
-                <span>Add Vendor</span>
-              </button>
             </div>
             <div className="overflow-x-auto bg-white rounded-lg shadow">
               <table className="min-w-full">
@@ -606,83 +646,48 @@ const Vendor = () => {
         {/* Navbar */}
         <HradminNavbar />
 
-    <div className="p-6 pt-24">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Vendors</h1>
-        <p className="text-gray-600">Manage your vendor relationships and transactions</p>
-      </div>
-      
-      {/* Tab Navigation */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-6">
-            {tabs.map(tab => (
+        {/* Main Content Area */}
+        <div className="mt-20 p-6">
+          {/* Vendors heading and Add Button + Tabs as a single block, pushed down together */}
+          <div className="mb-0">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Vendors</h1>
+            <div className="flex items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
+              {/* Add Button */}
               <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab.id)}
-                className={`flex items-center space-x-2 whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                onClick={handleAddClick}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors font-semibold shadow-sm mr-6 text-sm"
+                style={{ minWidth: 120 }}
               >
-                <tab.icon className="w-5 h-5" />
-                <span>{tab.label}</span>
+                {getAddButtonIcon()} <span>{getAddButtonLabel()}</span>
               </button>
-            ))}
-          </nav>
+              {/* Tabs */}
+              <nav className="flex space-x-6">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setShowAddForm(null); // Always reset form on tab switch
+                    }}
+                    className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm transition-colors focus:outline-none py-1 ${
+                      activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    style={{ minWidth: 110 }}
+                  >
+                    <tab.icon className="w-5 h-5" />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          {renderContent()}
         </div>
       </div>
-
-      {/* Main Content Area */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        {renderContent()}
-      </div>
-
-      {/* Add Bill Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title="Add New Bill"
-        size="full"
-      >
-        <AddBillForm
-          onSubmit={handleBillSubmit}
-          onCancel={handleCloseModal}
-        />
-      </Modal>
-
-      {/* Add Payment Modal */}
-      <Modal
-        isOpen={isPaymentModalOpen}
-        onClose={handleClosePaymentModal}
-        title="Add Vendor Payment"
-        size="full"
-      >
-        <BulkPaymentForm
-          onSubmit={handlePaymentSubmit}
-          onCancel={handleClosePaymentModal}
-        />
-      </Modal>
-
-      {/* Add Vendor Modal */}
-      <Modal
-        isOpen={isVendorModalOpen}
-        onClose={handleCloseVendorModal}
-        title="Add New Vendor"
-        size="full"
-      >
-        <AddVendorForm
-          onSubmit={handleVendorSubmit}
-          onSuccess={() => {
-            toast.success('Vendor added successfully!');
-          }}
-          onCancel={handleCloseVendorModal}
-        />
-      </Modal>
-    </div>
-    </div>
     </div>
   );
 };

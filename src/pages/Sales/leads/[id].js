@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { FaStar, FaRegStar, FaUser, FaEnvelope, FaPhone, FaBuilding, FaMapMarkerAlt,
     FaRupeeSign, FaBullseye, FaUserTie, FaTasks, FaHistory, FaPaperclip, FaUserCircle,
-    FaCheck, FaUsers, FaFileAlt, FaTimes, FaPencilAlt, FaRegSmile, FaExpandAlt, FaChevronDown, FaClock
-} from 'react-icons/fa';
+    FaCheck, FaUsers, FaFileAlt, FaTimes, FaPencilAlt, FaRegSmile, FaExpandAlt, FaChevronDown, FaClock,
+    FaRegCheckCircle, FaRegClock } from 'react-icons/fa';
 import MainLayout from '@/components/MainLayout';
 import { toast } from 'sonner';
 
@@ -43,7 +43,7 @@ function formatDateTime(dateStr, timeStr) {
 
 // --- Sub-components for the new Odoo-style layout ---
 
-const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, isEditing, onEditToggle }) => {
+const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, onMarkJunk, isEditing, onEditToggle, activities = [] }) => {
     const currentIndex = stages.indexOf(lead.status);
     // Priority and Next Action helpers
     const getPriorityLabel = (rating) => {
@@ -53,64 +53,70 @@ const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, isEditing, onEdi
         return 'No';
     };
     const getNextAction = () => {
-        // This is a placeholder; you may want to use your actual logic for next action
-        return lead.nextAction || 'N/A';
+        if (!activities || activities.length === 0) return 'N/A';
+        const now = new Date();
+        const pending = activities.filter(a => a.status !== 'done' && a.dueDate && new Date(a.dueDate + 'T' + (a.dueTime || '00:00')) > now);
+        if (pending.length === 0) return 'N/A';
+        pending.sort((a, b) => new Date(a.dueDate + 'T' + (a.dueTime || '00:00')) - new Date(b.dueDate + 'T' + (b.dueTime || '00:00')));
+        const next = pending[0];
+        return next.summary || next.title || 'N/A';
     };
     const priorityLabel = getPriorityLabel(lead.rating);
     return (
-        <div className="bg-white border-b border-gray-100 px-8 pt-8 pb-4 mb-2"> {/* Increased pt and pb for more height */}
-            {/* Top Row: Centered Name/Type, Buttons on right */}
-            <div className="flex flex-row items-center justify-center mb-4 relative"> {/* Increased mb for more gap */}
-                <div className="flex-1 flex justify-center">
-                    <span className="text-xl font-semibold text-gray-900">{lead.name} &ndash; {lead.projectType}</span>
-                </div>
-                <div className="absolute right-0 top-0 flex gap-2">
+        <div className="bg-white border-b border-gray-100 px-8 pt-8 pb-4 mb-2 flex items-center justify-between">
+          <div className="flex-1 flex flex-col">
+            <span className="text-xl font-semibold text-gray-900">{lead.name} &ndash; {lead.projectType}</span>
+            <div className="flex items-center gap-4 mt-2">
+              <span className="text-sm text-gray-700 font-medium">Priority: <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${priorityLabel === 'High' ? 'bg-orange-100 text-orange-700' : priorityLabel === 'Medium' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{priorityLabel}</span></span>
+              <span className="text-sm text-gray-700 font-medium">Next Action: {getNextAction() === 'N/A' ? (
+                <span className="text-gray-400">N/A</span>
+              ) : (
+                <span className="text-blue-700 underline cursor-pointer">{getNextAction()}</span>
+              )}</span>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-1">
+              {stages.map((stage, idx) => {
+                const isActive = stage === lead.status;
+                const isCompleted = idx < currentIndex;
+                return (
+                  <React.Fragment key={stage}>
                     <button
-                        onClick={onMarkLost}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-md text-sm font-semibold shadow-sm hover:bg-red-50 transition"
-                        disabled={lead.status === 'Won' || lead.status === 'Lost'}
+                      type="button"
+                      disabled={isActive}
+                      onClick={() => !isActive && onStatusChange(stage)}
+                      className={`flex items-center justify-center rounded-full border w-7 h-7 text-xs font-bold transition-all duration-200 focus:outline-none ${isCompleted ? 'bg-gray-800 text-white border-gray-800' : isActive ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-400 border-gray-300'} ${!isActive ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-default'}`}
+                      aria-label={`Go to ${stage}`}
                     >
-                        <FaTimes className="w-4 h-4" />
-                        Mark as Lost
+                      {idx + 1}
                     </button>
-                </div>
+                    <span className={`ml-1 mr-1 text-xs font-semibold ${isActive || isCompleted ? 'text-gray-800' : 'text-gray-500'}`}>{stage}</span>
+                    {idx !== stages.length - 1 && (
+                      <span className="mx-1 text-gray-800">&gt;</span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
-            {/* Horizontal line with extra margin above */}
-            <div className="w-full border-t border-gray-200 mb-2" style={{ marginTop: 16 }} />
-            {/* Stepper Row with Priority/NextAction on left, stepper centered */}
-            <div className="flex flex-row items-center md:justify-between">
-                {/* Left: Priority and Next Action */}
-                <div className="flex items-center gap-4 min-w-[220px]">
-                    <span className="text-sm text-gray-700 font-medium">Priority: <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${priorityLabel === 'High' ? 'bg-orange-100 text-orange-700' : priorityLabel === 'Medium' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{priorityLabel}</span></span>
-                    <span className="text-sm text-gray-700 font-medium">Next Action: <span className="text-blue-700 underline cursor-pointer">{getNextAction()}</span></span>
-                </div>
-                {/* Center: Stepper, centered */}
-                <div className="flex items-center justify-center gap-2 py-2">
-                    {stages.map((stage, idx) => {
-                        const isActive = stage === lead.status;
-                        const isCompleted = idx < currentIndex;
-                        return (
-                            <React.Fragment key={stage}>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        disabled={isActive}
-                                        onClick={() => !isActive && onStatusChange(stage)}
-                                        className={`flex items-center justify-center rounded-full border-2 w-8 h-8 text-base font-medium transition-all duration-200 focus:outline-none ${isCompleted ? 'bg-black text-white border-black' : isActive ? 'bg-black text-white border-black' : 'bg-white text-gray-400 border-gray-300'} ${!isActive ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-default'}`}
-                                        aria-label={`Go to ${stage}`}
-                                    >
-                                        {isCompleted || isActive ? <FaCheck className="w-4 h-4" /> : idx + 1}
-                                    </button>
-                                    <span className={`text-sm font-semibold ${isActive ? 'text-black' : 'text-gray-500'}`}>{stage}</span>
-                                </div>
-                                {idx !== stages.length - 1 && (
-                                    <span className="mx-2 text-gray-300">&gt;</span>
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
-                </div>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={onMarkJunk}
+                className="flex items-center gap-2 px-3 py-1 bg-white border border-orange-200 text-orange-600 rounded-md text-xs font-semibold shadow-sm hover:bg-orange-50 transition"
+                disabled={lead.status === 'Junk'}
+              >
+                Mark as Junk
+              </button>
+              <button
+                onClick={onMarkLost}
+                className="flex items-center gap-2 px-3 py-1 bg-white border border-red-200 text-red-600 rounded-md text-xs font-semibold shadow-sm hover:bg-red-50 transition"
+                disabled={lead.status === 'Won' || lead.status === 'Lost'}
+              >
+                <FaTimes className="w-3 h-3" />
+                Mark as Lost
+              </button>
             </div>
+          </div>
         </div>
     );
 };
@@ -161,7 +167,7 @@ const formatRelativeTime = (date) => {
   return d.toLocaleString();
 };
 
-const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onScheduleActivity, conversionData, showConversionDetails, onToggleConversionDetails, onConversionFieldChange, activities, onEditActivity, onDeleteActivity, onMarkDone, timelineEvents, onAddTimelineEvent, notes = [], onAddNote, onEditToggle }) => {
+const OdooDetailBody = ({ lead, isEditing, setIsEditing, editedFields, onFieldChange, onScheduleActivity, conversionData, showConversionDetails, onToggleConversionDetails, onConversionFieldChange, activities, onEditActivity, onDeleteActivity, onMarkDone, timelineEvents, onAddTimelineEvent, notes = [], onAddNote, onEditToggle }) => {
     const [isLoggingNote, setIsLoggingNote] = useState(false);
     const [noteContent, setNoteContent] = useState('');
     const [previewFile, setPreviewFile] = useState(null); // for file preview popup
@@ -170,6 +176,21 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
     const [activeTab, setActiveTab] = useState('notes'); // 'notes' or 'conversion'
     const timelineContainerRef = useRef(null);
     const [viewMore, setViewMore] = useState(false);
+    const [isEditingContact, setIsEditingContact] = useState(false);
+    const [contactFields, setContactFields] = useState({
+      name: lead.name || '',
+      contactNumber: lead.contactNumber || '',
+      email: lead.email || '',
+    });
+    const [projectFields, setProjectFields] = useState({
+      projectType: lead.projectType || '',
+      propertyType: lead.propertyType || '',
+      address: lead.address || '',
+      budget: lead.budget || '',
+      leadSource: lead.leadSource || '',
+      designStyle: lead.designStyle || '',
+    });
+    const [expandedActivities, setExpandedActivities] = useState({});
 
     useEffect(() => {
         setConversionEdit(conversionData || {});
@@ -180,6 +201,17 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
             timelineContainerRef.current.scrollLeft = 0;
         }
     }, [timelineEvents]);
+
+    useEffect(() => {
+      setProjectFields({
+        projectType: lead.projectType || '',
+        propertyType: lead.propertyType || '',
+        address: lead.address || '',
+        budget: lead.budget || '',
+        leadSource: lead.leadSource || '',
+        designStyle: lead.designStyle || '',
+      });
+    }, [lead]);
 
     const handleConversionFieldChange = (field, value) => {
         setConversionEdit(prev => ({ ...prev, [field]: value }));
@@ -248,6 +280,27 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
     const overdueActivity = getOverdueActivity(activities);
     const priorityLabel = getPriorityLabel(lead.rating);
 
+    const handleContactFieldChange = (field, value) => {
+      setContactFields(prev => ({ ...prev, [field]: value }));
+    };
+    const handleSaveContact = () => {
+      onFieldChange('name', contactFields.name);
+      onFieldChange('contactNumber', contactFields.contactNumber);
+      onFieldChange('email', contactFields.email);
+      setIsEditingContact(false);
+    };
+
+    const handleProjectFieldChange = (field, value) => {
+      setProjectFields(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSaveProject = () => {
+      Object.entries(projectFields).forEach(([field, value]) => {
+        onFieldChange(field, value);
+      });
+      setIsEditing(false);
+    };
+
     return (
         <div className="flex-grow ">
             {/* Main Content Grid */}
@@ -258,56 +311,85 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
                     <div className="bg-white rounded-xl shadow p-6 border border-blue-50 mb-2">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-gray-900">Project Details</h3>
-                            <button
-                                onClick={onEditToggle}
-                                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md text-sm font-semibold shadow-sm hover:bg-gray-100 transition"
-                            >
-                                <FaPencilAlt className="w-4 h-4" /> Edit
-                            </button>
-                        </div>
+                            {isEditing ? (
+                              <button onClick={handleSaveProject} className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-semibold shadow-sm hover:bg-blue-700 transition"><FaCheck className="w-4 h-4" /> Save</button>
+                            ) : (
+                              <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md text-sm font-semibold shadow-sm hover:bg-gray-100 transition"><FaPencilAlt className="w-4 h-4" /> Edit</button>
+                            )}
+                            </div>
                         <div className="border border-gray-200 rounded-lg p-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-12">
                                 {/* Column 1 */}
                                 <div className="flex flex-col gap-6">
-                                    <div>
+                    <div>
                                         <div className="font-semibold text-sm mb-1">Project Type</div>
-                                        <div className="text-base text-gray-900">{lead.projectType || <span className='text-gray-400'>N/A</span>}</div>
-                                    </div>
-                                    <div>
+                                {isEditing ? (
+                                          <select value={projectFields.projectType} onChange={e => handleProjectFieldChange('projectType', e.target.value)} className="w-full p-2 border rounded">
+                                            <option value="">Select</option>
+                                            {projectTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                                    </select>
+                                ) : (
+                                          <div className="text-base text-gray-900">{lead.projectType || <span className='text-gray-400'>N/A</span>}</div>
+                                )}
+                    </div>
+                    <div>
                                         <div className="font-semibold text-sm mb-1">Property Type</div>
-                                        <div className="text-base text-gray-900">{lead.propertyType || <span className='text-gray-400'>N/A</span>}</div>
-                                    </div>
+                                {isEditing ? (
+                                          <select value={projectFields.propertyType} onChange={e => handleProjectFieldChange('propertyType', e.target.value)} className="w-full p-2 border rounded">
+                                            <option value="">Select</option>
+                                            {propertyTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                                    </select>
+                                ) : (
+                                          <div className="text-base text-gray-900">{lead.propertyType || <span className='text-gray-400'>N/A</span>}</div>
+                                )}
+                    </div>
                                     <div>
                                         <div className="font-semibold text-sm mb-1">Address</div>
-                                        <div className="text-base text-gray-900">{lead.address || <span className='text-gray-400'>N/A</span>}</div>
+                                {isEditing ? (
+                                          <input value={projectFields.address} onChange={e => handleProjectFieldChange('address', e.target.value)} className="w-full p-2 border rounded" />
+                                        ) : (
+                                          <div className="text-base text-gray-900">{lead.address || <span className='text-gray-400'>N/A</span>}</div>
+                                        )}
                                     </div>
                                 </div>
                                 {/* Column 2 */}
                                 <div className="flex flex-col gap-6">
                                     <div>
-                                        <div className="font-semibold text-sm mb-1">Expected Closing Date</div>
-                                        <div className="text-base text-gray-900">{lead.nextCall ? new Date(lead.nextCall).toLocaleDateString() : <span className='text-gray-400'>N/A</span>}</div>
-                                    </div>
-                                    <div>
                                         <div className="font-semibold text-sm mb-1">Budget</div>
-                                        <div className="text-base text-gray-900">
+                                        {isEditing ? (
+                                          <input type="number" value={projectFields.budget} onChange={e => handleProjectFieldChange('budget', e.target.value)} className="w-full p-2 border rounded" />
+                                        ) : (
+                                          <div className="text-base text-gray-900">
                                             <FaRupeeSign className="inline mr-1 text-gray-400" />
                                             {lead.budget ? Number(lead.budget).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : <span className='text-gray-400'>N/A</span>}
-                                        </div>
-                                    </div>
+                    </div>
+                                )}
+                </div>
                                     <div>
                                         <div className="font-semibold text-sm mb-1">Lead Source <span className="text-red-500">*</span></div>
-                                        <div className="text-base text-gray-900">{lead.leadSource || <span className='text-gray-400'>N/A</span>}</div>
+                                {isEditing ? (
+                                          <input value={projectFields.leadSource} onChange={e => handleProjectFieldChange('leadSource', e.target.value)} className="w-full p-2 border rounded" />
+                                        ) : (
+                                          <div className="text-base text-gray-900">{lead.leadSource || <span className='text-gray-400'>N/A</span>}</div>
+                                        )}
                                     </div>
-                                </div>
-                                {/* Column 3 */}
-                                <div className="flex flex-col gap-6">
                                     <div>
                                         <div className="font-semibold text-sm mb-1">Design Style</div>
-                                        <div className="text-base text-gray-900">{lead.designStyle || <span className='text-gray-400'>N/A</span>}</div>
+                                        {isEditing ? (
+                                          <input value={projectFields.designStyle} onChange={e => handleProjectFieldChange('designStyle', e.target.value)} className="w-full p-2 border rounded" />
+                                        ) : (
+                                          <div className="text-base text-gray-900">{lead.designStyle || <span className='text-gray-400'>N/A</span>}</div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
+                                {/* Column 3 (empty for now, or add more fields if needed) */}
+                                <div className="flex flex-col gap-6">
+                                  <div>
+                                    <div className="font-semibold text-sm mb-1">Project Timeline</div>
+                                    <div className="text-base text-gray-900">{lead.projectTimeline || <span className='text-gray-400'>N/A</span>}</div>
+                                  </div>
+                                </div>
+            </div>
                         </div>
                     </div>
                     {/* Tabs and Tab Content */}
@@ -339,7 +421,7 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
                             <div className="min-h-[350px]">
                                 {/* Add Note */}
                                 <div className="mb-4">
-                                    <label className="block text-xs text-gray-500 mb-2">Add New Note</label>
+                                    {/* <label className="block text-xs text-gray-500 mb-2">Add New Note</label> */}
                             <textarea
                                         className="w-full p-3 border rounded-md bg-gray-50 min-h-[80px] text-gray-700"
                                         placeholder="Enter your note here..."
@@ -389,70 +471,84 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
                 </div>
             )}
                         {activeTab === 'activity' && (
-                            <div className="relative pl-8">
+                                    <div className="relative pl-8">
                                 {/* Timeline vertical line */}
                                 <div className="absolute left-3 top-0 bottom-0 w-1 bg-blue-100 rounded-full" />
                                 <ul className="flex flex-col gap-6">
-                                    {activities && activities.length > 0 ? (
-                                        activities.map((activity, idx) => {
-                                            const isDone = activity.status === 'done';
-                                            // Icon and badge color
-                                            let icon = <FaTasks />;
-                                            let badge = 'To-Do';
-                                            let badgeColor = 'bg-gray-200 text-gray-700';
-                                            if (activity.type === 'Call') { icon = <FaPhone />; badge = 'Call'; badgeColor = 'bg-gray-100 text-blue-700'; }
-                                            if (activity.type === 'Email') { icon = <FaEnvelope />; badge = 'Email'; badgeColor = 'bg-green-100 text-green-700'; }
-                                            if (activity.type === 'Meeting') { icon = <FaUsers />; badge = 'Meeting'; badgeColor = 'bg-blue-100 text-blue-700'; }
-                                            if (activity.type === 'Document') { icon = <FaFileAlt />; badge = 'Document'; badgeColor = 'bg-yellow-100 text-yellow-700'; }
-                                            return (
-                                                <li key={activity.id} className="relative flex gap-4 items-start">
-                                                    {/* Timeline dot */}
-                                                    <span className={`absolute -left-5 top-4 w-4 h-4 rounded-full border-2 flex items-center justify-center ${isDone ? 'bg-green-100 border-green-400' : 'bg-white border-blue-400'}`}>{isDone ? <FaCheck className="text-green-500 text-xs" /> : icon}</span>
-                                                    <div className="flex-1 bg-white rounded-lg shadow p-4 border border-blue-50">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${badgeColor}`}>{badge}</span>
-                                                                <span className="font-bold text-gray-900 text-base">{activity.summary}</span>
-                                                            </div>
-                                                            <span className="text-xs text-gray-500 font-medium">{activity.dueDate}{activity.dueTime ? ' ' + activity.dueTime : ''}</span>
-                                                        </div>
-                                                        {activity.callPurpose && (
-                                                            <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Purpose:</span> {activity.callPurpose}</div>
-                                                        )}
-                                                        {activity.callOutcome && (
-                                                            <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Outcome:</span> {activity.callOutcome}</div>
-                                                        )}
-                                                        {activity.notes && (
-                                                            <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Notes:</span> {activity.notes}</div>
-                                                        )}
-                                                        {/* For Meeting type, show meetingVenue, attendees, meetingLink */}
-                                                        {activity.type === 'Meeting' && (
-                                                            <>
-                                                                {activity.meetingVenue && <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Venue:</span> {activity.meetingVenue}</div>}
-                                                                {activity.attendees && activity.attendees.length > 0 && <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Attendees:</span> {activity.attendees.map(a => a.name).join(', ')}</div>}
-                                                                {activity.meetingLink && <div className="text-sm mt-1"><span className="font-semibold text-gray-700">Link:</span> <a href={activity.meetingLink} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">{activity.meetingLink}</a></div>}
-                                                            </>
-                                                        )}
-                                                        {/* Action icons */}
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                            {isDone ? (
-                                                                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">Done</span>
-                                                            ) : (
-                                                                <>
-                                                                    <button onClick={() => onMarkDone(activity.id)} title="Mark as Done" className="p-1.5 rounded-full hover:bg-green-100 text-green-600 transition"><FaCheck size={14} /></button>
-                                                                    <button onClick={() => onEditActivity(activity)} title="Edit" className="p-1.5 rounded-full hover:bg-blue-100 text-blue-600 transition"><FaPencilAlt size={14} /></button>
-                                                                    <button onClick={() => onDeleteActivity(activity.id)} title="Delete" className="p-1.5 rounded-full hover:bg-red-100 text-red-500 transition"><FaTimes size={14} /></button>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="text-gray-400 text-sm">No activity log yet.</div>
-                                    )}
-                                </ul>
+                                    {(() => {
+                                      // Sort all activities by date/time desc
+                                      const allActivities = (activities || []).sort((a, b) => {
+                                        const aDate = new Date((a.dueDate || '') + 'T' + (a.dueTime || '00:00'));
+                                        const bDate = new Date((b.dueDate || '') + 'T' + (b.dueTime || '00:00'));
+                                        return bDate - aDate || (b.id || 0) - (a.id || 0);
+                                      });
+                                      if (allActivities.length === 0) return (
+                                        <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
+                                          <svg width="48" height="48" fill="none" viewBox="0 0 48 48" className="mb-4">
+                                            <path d="M8 24c8-8 24 8 32 0" stroke="#CBD5E1" strokeWidth="3" strokeLinecap="round"/>
+                                            <path d="M24 8v32" stroke="#CBD5E1" strokeWidth="3" strokeLinecap="round" strokeDasharray="4 4"/>
+                                          </svg>
+                                          <div className="text-lg font-medium">No activity log entries.</div>
+                                          <div className="text-sm text-gray-400 mt-1">Activity will appear here as it happens.</div>
+                                        </div>
+                                      );
+                                      return allActivities.map((item, idx) => {
+                                        const isDone = item.status === 'done';
+                                        let badge = 'To-Do';
+                                        let badgeColor = 'bg-gray-100 text-gray-600 border border-gray-200';
+                                        if (item.type === 'Call') { badge = 'Call'; badgeColor = 'bg-blue-50 text-blue-700 border border-blue-100'; }
+                                        if (item.type === 'Email') { badge = 'Email'; badgeColor = 'bg-green-50 text-green-700 border border-green-100'; }
+                                        if (item.type === 'Meeting') { badge = 'Meeting'; badgeColor = 'bg-blue-50 text-blue-700 border border-blue-100'; }
+                                        if (item.type === 'Document') { badge = 'Document'; badgeColor = 'bg-yellow-50 text-yellow-700 border border-yellow-100'; }
+                                        // Status icon
+                                        const statusIcon = isDone
+                                          ? <FaRegCheckCircle className="text-green-500 text-2xl" />
+                                          : <FaRegClock className="text-blue-400 text-2xl" />;
+                                        // Expand/collapse state
+                                        const expanded = !!expandedActivities[item.id];
+                                        const toggleExpand = () => setExpandedActivities(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                                        return (
+                                          <li key={item.id} className="relative flex gap-4 items-start py-6">
+                                            {/* Timeline vertical line */}
+                                            <span className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 z-0" style={{ minHeight: '100%' }} />
+                                            {/* Timeline dot */}
+                                            <span className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white border-4 ${isDone ? 'border-green-400' : 'border-blue-300'} shadow-sm`} style={{ minWidth: 40, minHeight: 40 }}>
+                                              {statusIcon}
+                                            </span>
+                                            <div className="flex-1 bg-transparent rounded-lg p-0 border-0">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badgeColor}`}>{badge}</span>
+                                                <span className="font-bold text-gray-900 text-lg leading-tight">{item.summary}</span>
+                                                <span className="ml-auto text-xs text-gray-400 font-medium">{item.dueDate}{item.dueTime ? ' ' + item.dueTime : ''}</span>
+                                                {/* Action icons for pending */}
+                                                {!isDone && (
+                                                  <>
+                                                    <button onClick={() => onMarkDone(item.id)} title="Mark as Done" className="p-1 rounded-full hover:bg-green-50 text-green-500 transition"><FaRegCheckCircle size={20} /></button>
+                                                    <button onClick={() => onEditActivity(item)} title="Edit" className="p-1 rounded-full hover:bg-blue-50 text-blue-500 transition"><FaPencilAlt size={16} /></button>
+                                                    <button onClick={() => onDeleteActivity(item.id)} title="Delete" className="p-1 rounded-full hover:bg-red-50 text-red-400 transition"><FaTimes size={16} /></button>
+                                                  </>
+                                                )}
+                                                <button onClick={toggleExpand} className="ml-2 text-gray-400 hover:text-black text-lg focus:outline-none" title="Expand/collapse details">{expanded ? '▾' : '▸'}</button>
+                                              </div>
+                                              {expanded && (
+                                                <div className="pl-3 pb-2 mt-1">
+                                                  {item.callPurpose && (
+                                                    <div className="text-sm text-gray-500 mb-0.5"><span className="font-semibold text-gray-700">Purpose:</span> {item.callPurpose}</div>
+                                                  )}
+                                                  {item.callOutcome && (
+                                                    <div className="text-sm text-gray-500 mb-0.5"><span className="font-semibold text-gray-700">Outcome:</span> {item.callOutcome}</div>
+                                                  )}
+                                                  {item.notes && (
+                                                    <div className="text-sm text-gray-500 mb-0.5"><span className="font-semibold text-gray-700">Notes:</span> {item.notes}</div>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </li>
+                                        );
+                                      });
+                                    })()}
+                                        </ul>
                             </div>
                         )}
                         {activeTab === 'conversion' && (
@@ -542,48 +638,59 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
                 <div className="flex flex-col gap-6">
                     {/* Contact Details Card */}
                     <div className="bg-white rounded-xl shadow p-6 border border-blue-50 mb-4">
-                        <h3 className="text-base font-bold text-gray-900 mb-4">Contact Details</h3>
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-2">
-                                <FaUser className="text-gray-400" />
-                                <span className="font-semibold text-gray-900">{lead.name || <span className='text-gray-400'>N/A</span>}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <FaPhone className="text-gray-400" />
-                                {lead.contactNumber ? (
-                                    <a href={`tel:+91${lead.contactNumber}`} className="text-blue-600 font-medium hover:underline">+91 {lead.contactNumber}</a>
-                                ) : (
-                                    <span className="text-gray-400">N/A</span>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <FaEnvelope className="text-gray-400" />
-                                {lead.email ? (
-                                    <a href={`mailto:${lead.email}`} className="text-blue-600 font-medium hover:underline">{lead.email}</a>
-                                ) : (
-                                    <span className="text-gray-400">N/A</span>
-                                )}
-                            </div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-bold text-gray-900">Contact Details</h3>
+                            {isEditingContact ? (
+                              <button onClick={handleSaveContact} className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-semibold shadow-sm hover:bg-blue-700 transition"><FaCheck className="w-4 h-4" /> Save</button>
+                            ) : (
+                              <button onClick={() => setIsEditingContact(true)} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md text-sm font-semibold shadow-sm hover:bg-gray-100 transition"><FaPencilAlt className="w-4 h-4" /> Edit</button>
+                            )}
                         </div>
-                    </div>
+                        <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-2">
+                                    <FaUser className="text-gray-400" />
+                                {isEditingContact ? (
+                                  <input value={contactFields.name} onChange={e => handleContactFieldChange('name', e.target.value)} className="w-full p-2 border rounded" />
+                                ) : (
+                                  <span className="font-semibold text-gray-900">{lead.name || <span className='text-gray-400'>N/A</span>}</span>
+                                )}
+                            </div>
+                                <div className="flex items-center gap-2">
+                                <FaPhone className="text-gray-400" />
+                                {isEditingContact ? (
+                                  <input value={contactFields.contactNumber} onChange={e => handleContactFieldChange('contactNumber', e.target.value)} className="w-full p-2 border rounded" />
+                                ) : lead.contactNumber ? (
+                                  <a href={`tel:+91${lead.contactNumber}`} className="text-blue-600 font-medium hover:underline">+91 {lead.contactNumber}</a>
+                                ) : (
+                                  <span className="text-gray-400">N/A</span>
+                                )}
+                            </div>
+                                <div className="flex items-center gap-2">
+                                <FaEnvelope className="text-gray-400" />
+                                {isEditingContact ? (
+                                  <input value={contactFields.email} onChange={e => handleContactFieldChange('email', e.target.value)} className="w-full p-2 border rounded" />
+                                ) : lead.email ? (
+                                  <a href={`mailto:${lead.email}`} className="text-blue-600 font-medium hover:underline">{lead.email}</a>
+                                ) : (
+                                  <span className="text-gray-400">N/A</span>
+                                )}
+                        </div>
+                </div>
+                        </div>
                     {/* Team Assignment Card */}
                     <div className="bg-white rounded-xl shadow p-6 border border-blue-50 mb-4">
-                    <h3 className="text-base font-bold text-gray-900 mb-4">Team Assignment</h3>
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <FaUserTie className="text-blue-400" />
-                                <span className="font-semibold text-gray-900">
-                                    {lead.salesRep ? lead.salesRep : <span className="text-gray-400">No Sales Representative</span>}
-                                </span>
-                                <span className="text-xs text-gray-400 ml-2">Sales Representative</span>
+                    <h3 className="text-base font-bold text-gray-900 mb-4">Assigned Team</h3>
+                    <div>
+                      {lead.team && lead.team.length > 0 ? (
+                        lead.team.map((member, idx) => (
+                          <div key={idx} className={`flex justify-between items-center${idx !== lead.team.length - 1 ? ' mb-2' : ''}`}>
+                            <span className="font-medium text-gray-900">{member.name}</span>
+                            <span className="text-sm text-gray-400">{member.role}</span>
                 </div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <FaUserTie className="text-blue-400" />
-                                <span className="font-semibold text-gray-900">
-                                    {lead.designer ? lead.designer : <span className="text-gray-400">No Interior Designer</span>}
-                                </span>
-                                <span className="text-xs text-gray-400 ml-2">Interior Designer</span>
-                                    </div>
+                        ))
+                      ) : (
+                        <div className="text-gray-400">No team assigned.</div>
+                      )}
                                 </div>
                                 </div>
                     {/* Planned Activities Card */}
@@ -598,47 +705,36 @@ const OdooDetailBody = ({ lead, isEditing, editedFields, onFieldChange, onSchedu
                                 +
                             </button>
                             </div>
-                        <div className="flex flex-col gap-2">
-                            {activities && activities.length > 0 ? (
-                                activities.map(activity => {
-                                    const dueDateObj = activity.dueDate ? new Date(activity.dueDate) : null;
-                                    const now = new Date();
-                                    const isOverdue = dueDateObj && dueDateObj < now && activity.status !== 'done';
-                                    let overdueText = '';
-                                    if (isOverdue) {
-                                        const diffMs = now - dueDateObj;
-                                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                                        overdueText = `Overdue by ${diffDays} day${diffDays > 1 ? 's' : ''}`;
-                                    }
-                                    return (
-                                        <div key={activity.id} className={`bg-white rounded-lg p-4 flex items-center border border-blue-100 relative shadow-sm`}> 
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-semibold text-gray-800 text-base mb-1 truncate">{activity.summary}</div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium text-gray-700">Due: {activity.dueDate ? new Date(activity.dueDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : 'N/A'}</span>
-                                                    {isOverdue && (
-                                                        <span className="text-xs text-red-500 font-semibold">{overdueText}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2 ml-4">
-                                                {activity.status !== 'done' && (
-                                                    <>
-                                                        <button onClick={() => onMarkDone(activity.id)} title="Mark as Done" className="p-1.5 rounded-full hover:bg-green-100 text-green-600 transition"><FaCheck size={16} /></button>
-                                                        <button onClick={() => onEditActivity(activity)} title="Edit" className="p-1.5 rounded-full hover:bg-blue-100 text-blue-600 transition"><FaPencilAlt size={16} /></button>
-                                                        <button onClick={() => onDeleteActivity(activity.id)} title="Delete" className="p-1.5 rounded-full hover:bg-red-100 text-red-500 transition"><FaTimes size={16} /></button>
-                                                    </>
-                                                )}
-                                                {activity.status === 'done' && (
-                                                    <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">Done</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <div className="text-gray-400 text-sm">No planned activities.</div>
-                            )}
+                        <div className="flex flex-col gap-4">
+                          {activities && activities.length > 0 ? (
+                            activities.map(activity => {
+                              const dueDateObj = activity.dueDate ? new Date(activity.dueDate) : null;
+                              const now = new Date();
+                              const isOverdue = dueDateObj && dueDateObj < now && activity.status !== 'done';
+                              return (
+                                <div
+                                  key={activity.id}
+                                  className="bg-white rounded-xl shadow border border-gray-200 p-4 flex items-center justify-between mb-2"
+                                >
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${activity.type === 'Call' ? 'bg-blue-100 text-blue-700' : activity.type === 'Meeting' ? 'bg-green-100 text-green-700' : activity.type === 'Email' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{activity.type}</span>
+                                      <span className="text-xs text-blue-600 font-medium lowercase">{activity.status}</span>
+                                    </div>
+                                    <div className="font-bold text-base mb-1 truncate">{activity.title || activity.summary}</div>
+                                    <div className="text-sm text-gray-500">{activity.dueDate}{activity.dueTime ? ` at ${activity.dueTime}` : ''}</div>
+                                  </div>
+                                  <div className="flex items-center gap-2 ml-4">
+                                    <button onClick={() => onEditActivity(activity)} title="Edit" className="p-1.5 rounded-full hover:bg-blue-100 text-blue-600 transition"><FaPencilAlt size={16} /></button>
+                                    <button onClick={() => onMarkDone(activity.id)} title="Mark as Done" className="p-1.5 rounded-full hover:bg-green-100 text-green-600 transition"><FaCheck size={16} /></button>
+                                    <button onClick={() => onDeleteActivity(activity.id)} title="Delete" className="p-1.5 rounded-full hover:bg-red-100 text-red-500 transition"><FaTimes size={16} /></button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="text-gray-400 text-sm">No planned activities.</div>
+                          )}
                         </div>
                     </div>
                 </div>
@@ -658,6 +754,14 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
   const [nextFollowUpDate, setNextFollowUpDate] = useState('');
   const [nextFollowUpTime, setNextFollowUpTime] = useState('');
   const [meetingVenue, setMeetingVenue] = useState('In Office');
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [note, setNote] = useState(initialData?.note || '');
+  const [attachment, setAttachment] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [meetingLine, setMeetingLine] = useState(initialData?.meetingLine || '');
+  const [startTime, setStartTime] = useState(initialData?.startTime || '');
+  const [endTime, setEndTime] = useState(initialData?.endTime || '');
+  const [participants, setParticipants] = useState(initialData?.participants || '');
 
   useEffect(() => {
     if (initialData) {
@@ -671,6 +775,13 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
       setNextFollowUpDate(initialData.nextFollowUpDate || '');
       setNextFollowUpTime(initialData.nextFollowUpTime || '');
       setMeetingVenue(initialData.meetingVenue || 'In Office');
+      setTitle(initialData.title || '');
+      setNote(initialData.note || '');
+      setAttachment(initialData.attachment || null);
+      setMeetingLine(initialData.meetingLine || '');
+      setStartTime(initialData.startTime || '');
+      setEndTime(initialData.endTime || '');
+      setParticipants(initialData.participants || '');
     }
   }, [initialData, isOpen]);
 
@@ -681,7 +792,6 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
     { name: 'Email', icon: <FaEnvelope /> },
     { name: 'Call', icon: <FaPhone /> },
     { name: 'Meeting', icon: <FaUsers /> },
-    { name: 'Document', icon: <FaFileAlt /> },
   ];
 
   const summary = activeType === 'Call' ? 'Call Information' : activeType;
@@ -690,7 +800,9 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
     const activity = {
       id: initialData && initialData.id ? initialData.id : undefined,
       type: activeType,
-      summary,
+      title,
+      note,
+      attachment,
       dueDate,
       dueTime,
       user: 'hjhjj', // Replace with actual user if needed
@@ -702,6 +814,10 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
       nextFollowUpDate,
       nextFollowUpTime,
       meetingVenue,
+      meetingLine,
+      startTime,
+      endTime,
+      participants,
     };
     if (onSaveActivity) onSaveActivity(activity);
       onClose();
@@ -717,6 +833,15 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
 
   const handleRemoveAttendee = (id) => {
       setAttendees(attendees.filter(att => att.id !== id));
+  };
+
+  const handlePreviewAttachment = () => {
+    if (!attachment) return;
+    if (attachment.type && attachment.type.startsWith('image/')) {
+      setShowPreview(true);
+    } else {
+      window.open(URL.createObjectURL(attachment), '_blank');
+    }
   };
 
   return (
@@ -744,8 +869,14 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
 
             <div className="space-y-4">
                 <div>
-                    <label className="text-sm font-semibold">{activeType === 'Call' ? 'Call Information' : 'Summary'}</label>
-                    <input type="text" value={summary} readOnly className="w-full p-2 mt-1 border-b focus:outline-none" />
+                    <label className="text-sm font-semibold">Title</label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={e => setTitle(e.target.value)}
+                      className="w-full p-2 mt-1 border rounded focus:outline-none"
+                      placeholder="Enter activity title"
+                    />
                 </div>
                 <div className="flex gap-2">
                     <div className="flex-1">
@@ -764,120 +895,154 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
                         <span>hjhjj</span>
                     </div>
                 </div>
-
-                {/* Conditional fields for Meeting */}
-                {activeType === 'Meeting' && (
-                    <>
-                        <div>
-                            <label className="text-sm font-semibold">Meeting Details</label>
-                            <input type="text" value={summary} readOnly className="w-full p-2 mt-1 border-b focus:outline-none" />
-                        </div>
-                        <div className="flex flex-col md:flex-row gap-2">
-                            <div className="flex-1">
-                                <label className="text-sm font-semibold">Assigned to</label>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">H</div>
-                                    <span>hjhjj</span>
-                                </div>
-                            </div>
-                            <div className="flex-1 relative">
-                                <label className="text-sm font-semibold">Meeting Venue</label>
-                                <select
-                                    className="w-full p-2 mt-1 border rounded-md focus:ring-2 focus:ring-blue-400 bg-blue-50 border-blue-200 text-gray-800 pr-10 pl-3 hover:border-blue-400 transition-all"
-                                    value={meetingVenue}
-                                    onChange={e => setMeetingVenue(e.target.value)}
-                                    style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
-                                >
-                                    <option value="In Office">In Office</option>
-                                    <option value="Online">Online</option>
-                                    <option value="Client Site">Client Site</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                                <span className="pointer-events-none absolute right-3 top-9 text-gray-500 flex items-center">
-                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                    </svg>
-                                </span>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-sm font-semibold">Meeting Link</label>
-                            <input
-                                type="text"
-                                value={meetingLink}
-                                onChange={e => setMeetingLink(e.target.value)}
-                                placeholder="https://..."
-                                className="w-full p-2 mt-1 border rounded-md"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-sm font-semibold">Attendees</label>
-                            {attendees.map((attendee, index) => (
-                                <div key={attendee.id} className="flex items-center gap-2 mt-1">
-                                    <input
-                                        type="text"
-                                        value={attendee.name}
-                                        onChange={e => handleAttendeeChange(attendee.id, e.target.value)}
-                                        placeholder={`Attendee ${index + 1} name`}
-                                        className="w-full p-2 border rounded-md"
-                                    />
-                                    <button onClick={() => handleRemoveAttendee(attendee.id)} className="text-red-500 hover:text-red-700 p-2">
-                                        <FaTimes />
-                                    </button>
-                                </div>
-                            ))}
-                            <button onClick={handleAddAttendee} className="text-blue-600 text-sm mt-2">+ Add Attendee</button>
-                        </div>
-                    </>
-                )}
-
-                {/* Conditional fields for Call */}
                 {activeType === 'Call' && (
-                    <>
-                        <h3 className="text-lg font-semibold mb-2">Call Information</h3>
-                        <div>
-                            <label className="text-sm font-semibold">Purpose of the Call</label>
-                            <textarea
-                                className="w-full h-20 p-2 border rounded-md"
-                                placeholder="Add purpose of the call..."
-                                value={callPurpose}
-                                onChange={e => setCallPurpose(e.target.value)}
-                            />
-                        </div>
-                        {callPurpose.trim() && (
-                            <div className="flex flex-col md:flex-row gap-4">
-                                <div className="flex-1">
-                                    <label className="text-sm font-semibold">Outcome of the Call</label>
-                                    <textarea
-                                        className="w-full h-20 p-2 border rounded-md"
-                                        placeholder="Add outcome of the call..."
-                                        value={callOutcome}
-                                        onChange={e => setCallOutcome(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex-1">
-                                    <label className="text-sm font-semibold">Next Follow Up</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="date"
-                                            value={nextFollowUpDate}
-                                            onChange={e => setNextFollowUpDate(e.target.value)}
-                                            className="w-full p-2 border rounded-md"
-                                            placeholder="Next Date"
-                                        />
-                                        <input
-                                            type="time"
-                                            value={nextFollowUpTime}
-                                            onChange={e => setNextFollowUpTime(e.target.value)}
-                                            className="w-full p-2 border rounded-md"
-                                            placeholder="Call Time"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </>
+                  <>
+                    <div>
+                      <label className="text-sm font-semibold">Purpose of the Call</label>
+                      <input
+                        type="text"
+                        className="w-full p-2 mt-1 border rounded-md"
+                        placeholder="Add purpose of the call..."
+                        value={callPurpose}
+                        onChange={e => setCallPurpose(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold">Outcome of the Call</label>
+                      <input
+                        type="text"
+                        className="w-full p-2 mt-1 border rounded-md"
+                        placeholder="Add outcome of the call..."
+                        value={callOutcome}
+                        onChange={e => setCallOutcome(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-sm font-semibold">Next Follow Up Date</label>
+                        <input
+                          type="date"
+                          value={nextFollowUpDate}
+                          onChange={e => setNextFollowUpDate(e.target.value)}
+                          className="w-full p-2 border rounded-md"
+                          placeholder="Next Date"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm font-semibold">Next Follow Up Time</label>
+                        <input
+                          type="time"
+                          value={nextFollowUpTime}
+                          onChange={e => setNextFollowUpTime(e.target.value)}
+                          className="w-full p-2 border rounded-md"
+                          placeholder="Call Time"
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
+                {activeType === 'Meeting' && (
+                  <>
+                    <div>
+                      <label className="text-sm font-semibold">Meeting Line</label>
+                      <input
+                        type="text"
+                        className="w-full p-2 mt-1 border rounded-md"
+                        placeholder="Enter meeting link or dial-in details"
+                        value={meetingLine}
+                        onChange={e => setMeetingLine(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-sm font-semibold">Start Time</label>
+                        <input
+                          type="time"
+                          className="w-full p-2 mt-1 border rounded-md"
+                          value={startTime}
+                          onChange={e => setStartTime(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm font-semibold">End Time</label>
+                        <input
+                          type="time"
+                          className="w-full p-2 mt-1 border rounded-md"
+                          value={endTime}
+                          onChange={e => setEndTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold">Participants</label>
+                      <textarea
+                        className="w-full p-2 mt-1 border rounded-md"
+                        placeholder="Enter participant names or emails"
+                        value={participants}
+                        onChange={e => setParticipants(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold">Venue</label>
+                      <select
+                        className="w-full p-2 mt-1 border rounded-md"
+                        value={meetingVenue}
+                        onChange={e => setMeetingVenue(e.target.value)}
+                      >
+                        <option value="">Select venue</option>
+                        <option value="Office">Office</option>
+                        <option value="Client Site">Client Site</option>
+                        <option value="Online">Online</option>
+                        <option value="Phone">Phone</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+                <div>
+                    <label className="text-sm font-semibold">Note</label>
+                    <textarea
+                      className="w-full p-2 mt-1 border rounded-md"
+                      value={note}
+                      onChange={e => setNote(e.target.value)}
+                      placeholder="Add note..."
+                      rows={3}
+                    />
+                    <div className="flex items-center justify-end mt-1">
+                      <label className="cursor-pointer flex items-center gap-1 text-blue-600 hover:text-blue-800">
+                        <FaPaperclip />
+                        <input
+                          type="file"
+                          style={{ display: 'none' }}
+                          onChange={e => setAttachment(e.target.files[0])}
+                        />
+                        <span className="text-xs">Attach</span>
+                      </label>
+                      {attachment && (
+                        <>
+                          <button
+                            type="button"
+                            className="ml-2 text-xs text-blue-700 underline hover:text-blue-900 max-w-[120px] truncate"
+                            onClick={handlePreviewAttachment}
+                            title="Click to preview/download"
+                          >
+                            {attachment.name}
+                          </button>
+                          <button
+                            type="button"
+                            className="ml-1 text-gray-400 hover:text-red-600 text-lg font-bold"
+                            onClick={() => setAttachment(null)}
+                            title="Remove attachment"
+                            style={{ lineHeight: 1 }}
+                          >
+                            ×
+                          </button>
+                        </>
+                      )}
+                    </div>
+                </div>
+                {/* ...rest of the modal fields (Meeting, Call, etc.) remain unchanged... */}
             </div>
         </div>
 
@@ -888,11 +1053,29 @@ const AddActivityModal = ({ isOpen, onClose, leadId, initialData, onSaveActivity
         </div>
 
       </div>
+      {showPreview && attachment && attachment.type && attachment.type.startsWith('image/') && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+          <div className="relative max-w-3xl w-full flex flex-col items-center">
+            <button
+              onClick={() => setShowPreview(false)}
+              className="absolute top-2 right-2 text-white text-3xl font-bold z-10"
+              title="Close preview"
+            >
+              ×
+            </button>
+            <img
+              src={URL.createObjectURL(attachment)}
+              alt="Preview"
+              className="max-h-[80vh] max-w-full rounded-lg border-4 border-white shadow-2xl object-contain bg-white"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const LostReasonModal = ({ isOpen, onClose, onSubmit }) => {
+const LostReasonModal = ({ isOpen, onClose, onSubmit, title = 'Reason for Lost Lead', placeholder = 'Enter the reason why this lead was lost...' }) => {
     const [reason, setReason] = useState('');
 
     if (!isOpen) return null;
@@ -906,11 +1089,11 @@ const LostReasonModal = ({ isOpen, onClose, onSubmit }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                <h2 className="text-xl font-bold mb-4">Reason for Lost Lead</h2>
+                <h2 className="text-xl font-bold mb-4">{title}</h2>
                 <textarea
                     className="w-full p-2 border rounded-md"
                     rows="4"
-                    placeholder="Enter the reason why this lead was lost..."
+                    placeholder={placeholder}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                 />
@@ -1427,6 +1610,8 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               const [timelineEvents, setTimelineEvents] = useState([]);
               // Notes state
               const [notes, setNotes] = useState([]);
+              const [isJunkReasonModalOpen, setIsJunkReasonModalOpen] = useState(false);
+              const [junkReason, setJunkReason] = useState("");
 
               // Add a helper to add timeline events
               const addTimelineEvent = ({ action, details, user = 'You', time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) }) => {
@@ -1540,6 +1725,20 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                 }
               };
 
+              // Handler for marking as Junk
+              const handleMarkJunk = () => {
+                  setIsJunkReasonModalOpen(true);
+              };
+
+              const handleJunkReasonSubmit = (reason) => {
+                  if (lead) {
+                      setLeads(prevLeads => prevLeads.map(l =>
+                          l.leadId === lead.leadId ? { ...l, status: 'Junk', reasonForJunk: reason } : l
+                      ));
+                      setIsJunkReasonModalOpen(false);
+                  }
+              };
+
               if (!lead) return <div className="p-6 text-center">Lead not found.</div>;
 
               return (
@@ -1549,12 +1748,15 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                           stages={stages}
                           onStatusChange={handleStatusChange}
                           onMarkLost={handleMarkLost}
+                          onMarkJunk={handleMarkJunk}
                           isEditing={isEditing}
                           onEditToggle={handleEditToggle}
+                          activities={activities}
                       />
                       <OdooDetailBody
                           lead={isEditing ? { ...lead, ...editedFields } : lead}
                           isEditing={isEditing}
+                          setIsEditing={setIsEditing}
                           editedFields={editedFields}
                           onFieldChange={handleFieldChange}
                           onScheduleActivity={() => setIsActivityModalOpen(true)}
@@ -1584,12 +1786,21 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                           isOpen={isLostReasonModalOpen}
                           onClose={() => setIsLostReasonModalOpen(false)}
                           onSubmit={handleLostReasonSubmit}
+                          title="Reason for Lost Lead"
+                          placeholder="Enter the reason why this lead was lost..."
                       />
                       <ConversionModal
                           isOpen={isConversionModalOpen}
                           onClose={() => setIsConversionModalOpen(false)}
                           onConfirm={handleConfirmConversion}
                           lead={lead}
+                      />
+                      <LostReasonModal
+                          isOpen={isJunkReasonModalOpen}
+                          onClose={() => setIsJunkReasonModalOpen(false)}
+                          onSubmit={handleJunkReasonSubmit}
+                          title="Reason for Junk"
+                          placeholder="Enter the reason why this lead is junk..."
                       />
                   </div>
               );

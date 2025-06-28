@@ -6,7 +6,8 @@ export { default as AddExpenseForm } from './AddExpenseForm';
 
 // Future form exports (uncomment when created)
 // export { default as AddRefundForm } from './AddRefundForm';
-// export { default as AddInvoiceForm } from './AddInvoiceForm';
-// export { default as AddReceiptForm } from './AddReceiptForm';
-// export { default as AddClientForm } from './AddClientForm';
+export { default as AddInvoiceForm } from './AddInvoiceForm';
+export { default as AddReceiptForm } from './AddReceiptForm';
+export { default as AddClientForm } from './AddClientForm';
+export { default as AddRefundForm } from './AddRefundForm';
 // export { default as AddReimbursementForm } from './AddReimbursementForm'; 

@@ -46,14 +46,18 @@ const BillForm = () => {
     {
       item: "Office Supplies",
       description: "Stationery items",
+      hsn: "998349",
       qty: 10,
+      uom: "PCS",
       rate: 500,
       gst: 18,
     },
     {
       item: "Software License",
       description: "Annual subscription",
+      hsn: "997331",
       qty: 1,
+      uom: "NOS",
       rate: 25000,
       gst: 18,
     },
@@ -65,11 +69,15 @@ const BillForm = () => {
   const [previewFile, setPreviewFile] = useState(null);
   const inputRef = useRef(null);
   const mainCardRef = useRef(null);
+  const [tdsApplied, setTdsApplied] = useState(false);
+  const [tdsRate, setTdsRate] = useState(2);
+  const TDS_RATES = [1, 2, 5, 10];
 
   // Calculate totals
   const subtotal = billLines.reduce((sum, l) => sum + l.qty * l.rate, 0);
   const totalGST = billLines.reduce((sum, l) => sum + l.qty * l.rate * (l.gst / 100), 0);
-  const total = subtotal + totalGST;
+  const tdsAmount = tdsApplied ? subtotal * (tdsRate / 100) : 0;
+  const total = subtotal + totalGST - tdsAmount;
 
   // Validation helpers
   const validate = () => {
@@ -107,7 +115,7 @@ const BillForm = () => {
     setBillLines((prev) => prev.map((line, i) => i === idx ? { ...line, [field]: value } : line));
   };
   const handleAddLine = () => {
-    setBillLines((prev) => [...prev, { item: '', description: '', qty: 1, rate: 0, gst: 18 }]);
+    setBillLines((prev) => [...prev, { item: '', description: '', hsn: '', qty: 1, uom: 'PCS', rate: 0, gst: 18 }]);
   };
   const handleDeleteLine = (idx) => {
     setShowDeleteIdx(idx);
@@ -234,6 +242,32 @@ const BillForm = () => {
                 onChange={e => setReference(e.target.value)} 
               />
             </div>
+            <div className="flex items-center space-x-4 pt-4 border-t border-gray-100 mt-2">
+              <label className="flex items-center">
+                <input 
+                  type="checkbox"
+                  checked={tdsApplied}
+                  onChange={e => setTdsApplied(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  disabled={!selectedVendor}
+                />
+                <span className={`ml-2 text-sm font-medium ${!selectedVendor ? 'text-gray-400' : 'text-gray-700'}`}>TDS/TCS Applied</span>
+              </label>
+              {tdsApplied && selectedVendor && (
+                <div>
+                  <label className="sr-only">TDS Rate</label>
+                  <select
+                    value={tdsRate}
+                    onChange={e => setTdsRate(Number(e.target.value))}
+                    className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {TDS_RATES.map(rate => (
+                      <option key={rate} value={rate}>{rate}%</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -296,7 +330,9 @@ const BillForm = () => {
                     <tr className="border-b border-gray-200">
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">HSN</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">UoM</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">GST %</th>
@@ -333,6 +369,14 @@ const BillForm = () => {
                             />
                           </td>
                           <td className="px-4 py-3">
+                            <input
+                              className="w-24 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              value={line.hsn}
+                              onChange={e => handleLineChange(idx, 'hsn', e.target.value)}
+                              placeholder="HSN Code"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
                             <input 
                               type="number" 
                               min="1" 
@@ -341,6 +385,14 @@ const BillForm = () => {
                               onChange={e => handleLineChange(idx, 'qty', e.target.value)} 
                             />
                             {errors[`qty${idx}`] && <div className="text-xs text-red-500 mt-1">{errors[`qty${idx}`]}</div>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              className="w-20 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              value={line.uom}
+                              onChange={e => handleLineChange(idx, 'uom', e.target.value)}
+                              placeholder="e.g., PCS"
+                            />
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
@@ -404,6 +456,12 @@ const BillForm = () => {
                   <span className="text-gray-700">Total GST:</span>
                   <span className="text-gray-900 font-medium">₹{totalGST.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
+                {tdsApplied && (
+                  <div className="flex justify-between items-center mb-1 text-red-600">
+                    <span className="font-medium">TDS/TCS Deducted ({tdsRate}%):</span>
+                    <span className="font-medium">- ₹{tdsAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
                 <hr className="my-2" />
                 <div className="flex justify-between items-center mt-2">
                   <span className="font-bold text-lg">Final Amount:</span>

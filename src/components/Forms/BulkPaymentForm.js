@@ -31,12 +31,14 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
   const [availableBills, setAvailableBills] = useState([]);
   const [errors, setErrors] = useState({});
   const [attachments, setAttachments] = useState([]);
+  const [availableCredit, setAvailableCredit] = useState(0);
+  const [appliedCredit, setAppliedCredit] = useState(0);
 
   // Sample data
   const vendors = [
-    { id: 1, name: 'Acme Ltd.', gstin: '27AABCU9603R1ZX' },
-    { id: 2, name: 'XYZ India', gstin: '29XYZE5678K9Z2' },
-    { id: 3, name: 'Tech Solutions', gstin: '29TECH5678K9Z3' }
+    { id: 1, name: 'Acme Ltd.', gstin: '27AABCU9603R1ZX', tdsApplicable: true, availableCredit: 5000 },
+    { id: 2, name: 'XYZ India', gstin: '29XYZE5678K9Z2', tdsApplicable: false, availableCredit: 0 },
+    { id: 3, name: 'Tech Solutions', gstin: '29TECH5678K9Z3', tdsApplicable: false, availableCredit: 1500 }
   ];
 
   const companies = ['ABC Enterprises Ltd.', 'XYZ India Pvt Ltd.', 'Tech Solutions Pvt Ltd.'];
@@ -47,31 +49,19 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
 
   const unpaidBills = [
     {
-      id: 1,
-      billNo: 'INV-2025-001',
-      billDate: '2025-06-15',
-      dueDate: '2025-07-15',
-      amountDue: 45000.00,
-      gstTreatment: 'GST Registered',
-      reference: 'PO-2025-123'
+      id: 1, billNo: 'INV-2025-001', billDate: '2025-06-15', dueDate: '2025-07-15',
+      amountDue: 45000.00, subtotal: 38135.59, gst: 6864.41, tdsDeducted: 0,
+      gstTreatment: 'GST Registered', reference: 'PO-2025-123'
     },
     {
-      id: 2,
-      billNo: 'INV-2025-002',
-      billDate: '2025-06-18',
-      dueDate: '2025-06-28',
-      amountDue: 23500.00,
-      gstTreatment: 'Composition',
-      reference: 'PO-2025-124'
+      id: 2, billNo: 'INV-2025-002', billDate: '2025-06-18', dueDate: '2025-06-28',
+      amountDue: 23101.69, subtotal: 19915.25, gst: 3584.75, tdsDeducted: 398.31,
+      gstTreatment: 'Composition', reference: 'PO-2025-124'
     },
     {
-      id: 3,
-      billNo: 'INV-2025-003',
-      billDate: '2025-06-20',
-      dueDate: '2025-07-20',
-      amountDue: 67800.00,
-      gstTreatment: 'GST Registered',
-      reference: 'PO-2025-125'
+      id: 3, billNo: 'INV-2025-003', billDate: '2025-06-20', dueDate: '2025-07-20',
+      amountDue: 67800.00, subtotal: 57457.63, gst: 10342.37, tdsDeducted: 0,
+      gstTreatment: 'GST Registered', reference: 'PO-2025-125'
     }
   ];
 
@@ -80,12 +70,19 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
       setAvailableBills(unpaidBills);
       const selectedVendor = vendors.find(v => v.name === formData.vendor);
       if (selectedVendor) {
-        setFormData(prev => ({ ...prev, gstin: selectedVendor.gstin }));
+        setFormData(prev => ({ 
+          ...prev, 
+          gstin: selectedVendor.gstin,
+          tdsApplied: selectedVendor.tdsApplicable || false
+        }));
+        setAvailableCredit(selectedVendor.availableCredit || 0);
       }
     } else {
       setAvailableBills([]);
       setSelectedBills([]);
-      setFormData(prev => ({ ...prev, gstin: '' }));
+      setFormData(prev => ({ ...prev, gstin: '', tdsApplied: false }));
+      setAvailableCredit(0);
+      setAppliedCredit(0);
     }
   }, [formData.vendor]);
 
@@ -116,7 +113,7 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
   const handleBillSelection = (billId, checked) => {
     if (checked) {
       const bill = availableBills.find(b => b.id === billId);
-      setSelectedBills(prev => [...prev, { ...bill, paymentAmount: bill.amountDue }]);
+      setSelectedBills(prev => [...prev, bill]);
     } else {
       setSelectedBills(prev => prev.filter(b => b.id !== billId));
     }
@@ -124,28 +121,25 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
 
   const handleSelectAll = (checked) => {
     if (checked) {
-      setSelectedBills(availableBills.map(bill => ({
-        ...bill,
-        paymentAmount: bill.amountDue
-      })));
+      setSelectedBills(availableBills.map(bill => bill));
     } else {
       setSelectedBills([]);
     }
   };
 
-  const handlePaymentAmountChange = (billId, amount) => {
-    setSelectedBills(prev =>
-      prev.map(bill => {
-        let newAmount = parseFloat(amount) || 0;
-        if (newAmount > bill.amountDue) newAmount = bill.amountDue;
-        return bill.id === billId ? { ...bill, paymentAmount: newAmount } : bill;
-      })
-    );
+  const handleCreditChange = (e) => {
+    let amount = parseFloat(e.target.value) || 0;
+    const maxApplicable = Math.min(availableCredit, totalAmountDueSelected);
+    if (amount < 0) amount = 0;
+    if (amount > maxApplicable) amount = maxApplicable;
+    setAppliedCredit(amount);
   };
 
-  const getTotalPaymentAmount = () => {
-    return selectedBills.reduce((sum, bill) => sum + (bill.paymentAmount || 0), 0);
-  };
+  const totalSelectedSubtotal = selectedBills.reduce((sum, bill) => sum + (bill.subtotal || 0), 0);
+  const totalSelectedGst = selectedBills.reduce((sum, bill) => sum + (bill.gst || 0), 0);
+  const totalSelectedTds = selectedBills.reduce((sum, bill) => sum + (bill.tdsDeducted || 0), 0);
+  const totalAmountDueSelected = totalSelectedSubtotal + totalSelectedGst - totalSelectedTds;
+  const finalPaymentAmount = totalAmountDueSelected - appliedCredit;
 
   const validateForm = () => {
     const newErrors = {};
@@ -157,15 +151,6 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
     if (!formData.bankAccount) newErrors.bankAccount = 'Please select a bank account';
     if (selectedBills.length === 0) newErrors.bills = 'Please select at least one bill to pay';
     
-    selectedBills.forEach(bill => {
-      if (bill.paymentAmount > bill.amountDue) {
-        newErrors[`bill_${bill.id}`] = 'Payment amount cannot exceed amount due';
-      }
-      if (bill.paymentAmount <= 0) {
-        newErrors[`bill_${bill.id}`] = 'Payment amount must be greater than zero';
-      }
-    });
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -176,7 +161,7 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
       const paymentData = {
         ...formData,
         selectedBills,
-        totalAmount: getTotalPaymentAmount(),
+        totalAmount: finalPaymentAmount,
         attachments,
         id: Date.now(),
         createdAt: new Date().toISOString()
@@ -436,13 +421,11 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
                             <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">AMOUNT DUE</th>
                             <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">GST TREATMENT</th>
                             <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">REFERENCE/PO</th>
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">PAYMENT AMOUNT</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {availableBills.map((bill) => {
                             const isSelected = selectedBills.some(sb => sb.id === bill.id);
-                            const selectedBill = selectedBills.find(sb => sb.id === bill.id);
                             return (
                               <tr key={bill.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="py-4 px-4">
@@ -467,24 +450,6 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
                                   </span>
                                 </td>
                                 <td className="py-4 px-4 text-sm">{bill.reference}</td>
-                                <td className="py-4 px-4">
-                                  {isSelected && (
-                                    <input
-                                      type="number"
-                                      value={selectedBill?.paymentAmount || ''}
-                                      onChange={e => handlePaymentAmountChange(bill.id, e.target.value)}
-                                      className={`w-28 px-2 py-1 text-sm border rounded text-right transition-all ${
-                                        errors[`bill_${bill.id}`] ? 'border-red-500' : 'border-gray-300'
-                                      }`}
-                                      min="0"
-                                      max={bill.amountDue}
-                                      step="0.01"
-                                    />
-                                  )}
-                                  {isSelected && errors[`bill_${bill.id}`] && (
-                                    <div className="text-xs text-red-500 mt-1">{errors[`bill_${bill.id}`]}</div>
-                                  )}
-                                </td>
                               </tr>
                             );
                           })}
@@ -494,12 +459,67 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
 
                     {errors.bills && <div className="text-red-500 text-sm mt-4">{errors.bills}</div>}
 
-                    <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
-                      <div className="text-sm text-gray-500">
-                        {selectedBills.length} bills selected
-                      </div>
-                      <div className="text-lg font-semibold">
-                        Total Payment: {formatCurrency(getTotalPaymentAmount())}
+                    {availableCredit > 0 && formData.vendor && (
+                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h3 className="text-md font-semibold text-yellow-800 mb-2">Vendor Credit Available</h3>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-700">You have <span className="font-bold">{formatCurrency(availableCredit)}</span> in credit.</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="number" 
+                                        value={appliedCredit} 
+                                        onChange={handleCreditChange}
+                                        className="w-32 px-2 py-1 border border-gray-300 rounded-lg text-right"
+                                        max={Math.min(availableCredit, totalAmountDueSelected)}
+                                        min="0"
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setAppliedCredit(Math.min(availableCredit, totalAmountDueSelected))}
+                                        className="px-3 py-1 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-lg hover:bg-yellow-500"
+                                    >
+                                        Apply Max
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end items-center mt-6 pt-4 border-t border-gray-200">
+                      <div className="w-96 space-y-2">
+                        <p className="text-sm text-gray-500 text-left mb-2">{selectedBills.length} bills selected</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-700">Subtotal</span>
+                          <span className="text-gray-900 font-medium">{formatCurrency(totalSelectedSubtotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-700">GST</span>
+                          <span className="text-gray-900 font-medium">{formatCurrency(totalSelectedGst)}</span>
+                        </div>
+                        {totalSelectedTds > 0 && (
+                          <div className="flex justify-between items-center text-red-600">
+                            <span className="font-medium">TDS Deducted</span>
+                            <span className="font-medium">- {formatCurrency(totalSelectedTds)}</span>
+                          </div>
+                        )}
+                        <hr className="my-1" />
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-800">Total Due</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(totalAmountDueSelected)}</span>
+                        </div>
+                        {appliedCredit > 0 && (
+                          <div className="flex justify-between items-center text-green-600">
+                            <span className="font-medium">Credit Applied</span>
+                            <span className="font-medium">- {formatCurrency(appliedCredit)}</span>
+                          </div>
+                        )}
+                        <hr className="my-2 border-dashed" />
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-lg">Final Payment</span>
+                          <span className="font-bold text-lg">{formatCurrency(finalPaymentAmount)}</span>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -576,7 +596,7 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
       <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 sticky bottom-0 z-20">
         <div className="flex justify-between items-center">
           <div className="text-lg font-bold">
-            Total: {formatCurrency(getTotalPaymentAmount())}
+            Total Payment: {formatCurrency(finalPaymentAmount)}
           </div>
           <div className="flex gap-3">
             <button

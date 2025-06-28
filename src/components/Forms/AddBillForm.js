@@ -69,11 +69,15 @@ const BillForm = () => {
   const [previewFile, setPreviewFile] = useState(null);
   const inputRef = useRef(null);
   const mainCardRef = useRef(null);
+  const [tdsApplied, setTdsApplied] = useState(false);
+  const [tdsRate, setTdsRate] = useState(2);
+  const TDS_RATES = [1, 2, 5, 10];
 
   // Calculate totals
   const subtotal = billLines.reduce((sum, l) => sum + l.qty * l.rate, 0);
   const totalGST = billLines.reduce((sum, l) => sum + l.qty * l.rate * (l.gst / 100), 0);
-  const total = subtotal + totalGST;
+  const tdsAmount = tdsApplied ? subtotal * (tdsRate / 100) : 0;
+  const total = subtotal + totalGST - tdsAmount;
 
   // Validation helpers
   const validate = () => {
@@ -237,6 +241,32 @@ const BillForm = () => {
                 value={reference} 
                 onChange={e => setReference(e.target.value)} 
               />
+            </div>
+            <div className="flex items-center space-x-4 pt-4 border-t border-gray-100 mt-2">
+              <label className="flex items-center">
+                <input 
+                  type="checkbox"
+                  checked={tdsApplied}
+                  onChange={e => setTdsApplied(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  disabled={!selectedVendor}
+                />
+                <span className={`ml-2 text-sm font-medium ${!selectedVendor ? 'text-gray-400' : 'text-gray-700'}`}>TDS/TCS Applied</span>
+              </label>
+              {tdsApplied && selectedVendor && (
+                <div>
+                  <label className="sr-only">TDS Rate</label>
+                  <select
+                    value={tdsRate}
+                    onChange={e => setTdsRate(Number(e.target.value))}
+                    className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {TDS_RATES.map(rate => (
+                      <option key={rate} value={rate}>{rate}%</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -426,6 +456,12 @@ const BillForm = () => {
                   <span className="text-gray-700">Total GST:</span>
                   <span className="text-gray-900 font-medium">₹{totalGST.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
+                {tdsApplied && (
+                  <div className="flex justify-between items-center mb-1 text-red-600">
+                    <span className="font-medium">TDS/TCS Deducted ({tdsRate}%):</span>
+                    <span className="font-medium">- ₹{tdsAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
                 <hr className="my-2" />
                 <div className="flex justify-between items-center mt-2">
                   <span className="font-bold text-lg">Final Amount:</span>

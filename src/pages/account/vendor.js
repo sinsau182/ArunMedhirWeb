@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch, FaArrowLeft } from 'react-icons/fa';
 import Modal from '../../components/Modal';
-import { AddBillForm, BulkPaymentForm, AddVendorForm } from '../../components/Forms';
+import { AddBillForm, BulkPaymentForm, AddVendorForm, AddRefundForm } from '../../components/Forms';
 import Sidebar from "../../components/Sidebar";
 import HradminNavbar from "../../components/HradminNavbar";
 import { useDispatch, useSelector } from 'react-redux';
@@ -91,6 +91,29 @@ const Vendor = () => {
     }
   ]);
 
+  const [vendorCredits, setVendorCredits] = useState([
+    {
+      id: 'RTRN-001',
+      referencedBill: 'BILL-12345',
+      vendor: 'WoodWorks',
+      date: '2025-06-28',
+      itemsReturned: 'Oak Tabletop',
+      totalCredit: 10000,
+      type: 'Vendor Credit',
+      status: 'Open (not used yet)'
+    },
+    {
+      id: 'RTRN-002',
+      referencedBill: 'BILL-12346',
+      vendor: 'MetalCo',
+      date: '2025-06-28',
+      itemsReturned: 'Chair Legs',
+      totalCredit: 2000,
+      type: 'Refund',
+      status: 'Paid (Bank Transfer)'
+    }
+  ]);
+
   const [vendorsList, setVendorsList] = useState(vendors);
 
   const handleTabClick = (tab) => {
@@ -101,7 +124,7 @@ const Vendor = () => {
   const handleAddClick = () => {
     if (activeTab === 'bills') {
       setShowAddForm('bill');
-    } else if (activeTab === 'refunds') {
+    } else if (activeTab === 'vendorCredits') {
       setShowAddForm('refund');
     } else if (activeTab === 'payments') {
       setShowAddForm('payment');
@@ -180,20 +203,37 @@ const Vendor = () => {
     console.log('Vendor added successfully:', vendorData);
   };
 
+  const handleRefundSubmit = (refundData) => {
+    const newCredit = {
+      id: `RTRN-${String(vendorCredits.length + 1).padStart(3, '0')}`,
+      referencedBill: refundData.referencedBill,
+      poReference: refundData.poReference,
+      vendor: refundData.vendorName,
+      date: refundData.refundDate,
+      itemsReturned: refundData.itemsToReturn.filter(i => i.qtyToReturn > 0).map(i => i.name).join(', ') || 'N/A',
+      totalCredit: refundData.totalCredit,
+      type: refundData.refundType === 'credit' ? 'Vendor Credit' : 'Refund',
+      status: refundData.refundType === 'credit' ? 'Open (not used yet)' : 'Pending Payment'
+    };
+    setVendorCredits(prev => [...prev, newCredit]);
+    toast.success('Refund request submitted successfully!');
+    setShowAddForm(null);
+  };
+
   const tabs = [
     { id: 'bills', label: 'Bills', icon: FaFileInvoice },
-    { id: 'refunds', label: 'Refunds', icon: FaUndoAlt },
     { id: 'payments', label: 'Payments', icon: FaCreditCard },
+    { id: 'vendorCredits', label: 'Vendor Credit', icon: FaUndoAlt },
     { id: 'vendors', label: 'Vendors List', icon: FaBuilding },
   ];
 
   // Context-aware Add button label
   const getAddButtonLabel = () => {
     switch (activeTab) {
-      case 'bills': return 'Add Bill';
-      case 'refunds': return 'Add Refund';
-      case 'payments': return 'Add Payment';
-      case 'vendors': return 'Add Vendor';
+      case 'bills': return 'New Bill';
+      case 'vendorCredits': return 'New Credit';
+      case 'payments': return 'New Payment';
+      case 'vendors': return 'New Vendor';
       default: return 'Add';
     }
   };
@@ -259,12 +299,12 @@ const Vendor = () => {
               <button onClick={handleBackFromForm} className="mr-4 text-gray-600 hover:text-blue-600 flex items-center gap-2">
                 <FaArrowLeft className="w-5 h-5" /> <span>Back</span>
               </button>
-              <h2 className="text-xl font-bold text-gray-900">Add Refund</h2>
+              <h2 className="text-xl font-bold text-gray-900">Add Refund Request</h2>
             </div>
-            <div className="text-center text-gray-500 py-12">
-              <div className="text-5xl mb-4">⏳</div>
-              <p className="text-lg font-medium">Refund form coming soon...</p>
-            </div>
+            <AddRefundForm
+              onSubmit={handleRefundSubmit}
+              onCancel={handleBackFromForm}
+            />
           </div>
         );
       default:
@@ -342,28 +382,44 @@ const Vendor = () => {
             </div>
           </div>
         );
-      case 'refunds':
+      case 'vendorCredits':
         return (
           <div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white">
-                <thead className="bg-gray-100">
+            <div className="overflow-x-auto bg-white rounded-lg shadow">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Refund #</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Referenced Bill</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">PO Reference</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Items Returned</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Credit</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status/Applied</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">REF-001</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">ABC Supplies</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">2024-07-25</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">$500.00</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">Damaged goods</td>
-                  </tr>
+                  {vendorCredits.map((credit) => (
+                    <tr key={credit.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{credit.referencedBill}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.poReference}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">{credit.vendor}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.date}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.itemsReturned}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-right">₹{credit.totalCredit.toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          credit.type === 'Vendor Credit' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {credit.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.status}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -525,7 +581,7 @@ const Vendor = () => {
                   {getAddButtonIcon()} <span>{getAddButtonLabel()}</span>
                 </button>
                 {/* Tabs */}
-                <nav className="flex space-x-6">
+                <nav className="flex space-x-4">
                   {tabs.map(tab => (
                     <button
                       key={tab.id}
@@ -546,7 +602,9 @@ const Vendor = () => {
                   ))}
                 </nav>
               </div>
-              <SearchBarWithFilter />
+              <div className="w-96">
+                <SearchBarWithFilter />
+              </div>
             </div>
           </div>
 

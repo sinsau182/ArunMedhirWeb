@@ -337,23 +337,6 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                   <option value="Consumer">Consumer</option>
                 </select>
               </div>
-              {/* Vendor Category */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Category <span className="text-red-500">*</span></label>
-                <select
-                  name="vendorCategory"
-                  value={formData.vendorCategory || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <option value="">Select vendor category</option>
-                  <option value="Goods">Goods</option>
-                  <option value="Services">Services</option>
-                  <option value="Consultant">Consultant</option>
-                  <option value="Contractor">Contractor</option>
-                  {/* Add more categories as needed */}
-                </select>
-              </div>
               {/* GSTIN */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">GSTIN <span className="text-gray-400 ml-1"><FaInfoCircle title="15-digit Goods and Services Tax Identification Number" /></span></label>

@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch, FaArrowLeft } from 'react-icons/fa';
 import Modal from '../../components/Modal';
-import { AddBillForm, BulkPaymentForm, AddVendorForm } from '../../components/Forms';
+import { AddBillForm, BulkPaymentForm, AddVendorForm, AddRefundForm } from '../../components/Forms';
 import Sidebar from "../../components/Sidebar";
 import HradminNavbar from "../../components/HradminNavbar";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchVendors } from '../../redux/slices/vendorSlice';
 import { toast } from 'sonner';
+import SearchBarWithFilter from '../../components/SearchBarWithFilter';
 
 const Vendor = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -16,7 +17,7 @@ const Vendor = () => {
 
     useEffect(() => {
       dispatch(fetchVendors());
-    }, [dispatch]);
+    }, []);
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
@@ -32,7 +33,6 @@ const Vendor = () => {
       gstin: '29ABCDE1234F1Z5',
       gstTreatment: 'Registered',
       totalAmount: 12500,
-      status: 'Posted',
       paymentStatus: 'Paid',
       company: 'ABC Pvt Ltd',
       journal: 'Purchases',
@@ -49,8 +49,7 @@ const Vendor = () => {
       gstin: '29XYZE5678K9Z2',
       gstTreatment: 'Unregistered',
       totalAmount: 8000,
-      status: 'Draft',
-      paymentStatus: 'Unpaid',
+      paymentStatus: 'Pending',
       company: 'ABC Pvt Ltd',
       journal: 'Purchases',
       referencePo: '',
@@ -68,10 +67,8 @@ const Vendor = () => {
       billReference: 'VB-1001, VB-1002',
       gstin: '29ABCDE1234F1Z5',
       paymentMethod: 'Bank Transfer',
-      journal: 'Bank',
       amount: 20500,
       currency: 'INR',
-      status: 'Posted',
       tdsApplied: 'No',
       company: 'ABC Pvt Ltd',
       paymentReference: 'TXN123456789',
@@ -85,14 +82,35 @@ const Vendor = () => {
       billReference: 'VB-1003',
       gstin: '29XYZE5678K9Z2',
       paymentMethod: 'Cheque',
-      journal: 'Cheque',
       amount: 8000,
       currency: 'INR',
-      status: 'Draft',
       tdsApplied: 'Yes',
       company: 'ABC Pvt Ltd',
       paymentReference: 'CHQ001234',
       attachments: 'No'
+    }
+  ]);
+
+  const [vendorCredits, setVendorCredits] = useState([
+    {
+      id: 'RTRN-001',
+      referencedBill: 'BILL-12345',
+      vendor: 'WoodWorks',
+      date: '2025-06-28',
+      itemsReturned: 'Oak Tabletop',
+      totalCredit: 10000,
+      type: 'Vendor Credit',
+      status: 'Open (not used yet)'
+    },
+    {
+      id: 'RTRN-002',
+      referencedBill: 'BILL-12346',
+      vendor: 'MetalCo',
+      date: '2025-06-28',
+      itemsReturned: 'Chair Legs',
+      totalCredit: 2000,
+      type: 'Refund',
+      status: 'Paid (Bank Transfer)'
     }
   ]);
 
@@ -106,7 +124,7 @@ const Vendor = () => {
   const handleAddClick = () => {
     if (activeTab === 'bills') {
       setShowAddForm('bill');
-    } else if (activeTab === 'refunds') {
+    } else if (activeTab === 'vendorCredits') {
       setShowAddForm('refund');
     } else if (activeTab === 'payments') {
       setShowAddForm('payment');
@@ -185,20 +203,37 @@ const Vendor = () => {
     console.log('Vendor added successfully:', vendorData);
   };
 
+  const handleRefundSubmit = (refundData) => {
+    const newCredit = {
+      id: `RTRN-${String(vendorCredits.length + 1).padStart(3, '0')}`,
+      referencedBill: refundData.referencedBill,
+      poReference: refundData.poReference,
+      vendor: refundData.vendorName,
+      date: refundData.refundDate,
+      itemsReturned: refundData.itemsToReturn.filter(i => i.qtyToReturn > 0).map(i => i.name).join(', ') || 'N/A',
+      totalCredit: refundData.totalCredit,
+      type: refundData.refundType === 'credit' ? 'Vendor Credit' : 'Refund',
+      status: refundData.refundType === 'credit' ? 'Open (not used yet)' : 'Pending Payment'
+    };
+    setVendorCredits(prev => [...prev, newCredit]);
+    toast.success('Refund request submitted successfully!');
+    setShowAddForm(null);
+  };
+
   const tabs = [
     { id: 'bills', label: 'Bills', icon: FaFileInvoice },
-    { id: 'refunds', label: 'Refunds', icon: FaUndoAlt },
     { id: 'payments', label: 'Payments', icon: FaCreditCard },
+    { id: 'vendorCredits', label: 'Vendor Credit', icon: FaUndoAlt },
     { id: 'vendors', label: 'Vendors List', icon: FaBuilding },
   ];
 
   // Context-aware Add button label
   const getAddButtonLabel = () => {
     switch (activeTab) {
-      case 'bills': return 'Add Bill';
-      case 'refunds': return 'Add Refund';
-      case 'payments': return 'Add Payment';
-      case 'vendors': return 'Add Vendor';
+      case 'bills': return 'New Bill';
+      case 'vendorCredits': return 'New Credit';
+      case 'payments': return 'New Payment';
+      case 'vendors': return 'New Vendor';
       default: return 'Add';
     }
   };
@@ -264,12 +299,12 @@ const Vendor = () => {
               <button onClick={handleBackFromForm} className="mr-4 text-gray-600 hover:text-blue-600 flex items-center gap-2">
                 <FaArrowLeft className="w-5 h-5" /> <span>Back</span>
               </button>
-              <h2 className="text-xl font-bold text-gray-900">Add Refund</h2>
+              <h2 className="text-xl font-bold text-gray-900">Add Refund Request</h2>
             </div>
-            <div className="text-center text-gray-500 py-12">
-              <div className="text-5xl mb-4">⏳</div>
-              <p className="text-lg font-medium">Refund form coming soon...</p>
-            </div>
+            <AddRefundForm
+              onSubmit={handleRefundSubmit}
+              onCancel={handleBackFromForm}
+            />
           </div>
         );
       default:
@@ -285,16 +320,6 @@ const Vendor = () => {
       case 'bills':
         return (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search bills..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                />
-              </div>
-            </div>
             <div className="overflow-x-auto bg-white rounded-lg shadow">
               <table className="min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -304,14 +329,9 @@ const Vendor = () => {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Bill Date</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Due Date</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">GSTIN</th>
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">GST Treatment</th> */}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Amount</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Status</th>
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th> */}
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Journal</th> */}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Reference/PO No.</th>
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Reverse Charge</th> */}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Attachments</th>
                   </tr>
                 </thead>
@@ -329,26 +349,8 @@ const Vendor = () => {
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{bill.gstin}</span>
                       </td>
-                      {/* <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          bill.gstTreatment === 'Registered' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-orange-100 text-orange-800'
-                        }`}>
-                          {bill.gstTreatment}
-                        </span>
-                      </td> */}
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className="text-sm font-semibold text-gray-900">₹{bill.totalAmount.toLocaleString()}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          bill.status === 'Posted' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {bill.status}
-                        </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
@@ -359,22 +361,11 @@ const Vendor = () => {
                           {bill.paymentStatus}
                         </span>
                       </td>
-                        {/* <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{bill.company}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{bill.journal}</td> */}
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className={`text-sm ${bill.referencePo ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
                           {bill.referencePo || '-'}
                         </span>
                       </td>
-                      {/* <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          bill.reverseCharge === 'Yes' 
-                            ? 'bg-red-100 text-red-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {bill.reverseCharge}
-                        </span>
-                      </td> */}
                       <td className="px-4 py-4 whitespace-nowrap text-center">
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
                           bill.attachments === 'Yes' 
@@ -391,38 +382,44 @@ const Vendor = () => {
             </div>
           </div>
         );
-      case 'refunds':
+      case 'vendorCredits':
         return (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search refunds..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white">
-                <thead className="bg-gray-100">
+            <div className="overflow-x-auto bg-white rounded-lg shadow">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Refund #</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Referenced Bill</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">PO Reference</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Items Returned</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Credit</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status/Applied</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">REF-001</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">ABC Supplies</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">2024-07-25</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">$500.00</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">Damaged goods</td>
-                  </tr>
+                  {vendorCredits.map((credit) => (
+                    <tr key={credit.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{credit.referencedBill}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.poReference}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">{credit.vendor}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.date}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.itemsReturned}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-right">₹{credit.totalCredit.toLocaleString('en-IN')}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          credit.type === 'Vendor Credit' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {credit.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.status}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -431,43 +428,22 @@ const Vendor = () => {
       case 'payments':
         return (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search payments..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                />
-              </div>
-            </div>
             <div className="overflow-x-auto bg-white rounded-lg shadow">
               <table className="min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment No.</th> */}
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Date</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor Name</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Bill Reference</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">GSTIN (Vendor)</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Method</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Journal</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Currency</th> */}
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">TDS/TCS Applied</th> */}
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th> */}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Reference</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Attachments</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Proof</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {payments.map((payment) => (
                     <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                      {/* <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-blue-600">{payment.paymentNo}</span>
-                      </td> */}
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{payment.paymentDate}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-gray-900">{payment.vendorName}</span>
                       </td>
@@ -488,30 +464,9 @@ const Vendor = () => {
                           {payment.paymentMethod}
                         </span>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{payment.journal}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className="text-sm font-semibold text-gray-900">₹{payment.amount.toLocaleString()}</span>
                       </td>
-                      {/* <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{payment.currency}</td> */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          payment.status === 'Posted' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {payment.status}
-                        </span>
-                      </td>
-                      {/* <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          payment.tdsApplied === 'Yes' 
-                            ? 'bg-orange-100 text-orange-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {payment.tdsApplied}
-                        </span>
-                      </td> */}
-                      {/* <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{payment.company}</td> */}
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-600 font-mono">{payment.paymentReference}</span>
                       </td>
@@ -534,31 +489,18 @@ const Vendor = () => {
       case 'vendors':
         return (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search vendors..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                />
-              </div>
-            </div>
             <div className="overflow-x-auto bg-white rounded-lg shadow">
               <table className="min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company/Individual</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Contact Name</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">GSTIN</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">PAN</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">City</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">State</th>
-                    {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Terms</th> */}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor Tags</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -568,19 +510,10 @@ const Vendor = () => {
                         <span className="text-sm font-medium text-gray-900">{vendor.vendorName}</span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          vendor.companyType === 'Company' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {vendor.companyType}
-                        </span>
+                        <span className="text-sm text-gray-800">{vendor.contactName || '-'}</span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{vendor.gstin}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{vendor.pan}</span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{vendor.phone}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -588,11 +521,6 @@ const Vendor = () => {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{vendor.city}</td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{vendor.state}</td>
-                      {/* <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                          {vendor.paymentTerms}
-                        </span>
-                      </td> */}
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1">
                           {vendor.vendorTags?.slice(0, 2).map((tag, index) => (
@@ -606,15 +534,6 @@ const Vendor = () => {
                             </span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          vendor.status === 'Active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {vendor.status}
-                        </span>
                       </td>
                     </tr>
                   ))}
@@ -651,36 +570,41 @@ const Vendor = () => {
           {/* Vendors heading and Add Button + Tabs as a single block, pushed down together */}
           <div className="mb-0">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Vendors</h1>
-            <div className="flex items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
-              {/* Add Button */}
-              <button
-                onClick={handleAddClick}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors font-semibold shadow-sm mr-6 text-sm"
-                style={{ minWidth: 120 }}
-              >
-                {getAddButtonIcon()} <span>{getAddButtonLabel()}</span>
-              </button>
-              {/* Tabs */}
-              <nav className="flex space-x-6">
-                {tabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      setShowAddForm(null); // Always reset form on tab switch
-                    }}
-                    className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm transition-colors focus:outline-none py-1 ${
-                      activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                    style={{ minWidth: 110 }}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
+            <div className="flex justify-between items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
+              <div className="flex items-center">
+                {/* Add Button */}
+                <button
+                  onClick={handleAddClick}
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors font-semibold shadow-sm mr-6 text-sm"
+                  style={{ minWidth: 120 }}
+                >
+                  {getAddButtonIcon()} <span>{getAddButtonLabel()}</span>
+                </button>
+                {/* Tabs */}
+                <nav className="flex space-x-4">
+                  {tabs.map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setShowAddForm(null); // Always reset form on tab switch
+                      }}
+                      className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm transition-colors focus:outline-none py-1 ${
+                        activeTab === tab.id
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                      style={{ minWidth: 110 }}
+                    >
+                      <tab.icon className="w-5 h-5" />
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+              <div className="w-96">
+                <SearchBarWithFilter />
+              </div>
             </div>
           </div>
 

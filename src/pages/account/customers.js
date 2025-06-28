@@ -7,15 +7,17 @@ import { AddInvoiceForm, AddReceiptForm, AddClientForm } from '../../components/
 import { toast } from 'sonner';
 import SearchBarWithFilter from '../../components/SearchBarWithFilter';
 
-const InvoicePreviewModal = ({ invoice, receipts, onClose }) => {
+const InvoicePreviewModal = ({ invoice, receipts: allReceipts, onClose }) => {
   if (!invoice) return null;
 
-  const linkedReceipts = receipts.filter(r => r.refInvoice.includes(invoice.id));
+  // Find receipts associated with this invoice
+  const relatedReceipts = allReceipts.filter(receipt => receipt.refInvoice && receipt.refInvoice.includes(invoice.invoiceNo));
+
   const amountRemaining = invoice.totalAmount - invoice.amountReceived;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-800">Invoice Preview: {invoice.id}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
@@ -53,7 +55,7 @@ const InvoicePreviewModal = ({ invoice, receipts, onClose }) => {
 
           <div>
             <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Linked Receipts</h3>
-            {linkedReceipts.length > 0 ? (
+            {relatedReceipts.length > 0 ? (
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
@@ -63,7 +65,7 @@ const InvoicePreviewModal = ({ invoice, receipts, onClose }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {linkedReceipts.map(r => (
+                  {relatedReceipts.map(r => (
                     <tr key={r.id} className="border-b">
                       <td className="py-2 px-3 font-medium text-blue-600">{r.id}</td>
                       <td className="py-2 px-3">{r.date}</td>

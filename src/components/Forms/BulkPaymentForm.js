@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { FaPlus, FaPaperclip, FaFilePdf, FaFileImage, FaTimes } from 'react-icons/fa';
 
 const BulkPaymentForm = ({ onSubmit, onCancel }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
   const [vendorSearch, setVendorSearch] = useState('');
   const vendorInputRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('bills'); // 'bills' | 'notes'
+  const attachmentInputRef = useRef(null);
+  const [activeTab, setActiveTab] = useState('bills'); // 'bills' | 'notes' | 'attachments'
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -28,6 +30,7 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
   const [selectedBills, setSelectedBills] = useState([]);
   const [availableBills, setAvailableBills] = useState([]);
   const [errors, setErrors] = useState({});
+  const [attachments, setAttachments] = useState([]);
 
   // Sample data
   const vendors = [
@@ -174,11 +177,22 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
         ...formData,
         selectedBills,
         totalAmount: getTotalPaymentAmount(),
+        attachments,
         id: Date.now(),
         createdAt: new Date().toISOString()
       };
       onSubmit(paymentData);
     }
+  };
+
+  const handleAttachmentChange = (e) => {
+    const files = Array.from(e.target.files);
+    const allowedFiles = files.filter(f => /pdf|jpg|jpeg|png/i.test(f.type));
+    setAttachments(prev => [...prev, ...allowedFiles]);
+  };
+
+  const handleRemoveAttachment = (idx) => {
+    setAttachments(prev => prev.filter((_, i) => i !== idx));
   };
 
   const formatDate = (dateStr) => {
@@ -379,6 +393,14 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
             >
               Notes
             </button>
+            <button
+              type="button"
+              className={`px-6 py-3 font-semibold text-lg focus:outline-none transition-colors border-b-2
+                ${activeTab === 'attachments' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-blue-600'}`}
+              onClick={() => setActiveTab('attachments')}
+            >
+              Attach Payment Proof
+            </button>
           </div>
           {/* Tab Content */}
           <div className="bg-white p-6 border border-t-0 border-gray-200 min-h-[300px]">
@@ -494,6 +516,56 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Add payment notes (optional)"
                 />
+              </div>
+            )}
+            {activeTab === 'attachments' && (
+              <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+                <label htmlFor="attachment-upload-payment" className="flex flex-col items-center justify-center cursor-pointer">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-2">
+                    <FaPaperclip className="text-2xl text-blue-500" />
+                  </div>
+                  <button
+                    type="button"
+                    className="px-6 py-2 bg-blue-100 text-blue-700 rounded-lg font-medium flex items-center gap-2 mb-2 hover:bg-blue-200 transition-colors"
+                    onClick={e => {
+                      e.preventDefault();
+                      if (attachmentInputRef.current) attachmentInputRef.current.click();
+                    }}
+                  >
+                    <FaPlus className="text-xl" /> <span className="text-base">Add Proof</span>
+                  </button>
+                  <input
+                    id="attachment-upload-payment"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    multiple
+                    className="hidden"
+                    onChange={handleAttachmentChange}
+                    ref={attachmentInputRef}
+                  />
+                </label>
+                <div className="text-sm text-gray-400 mb-6">PDF, JPG, PNG allowed</div>
+                <div className="w-full max-w-xl">
+                  {attachments.length > 0 && (
+                    <ul className="divide-y divide-gray-200 bg-gray-50 rounded-lg shadow p-4">
+                      {attachments.map((file, idx) => (
+                        <li key={idx} className="flex items-center justify-between py-2">
+                          <div className="flex items-center gap-3">
+                            {/pdf/i.test(file.type) ? (
+                              <span className="text-red-500"><FaFilePdf /></span>
+                            ) : (
+                              <span className="text-blue-500"><FaFileImage /></span>
+                            )}
+                            <span className="text-gray-800 font-medium text-sm truncate max-w-xs">{file.name}</span>
+                          </div>
+                          <button type="button" className="text-red-500 hover:text-red-700 ml-4" onClick={() => handleRemoveAttachment(idx)}>
+                            <FaTimes />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             )}
           </div>

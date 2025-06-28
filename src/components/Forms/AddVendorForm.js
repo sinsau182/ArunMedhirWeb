@@ -17,12 +17,14 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
   const formRef = useRef(null);
   const [isAtBottom, setIsAtBottom] = useState(false);
   const sentinelRef = useRef(null);
+  const [showTagsDropdown, setShowTagsDropdown] = useState(false);
+  const tagsDropdownRef = useRef(null);
 
   const [formData, setFormData] = useState({
     // Basic Information
     vendorName: '',
     companyId: 'CID101',
-    companyType: 'Company', // Company or Individual
+    taxTreatment: '',
     gstin: '',
     pan: '',
     addressLine1: '',
@@ -319,19 +321,21 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                   placeholder="Enter vendor name"
                 />
               </div>
-              {/* Vendor Type */}
-              <div className="flex flex-col justify-end">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Type <span className="text-red-500">*</span></label>
-                <div className="flex items-center gap-6 h-full">
-                  <label className="inline-flex items-center">
-                    <input type="radio" name="companyType" value="Company" checked={formData.companyType === 'Company'} onChange={handleChange} className="form-radio text-blue-600" />
-                    <span className="ml-2">Company</span>
-                  </label>
-                  <label className="inline-flex items-center">
-                    <input type="radio" name="companyType" value="Individual" checked={formData.companyType === 'Individual'} onChange={handleChange} className="form-radio text-blue-600" />
-                    <span className="ml-2">Individual</span>
-                  </label>
-                </div>
+              {/* GST Treatment */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">GST Treatment</label>
+                <select
+                  name="taxTreatment"
+                  value={formData.taxTreatment || ''}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+                  <option value="">Select tax treatment</option>
+                  <option value="Registered">Registered</option>
+                  <option value="Unregistered">Unregistered</option>
+                  <option value="Composition">Composition</option>
+                  <option value="Consumer">Consumer</option>
+                </select>
               </div>
               {/* Vendor Category */}
               <div>
@@ -378,22 +382,34 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
                 />
                 <div className="text-xs text-gray-400 mt-1">10-character Permanent Account Number</div>
               </div>
-              {/* Tax Treatment */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tax Treatment</label>
-                <select
-                  name="taxTreatment"
-                  value={formData.taxTreatment || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              {/* Vendor Tags */}
+              <div className="relative" ref={tagsDropdownRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Tags</label>
+                <button
+                  type="button"
+                  onClick={() => setShowTagsDropdown(prev => !prev)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
-                  <option value="">Select tax treatment</option>
-                  <option value="Registered">Registered</option>
-                  <option value="Unregistered">Unregistered</option>
-                  <option value="Composition">Composition</option>
-                  <option value="Consumer">Consumer</option>
-                  {/* Add more as needed */}
-                </select>
+                  <span className="truncate">
+                    {formData.vendorTags.length > 0 ? formData.vendorTags.join(', ') : 'Select one or more tags'}
+                  </span>
+                  <FaChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
+                {showTagsDropdown && (
+                  <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
+                    {vendorTagOptions.map(tag => (
+                      <label key={tag} className="flex items-center w-full px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="form-checkbox h-4 w-4 text-blue-600 rounded"
+                          checked={formData.vendorTags.includes(tag)}
+                          onChange={() => handleMultiSelect('vendorTags', tag)}
+                        />
+                        <span className="ml-3 text-sm text-gray-700">{tag}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -725,6 +741,18 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tagsDropdownRef.current && !tagsDropdownRef.current.contains(event.target)) {
+        setShowTagsDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [tagsDropdownRef]);
 
   console.log(steps)
   console.log(step)

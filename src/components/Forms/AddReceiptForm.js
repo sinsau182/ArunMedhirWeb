@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaSave, FaTimes, FaReceipt, FaChevronDown, FaChevronRight, FaInfoCircle, FaUpload, FaLink } from 'react-icons/fa';
 
-const AddReceiptForm = ({ onSubmit, onCancel }) => {
+const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
     projectName: '',
     customerName: '',
@@ -55,10 +55,28 @@ const AddReceiptForm = ({ onSubmit, onCancel }) => {
   };
   
   useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({
+        ...prev,
+        projectName: initialData.projectName || '',
+        customerName: initialData.client || '',
+        amount: initialData.amount || ''
+      }));
+    }
+  }, [initialData]);
+
+  useEffect(() => {
     const customerInvoices = getInvoicesForCustomer(formData.customerName);
-    const initialInvoices = customerInvoices.map(inv => ({ ...inv, payment: 0 }));
-    setInvoicesToLink(initialInvoices);
-  }, [formData.customerName]);
+    let invoicesWithPayments = customerInvoices.map(inv => ({ ...inv, payment: 0 }));
+
+    if (initialData && initialData.client === formData.customerName) {
+      invoicesWithPayments = invoicesWithPayments.map(inv => 
+        inv.id === initialData.id ? { ...inv, payment: initialData.amount } : inv
+      );
+    }
+    
+    setInvoicesToLink(invoicesWithPayments);
+  }, [formData.customerName, initialData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

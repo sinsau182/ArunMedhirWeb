@@ -46,14 +46,18 @@ const BillForm = () => {
     {
       item: "Office Supplies",
       description: "Stationery items",
+      hsn: "998349",
       qty: 10,
+      uom: "PCS",
       rate: 500,
       gst: 18,
     },
     {
       item: "Software License",
       description: "Annual subscription",
+      hsn: "997331",
       qty: 1,
+      uom: "NOS",
       rate: 25000,
       gst: 18,
     },
@@ -107,7 +111,7 @@ const BillForm = () => {
     setBillLines((prev) => prev.map((line, i) => i === idx ? { ...line, [field]: value } : line));
   };
   const handleAddLine = () => {
-    setBillLines((prev) => [...prev, { item: '', description: '', qty: 1, rate: 0, gst: 18 }]);
+    setBillLines((prev) => [...prev, { item: '', description: '', hsn: '', qty: 1, uom: 'PCS', rate: 0, gst: 18 }]);
   };
   const handleDeleteLine = (idx) => {
     setShowDeleteIdx(idx);
@@ -296,7 +300,9 @@ const BillForm = () => {
                     <tr className="border-b border-gray-200">
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">HSN</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">UoM</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">GST %</th>
@@ -333,6 +339,14 @@ const BillForm = () => {
                             />
                           </td>
                           <td className="px-4 py-3">
+                            <input
+                              className="w-24 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              value={line.hsn}
+                              onChange={e => handleLineChange(idx, 'hsn', e.target.value)}
+                              placeholder="HSN Code"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
                             <input 
                               type="number" 
                               min="1" 
@@ -341,6 +355,14 @@ const BillForm = () => {
                               onChange={e => handleLineChange(idx, 'qty', e.target.value)} 
                             />
                             {errors[`qty${idx}`] && <div className="text-xs text-red-500 mt-1">{errors[`qty${idx}`]}</div>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              className="w-20 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              value={line.uom}
+                              onChange={e => handleLineChange(idx, 'uom', e.target.value)}
+                              placeholder="e.g., PCS"
+                            />
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">

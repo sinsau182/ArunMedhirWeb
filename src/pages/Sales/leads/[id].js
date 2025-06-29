@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { FaStar, FaRegStar, FaUser, FaEnvelope, FaPhone, FaBuilding, FaMapMarkerAlt,
     FaRupeeSign, FaBullseye, FaUserTie, FaTasks, FaHistory, FaPaperclip, FaUserCircle,
     FaCheck, FaUsers, FaFileAlt, FaTimes, FaPencilAlt, FaRegSmile, FaExpandAlt, FaChevronDown, FaClock,
-    FaRegCheckCircle, FaRegClock, FaCheckCircle, FaTimesCircle, FaChevronUp } from 'react-icons/fa';
+    FaRegCheckCircle, FaRegClock } from 'react-icons/fa';
 import MainLayout from '@/components/MainLayout';
 import { toast } from 'sonner';
 
@@ -78,17 +78,17 @@ const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, onMarkJunk }) =>
     return (
         <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
             {/* Left Side */}
-            <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col">
                 <h1 className="text-2xl font-bold text-gray-800">{lead.name} &ndash; {lead.projectType}</h1>
                 <div className="flex items-center gap-6 mt-2">
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500 font-medium">Priority:</span>
                         <span className={`px-2 py-0.5 rounded text-xs font-semibold ${priorityClass}`}>{priorityLabel}</span>
-                    </div>
+            </div>
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500 font-medium">Next Action:</span>
                         <span className="text-sm text-gray-500">{getNextAction(lead.activities)}</span>
-                    </div>
+          </div>
                 </div>
             </div>
 
@@ -96,32 +96,32 @@ const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, onMarkJunk }) =>
             <div className="flex items-center gap-4">
                 {/* Pipeline Stepper */}
                 <div className="flex items-center gap-2">
-                    {stages.map((stage, idx) => {
+              {stages.map((stage, idx) => {
                         const isActive = idx === currentIndex;
-                        const isCompleted = idx < currentIndex;
-                        return (
-                            <React.Fragment key={stage}>
+                const isCompleted = idx < currentIndex;
+                return (
+                  <React.Fragment key={stage}>
                                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => onStatusChange(stage)}>
                                     {isCompleted ? (
                                         <FaCheck className="text-green-500" />
                                     ) : (
                                         <span className={`flex items-center justify-center rounded-full border w-5 h-5 text-xs font-bold ${isActive ? 'bg-gray-800 text-white border-gray-800' : 'text-gray-400 border-gray-300'}`}>
-                                            {idx + 1}
+                      {idx + 1}
                                         </span>
-                                    )}
+                    )}
                                     <span className={`text-sm ${isActive || isCompleted ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>{stage}</span>
                                 </div>
                                 {idx < stages.length - 1 && <span className="text-gray-300">&gt;</span>}
-                            </React.Fragment>
-                        );
-                    })}
-                </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
                 {/* Action Buttons */}
                 <div className="flex gap-2">
                     <button onClick={onMarkJunk} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Mark as Junk</button>
                     <button onClick={onMarkLost} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"><FaTimes className="text-red-500" /> Mark as Lost</button>
-                </div>
             </div>
+          </div>
         </div>
     );
 };
@@ -139,7 +139,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
     });
 
     const [projectFields, setProjectFields] = useState({});
-    
+
     useEffect(() => {
       setProjectFields({
         projectType: lead.projectType || '',
@@ -151,7 +151,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
         projectTimeline: lead.projectTimeline || '',
       });
     }, [lead, isEditing]);
-    
+
     const handleContactFieldChange = (field, value) => {
       setContactFields(prev => ({ ...prev, [field]: value }));
     };
@@ -192,11 +192,11 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 <div className="flex gap-2">
                                     <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                                     <button onClick={handleSaveProject} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-semibold shadow-sm hover:bg-blue-700"><FaCheck /> Save</button>
-                                </div>
+                            </div>
                             ) : (
                                 <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-semibold shadow-sm hover:bg-gray-50"><FaPencilAlt className="w-3 h-3" /> Edit</button>
-                            )}
-                        </div>
+                                )}
+                    </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-8">
                             {/* Fields */}
                             {[
@@ -210,12 +210,12 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                             ].map(({label, field, type, options, required}) => (
                                 <div key={field}>
                                     <div className="text-sm text-gray-500">{label}{required && <span className="text-red-500">*</span>}</div>
-                                    {isEditing ? (
+                                {isEditing ? (
                                         type === 'select' ? (
                                             <select value={projectFields[field]} onChange={e => handleProjectFieldChange(field, e.target.value)} className="w-full p-1 mt-1 border-b text-gray-900 focus:outline-none focus:border-blue-500">
                                                 {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                            </select>
-                                        ) : (
+                                    </select>
+                                ) : (
                                             <input 
                                                 type={type} 
                                                 value={projectFields[field]} 
@@ -227,12 +227,12 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                         <div className="text-base text-gray-900 font-medium mt-1">
                                             {field === 'budget' && lead.budget ? <FaRupeeSign className="inline text-gray-400 text-sm mr-1" /> : null}
                                             {field === 'budget' && lead.budget ? Number(lead.budget).toLocaleString('en-IN') : lead[field] || 'N/A'}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
                     </div>
+                                )}
+                </div>
+                            ))}
+                                    </div>
+                                    </div>
 
                     {/* Tabs and Tab Content */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 min-h-[300px]">
@@ -242,22 +242,22 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'activity' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('activity')}>Activity Log</button>
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'conversion' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('conversion')}>Conversion Details</button>
                             </nav>
-                        </div>
+            </div>
                         <div className="pt-4">
-                            {activeTab === 'notes' && (
+                        {activeTab === 'notes' && (
                                 <div>
                                     <textarea value={noteContent} onChange={e => setNoteContent(e.target.value)} className="w-full p-2 border rounded-md" placeholder="Add a note..."></textarea>
                                     <div className="text-right mt-2">
                                         <button onClick={() => { onAddNote({ user: 'You', time: new Date(), content: noteContent }); setNoteContent(''); }} className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm font-semibold">Save Note</button>
-                                    </div>
+                        </div>
                                     <div className="mt-4 space-y-4">
-                                        {notes.map((note, idx) => (
+                                    {notes.map((note, idx) => (
                                             <div key={idx}><p className="font-semibold text-sm">{note.user} <span className="text-xs text-gray-400 ml-2">{formatRelativeTime(note.time)}</span></p><p className="text-sm">{note.content}</p></div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            {activeTab === 'activity' && (
+                                    ))}
+                    </div>
+                </div>
+            )}
+                        {activeTab === 'activity' && (
                                 <div className="relative">
                                     {/* The main vertical line - only if there are items */}
                                     {combinedLog.length > 0 && <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />}
@@ -265,19 +265,19 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                     <ul className="space-y-4">
                                         {combinedLog.map(item => {
                                             const isEvent = item.type === 'event';
-                                            const isDone = item.status === 'done';
+                                        const isDone = item.status === 'done';
                                             const iconBg = isEvent || isDone ? 'bg-green-100' : 'bg-blue-100';
                                             const iconColor = isEvent || isDone ? 'text-green-600' : 'text-blue-600';
                                             const icon = isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />);
 
-                                            return (
+                                        return (
                                                 <li key={item.id} className="relative pl-12">
                                                     {/* The dot on the timeline */}
                                                     <div className="absolute left-0 top-1 flex items-center justify-center">
                                                         <span className={`w-8 h-8 flex items-center justify-center rounded-full border-4 border-gray-50 ${iconBg}`}>
                                                             <span className={iconColor}>{icon}</span>
-                                                        </span>
-                                                    </div>
+                                            </span>
+                                              </div>
                                                     
                                                     {/* The content */}
                                                     <div className="flex items-center justify-between p-3 rounded-md">
@@ -288,73 +288,34 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                                             <span className="text-gray-800 font-medium">
                                                                 {isEvent ? item.details : item.title || item.summary}
                                                             </span>
-                                                        </div>
-                                                        <div className="flex items-center space-x-2">
-                                                            <span className="text-sm text-gray-500">{new Date(item.date).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                                                            {item.status === 'pending' && (
-                                                                <div className="flex items-center space-x-2 text-gray-500">
-                                                                    <button onClick={() => handleMarkDone(item.id)} className="hover:text-green-600"><FaCheckCircle /></button>
-                                                                    <button onClick={() => onEditActivity(item)} className="hover:text-blue-600"><FaPencilAlt /></button>
-                                                                    <button onClick={() => onDeleteActivity(item.id)} className="hover:text-red-600"><FaTimesCircle /></button>
-                                                                </div>
-                                                            )}
-                                                            <button onClick={() => setExpandedActivities(prev => ({...prev, [item.id]: !prev[item.id]}))} className="text-gray-500 hover:text-gray-800">
-                                                                <FaChevronUp className={`transform transition-transform ${expandedActivities[item.id] ? 'rotate-180' : ''}`} />
+                                                </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <span className="text-sm text-gray-500">{formatDateTime(item.date)}</span>
+                                                            <button onClick={() => setExpandedActivities(prev => ({...prev, [item.id]: !prev[item.id]}))} className="text-gray-400 hover:text-gray-600">
+                                                                <FaChevronDown size={12} className={`transition-transform ${expandedActivities[item.id] ? 'rotate-180' : ''}`}/>
                                                             </button>
-                                                        </div>
+                                            </div>
                                                     </div>
-                                                    
-                                                    {/* Expanded Details */}
-                                                    {expandedActivities[item.id] && (
-                                                        <div className="mt-4 text-sm text-gray-700 space-y-3">
-                                                            {item.purpose && (
-                                                                <div className="flex">
-                                                                    <p className="font-semibold text-gray-900 w-24 flex-shrink-0">Purpose:</p>
-                                                                    <p>{item.purpose}</p>
-                                                                </div>
-                                                            )}
-                                                            {item.outcome && (
-                                                                <div className="flex">
-                                                                    <p className="font-semibold text-gray-900 w-24 flex-shrink-0">Outcome:</p>
-                                                                    <p>{item.outcome}</p>
-                                                                </div>
-                                                            )}
-                                                            {item.notes && (
-                                                                <div className="flex">
-                                                                    <p className="font-semibold text-gray-900 w-24 flex-shrink-0">Notes:</p>
-                                                                    <p>{item.notes}</p>
-                                                                </div>
-                                                            )}
-                                                            {item.attachment && (
-                                                                <div className="flex items-center">
-                                                                    <p className="font-semibold text-gray-900 w-24 flex-shrink-0">Attachment:</p>
-                                                                    <a href={item.attachment.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
-                                                                        <FaPaperclip className="mr-2" />
-                                                                        <span>{item.attachment.name}</span>
-                                                                    </a>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </li>
-                                            );
+                                                    {/* You can add expanded content here if needed */}
+                                          </li>
+                                        );
                                         })}
-                                    </ul>
-                                </div>
-                            )}
-                            {activeTab === 'conversion' && (
-                                <div>
+                                        </ul>
+                            </div>
+                        )}
+                        {activeTab === 'conversion' && (
+                            <div>
                                     {lead.status === 'Converted' && conversionData ? (
                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                             <p><span className="text-gray-500">Final Quotation:</span><span className="font-medium ml-2">₹{conversionData.finalQuotation}</span></p>
                                             <p><span className="text-gray-500">Sign-up Amount:</span><span className="font-medium ml-2">₹{conversionData.signupAmount}</span></p>
                                             {/* Add more fields here */}
-                                        </div>
+                                            </div>
                                     ) : <p className="text-center text-gray-400 py-4">Lead not converted yet.</p>}
-                                </div>
-                            )}
+                            </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
                 </div>
 
                 {/* Right Column */}
@@ -364,7 +325,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                             <h3 className="text-base font-semibold text-gray-800">Contact Details</h3>
                             <button onClick={() => setIsEditingContact(!isEditingContact)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-semibold hover:bg-gray-50"><FaPencilAlt className="w-3 h-3" /> {isEditingContact ? 'Cancel' : 'Edit'}</button>
                         </div>
-                        {isEditingContact ? (
+                                {isEditingContact ? (
                             <div className="space-y-3">
                                 <input value={contactFields.name} onChange={e => handleContactFieldChange('name', e.target.value)} className="w-full p-1 border-b" />
                                 <input value={contactFields.contactNumber} onChange={e => handleContactFieldChange('contactNumber', e.target.value)} className="w-full p-1 border-b" />
@@ -377,13 +338,13 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 <div className="flex items-center gap-3"><FaPhone className="text-gray-400" /><a href={`tel:+91${lead.contactNumber}`} className="text-blue-600 hover:underline">{`+91 ${lead.contactNumber}`}</a></div>
                                 <div className="flex items-center gap-3"><FaEnvelope className="text-gray-400" /><a href={`mailto:${lead.email}`} className="text-blue-600 hover:underline">{lead.email}</a></div>
                             </div>
-                        )}
-                    </div>
+                                )}
+                        </div>
 
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                         <h3 className="text-base font-semibold text-gray-800 mb-4">Assigned Team</h3>
                         <div className="text-gray-500 text-sm">No team assigned.</div>
-                    </div>
+                </div>
 
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
@@ -396,7 +357,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                     <div className="flex items-center justify-between text-xs mb-1">
                                         <span className="px-2 py-0.5 rounded font-semibold bg-gray-200 text-gray-700">{activity.type}</span>
                                         <span className="text-blue-600 font-medium">{activity.status}</span>
-                                    </div>
+                </div>
                                     <p className="font-semibold text-gray-800 text-sm my-1">{activity.title || activity.summary}</p>
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-gray-500">{activity.dueDate}</span>
@@ -404,13 +365,13 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                             <button onClick={() => onEditActivity(activity)} title="Edit" className="text-blue-600 hover:text-blue-800"><FaPencilAlt size={14} /></button>
                                             <button onClick={() => onMarkDone(activity.id)} title="Mark as Done" className="text-green-600 hover:text-green-800"><FaCheck size={14} /></button>
                                             <button onClick={() => onDeleteActivity(activity.id)} title="Delete" className="text-red-500 hover:text-red-700"><FaTimes size={14} /></button>
-                                        </div>
-                                    </div>
                                 </div>
+                                </div>
+                            </div>
                             ))}
                             {(activities || []).filter(a => a.status !== 'done').length === 0 && (
                                 <div className="text-center text-sm text-gray-400 py-4">No pending activities.</div>
-                            )}
+                          )}
                         </div>
                     </div>
                 </div>
@@ -419,105 +380,116 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
     );
 };
 
-const AddActivityModal = ({ isOpen, onClose, onSaveActivity }) => {
-    const [activeType, setActiveType] = useState('To-Do');
-    const [formData, setFormData] = useState({
-        title: '',
-        dueDate: new Date().toISOString().split('T')[0],
-        purpose: '',
-        notes: '',
-        attachment: null,
+const AddActivityModal = ({ isOpen, onClose, onSaveActivity, initialData }) => {
+  const [activeType, setActiveType] = useState('To-Do');
+  const [title, setTitle] = useState('');
+  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dueTime, setDueTime] = useState('');
+  const [note, setNote] = useState('');
+  const [attachment, setAttachment] = useState(null);
+  const [callPurpose, setCallPurpose] = useState('');
+  const [callOutcome, setCallOutcome] = useState('');
+  const [nextFollowUpDate, setNextFollowUpDate] = useState('');
+  const [nextFollowUpTime, setNextFollowUpTime] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [participants, setParticipants] = useState('');
+  const [meetingLine, setMeetingLine] = useState('');
+
+  useEffect(() => {
+    const data = initialData || {};
+    setActiveType(data.type || 'To-Do');
+    setTitle(data.title || '');
+    setDueDate(data.dueDate || new Date().toISOString().split('T')[0]);
+    setDueTime(data.dueTime || '');
+    setNote(data.note || '');
+    setAttachment(data.attachment || null);
+    setCallPurpose(data.callPurpose || '');
+    setCallOutcome(data.callOutcome || '');
+    setNextFollowUpDate(data.nextFollowUpDate || '');
+    setNextFollowUpTime(data.nextFollowUpTime || '');
+    setStartTime(data.startTime || '');
+    setEndTime(data.endTime || '');
+    setParticipants(data.participants || '');
+    setMeetingLine(data.meetingLine || '');
+  }, [initialData, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSave = (status) => {
+    onSaveActivity({
+        id: initialData?.id,
+      type: activeType,
+        title: title || `${activeType} with lead`,
+        status: status || 'pending',
+        dueDate, dueTime, note, attachment, callPurpose, callOutcome, nextFollowUpDate, nextFollowUpTime, startTime, endTime, participants, meetingLine,
     });
+      onClose();
+  };
 
-    useEffect(() => {
-        if (isOpen) {
-            setFormData({
-                title: '',
-                dueDate: new Date().toISOString().split('T')[0],
-                purpose: '',
-                notes: '',
-                attachment: null,
-            });
-            setActiveType('To-Do');
-        }
-    }, [isOpen]);
+  const activityTypes = [
+    { name: 'To-Do', icon: <FaCheck /> }, { name: 'Email', icon: <FaEnvelope /> }, { name: 'Call', icon: <FaPhone /> }, { name: 'Meeting', icon: <FaUsers /> }
+  ];
 
-    const handleChange = (e) => {
-        const { name, value, files } = e.target;
-        if (name === 'attachment') {
-            setFormData(prev => ({ ...prev, attachment: files[0] }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
-    };
-    
-    const handleSubmit = () => {
-        onSaveActivity({
-            type: activeType,
-            title: formData.title,
-            purpose: formData.purpose,
-            notes: formData.notes,
-            attachment: formData.attachment,
-            // date will be set by the parent handler
-        });
-    };
-
-    if (!isOpen) return null;
-
-    const renderContent = () => (
-        <div className="space-y-4">
-            <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700">Summary</label>
-                <input type="text" name="title" id="title" value={formData.title} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Schedule Activity</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
             </div>
-            <div>
-                <label htmlFor="purpose" className="block text-sm font-medium text-gray-700">Purpose</label>
-                <input type="text" name="purpose" id="purpose" value={formData.purpose} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+            <div className="flex border-b mb-4">
+              {activityTypes.map(type => (
+              <button key={type.name} onClick={() => setActiveType(type.name)} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${activeType === type.name ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}>
+                {type.icon}{type.name}
+                </button>
+              ))}
             </div>
-            <div>
-                <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">Due Date</label>
-                <input type="date" name="dueDate" id="dueDate" value={formData.dueDate} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
-            </div>
-             {activeType === 'Email' && (
-                <div>
-                    <label htmlFor="attachment" className="block text-sm font-medium text-gray-700">Attachment</label>
-                    <input type="file" name="attachment" id="attachment" onChange={handleChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+          <div className="flex flex-col" style={{ minHeight: '420px' }}>
+            <div className="flex-grow space-y-4">
+              <div><label className="text-sm font-semibold text-gray-700">Title</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 mt-1 border rounded-md" placeholder="Enter activity title" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-sm font-semibold text-gray-700">Due Date</label><input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
+                <div><label className="text-sm font-semibold text-gray-700">Time</label><input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
                 </div>
-            )}
-            <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notes</label>
-                <textarea name="notes" id="notes" rows="4" value={formData.notes} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
-            </div>
-        </div>
-    );
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-                <div className="p-6 border-b">
-                    <h3 className="text-xl font-semibold text-gray-900">Schedule an Activity</h3>
-                </div>
-                <div className="p-6 overflow-y-auto">
-                    <div className="border-b border-gray-200">
-                        <nav className="-mb-px flex space-x-6">
-                            {['To-Do', 'Email', 'Call', 'Meeting'].map(type => (
-                                <button key={type} onClick={() => setActiveType(type)} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${activeType === type ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                                    {type}
-                                </button>
-                            ))}
-                        </nav>
+              <div><label className="text-sm font-semibold text-gray-700">Assigned to</label><div className="flex items-center gap-2 mt-2"><div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">H</div><span className="font-medium text-gray-800">hjhjj</span></div></div>
+                {activeType === 'Call' && (
+                <div className="space-y-4 pt-4 border-t mt-4">
+                  <div><label className="text-sm font-semibold text-gray-700">Purpose</label><input type="text" value={callPurpose} onChange={e => setCallPurpose(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
+                  <div><label className="text-sm font-semibold text-gray-700">Outcome</label><input type="text" value={callOutcome} onChange={e => setCallOutcome(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-sm font-semibold">Next Follow Up</label><input type="date" value={nextFollowUpDate} onChange={e => setNextFollowUpDate(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
+                    <div><label className="text-sm font-semibold invisible">Time</label><input type="time" value={nextFollowUpTime} onChange={e => setNextFollowUpTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
                     </div>
-                    <div className="pt-6">
-                        {renderContent()}
                     </div>
-                </div>
-                <div className="px-6 py-4 bg-gray-50 border-t flex justify-end space-x-3">
-                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none">Cancel</button>
-                    <button onClick={handleSubmit} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none">Save</button>
+                )}
+                {activeType === 'Meeting' && (
+                <div className="space-y-4 pt-4 border-t mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-sm font-semibold">Start Time</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
+                    <div><label className="text-sm font-semibold">End Time</label><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
+                    </div>
+                  <div><label className="text-sm font-semibold">Participants</label><textarea value={participants} onChange={e => setParticipants(e.target.value)} className="w-full p-2 mt-1 border rounded-md" rows={2} /></div>
+                  <div><label className="text-sm font-semibold">Venue/Link</label><input type="text" value={meetingLine} onChange={e => setMeetingLine(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
+                      </div>
+                      )}
+                    </div>
+            <div className="mt-auto pt-4">
+              <label className="text-sm font-semibold text-gray-700">Note</label>
+              <textarea value={note} onChange={e => setNote(e.target.value)} className="w-full p-2 mt-1 border rounded-md" rows={3} />
+              <div className="text-right mt-1"><label className="cursor-pointer flex items-center justify-end gap-1 text-blue-600 hover:text-blue-800"><FaPaperclip /><input type="file" className="hidden" onChange={e => setAttachment(e.target.files[0])} /><span className="text-sm font-medium">Attach</span></label></div>
                 </div>
             </div>
         </div>
-    );
+        <div className="bg-gray-50 px-6 py-4 flex justify-end items-center gap-3 rounded-b-lg">
+          <button onClick={() => handleSave('pending')} className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-purple-700">Save</button>
+          <button onClick={() => handleSave('done')} className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-green-700">Mark Done</button>
+          <button onClick={onClose} className="bg-white border border-gray-300 px-4 py-2 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">Discard</button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const LostReasonModal = ({ isOpen, onClose, onSubmit, title, placeholder }) => {
@@ -549,7 +521,7 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
         paymentDetails: null,
         bookingForm: null,
     });
-
+    
     if (!isOpen) return null;
 
     const handleChange = (e) => {
@@ -576,41 +548,41 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Final Quotation (₹) *</label>
                                 <input type="number" name="finalQuotation" value={form.finalQuotation} onChange={handleChange} required className="mt-1 w-full p-2 border rounded-md" />
-                            </div>
+                    </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Sign-up Amount (₹) *</label>
                                 <input type="number" name="signupAmount" value={form.signupAmount} onChange={handleChange} required className="mt-1 w-full p-2 border rounded-md" />
-                            </div>
+                        </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Payment Date</label>
                                 <input type="date" name="paymentDate" value={form.paymentDate} onChange={handleChange} className="mt-1 w-full p-2 border rounded-md" />
-                            </div>
+                    </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Payment Mode</label>
                                 <input type="text" name="paymentMode" value={form.paymentMode} onChange={handleChange} className="mt-1 w-full p-2 border rounded-md" />
-                            </div>
+                        </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">PAN Number</label>
                                 <input type="text" name="panNumber" value={form.panNumber} onChange={handleChange} className="mt-1 w-full p-2 border rounded-md" />
-                            </div>
+                    </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Project Timeline</label>
                                 <input type="text" name="projectTimeline" value={form.projectTimeline} onChange={handleChange} className="mt-1 w-full p-2 border rounded-md" />
-                            </div>
+                    </div>
                              <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700">Discount</label>
                                 <input type="text" name="discount" value={form.discount} onChange={handleChange} className="mt-1 w-full p-2 border rounded-md" />
-                            </div>
+                    </div>
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700">Upload Payment Details</label>
                                 <input type="file" name="paymentDetails" onChange={handleChange} className="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                            </div>
+                    </div>
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700">Upload Booking Form</label>
                                 <input type="file" name="bookingForm" onChange={handleChange} className="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                            </div>
-                        </div>
                     </div>
+                    </div>
+                                </div>
                     <div className="bg-gray-50 px-6 py-4 flex justify-end items-center gap-3 rounded-b-lg">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-md border text-sm font-semibold">Cancel</button>
                         <button type="submit" className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold">Confirm Conversion</button>
@@ -621,13 +593,13 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
     );
 };
 
-// --- Main View Component ---
-const LeadDetailContent = () => {
-    const router = useRouter();
-    const { id } = router.query;
+          // --- Main View Component ---
+          const LeadDetailContent = () => {
+              const router = useRouter();
+              const { id } = router.query;
 
-    const [leads, setLeads] = useState([
-        {
+              const [leads, setLeads] = useState([
+                  {
             leadId: 'LEAD101', name: 'John Doe', contactNumber: '1234567890', email: 'john@example.com',
             projectType: 'Residential', propertyType: 'Apartment', address: '123 Main St', budget: '1500000',
             leadSource: 'Website', designStyle: 'Modern', status: 'Qualified', rating: 2,
@@ -636,21 +608,21 @@ const LeadDetailContent = () => {
                 { id: 2, type: 'Call', title: 'Initial consultation', dueDate: '2025-06-28', status: 'pending', date: new Date('2025-06-28') },
             ],
             notes: [ {user: 'Alice', time: new Date(), content: 'Client is interested in minimalist designs.'} ]
-        },
-    ]);
-    const stages = ['New', 'Contacted', 'Qualified', 'Quoted', 'Converted'];
-    const lead = leads.find(l => l.leadId === id);
+                  },
+              ]);
+              const stages = ['New', 'Contacted', 'Qualified', 'Quoted', 'Converted'];
+              const lead = leads.find(l => l.leadId === id);
 
     // All state hooks
-    const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
-    const [isLostReasonModalOpen, setIsLostReasonModalOpen] = useState(false);
+              const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+              const [isLostReasonModalOpen, setIsLostReasonModalOpen] = useState(false);
     const [isJunkReasonModalOpen, setIsJunkReasonModalOpen] = useState(false);
-    const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
+              const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [editingActivity, setEditingActivity] = useState(null);
+              const [editingActivity, setEditingActivity] = useState(null);
     const [activities, setActivities] = useState(lead?.activities || []);
     const [notes, setNotes] = useState(lead?.notes || []);
-    const [timelineEvents, setTimelineEvents] = useState([]);
+              const [timelineEvents, setTimelineEvents] = useState([]);
     const [conversionData, setConversionData] = useState(lead?.status === 'Converted' ? lead : null);
     
     // Handlers
@@ -658,14 +630,14 @@ const LeadDetailContent = () => {
         setTimelineEvents(prev => [{ id: Date.now(), type: 'event', action, details, user, date: new Date() }, ...prev]);
     };
     
-    const handleStatusChange = (newStatus) => {
+              const handleStatusChange = (newStatus) => {
         if (newStatus === 'Converted') return setIsConversionModalOpen(true);
-        if (lead && newStatus !== lead.status) {
+                  if (lead && newStatus !== lead.status) {
             addTimelineEvent({ action: 'Stage Changed', details: `${lead.status} → ${newStatus}` });
             setLeads(prev => prev.map(l => l.leadId === lead.leadId ? { ...l, status: newStatus } : l));
-            toast.success(`Lead moved to ${newStatus}`);
-        }
-    };
+                      toast.success(`Lead moved to ${newStatus}`);
+                  }
+              };
 
     const handleConfirmConversion = (formData) => {
         addTimelineEvent({ action: 'Converted to Project' });
@@ -677,10 +649,10 @@ const LeadDetailContent = () => {
     };
     
     const handleMarkLost = () => setIsLostReasonModalOpen(true);
-    const handleLostReasonSubmit = (reason) => {
+              const handleLostReasonSubmit = (reason) => {
         addTimelineEvent({ action: 'Marked as Lost', details: reason });
         handleStatusChange('Lost');
-        setIsLostReasonModalOpen(false);
+                      setIsLostReasonModalOpen(false);
     };
     
     const handleMarkJunk = () => setIsJunkReasonModalOpen(true);
@@ -688,63 +660,63 @@ const LeadDetailContent = () => {
         addTimelineEvent({ action: 'Marked as Junk', details: reason });
         handleStatusChange('Junk');
         setIsJunkReasonModalOpen(false);
-    };
+              };
 
-    const handleFieldChange = (field, value) => {
+              const handleFieldChange = (field, value) => {
         setLeads(prev => prev.map(l => l.leadId === lead.leadId ? { ...l, [field]: value } : l));
-    };
+              };
 
-    const handleAddOrEditActivity = (activity) => {
+              const handleAddOrEditActivity = (activity) => {
         setActivities(prev => activity.id ? prev.map(a => a.id === activity.id ? activity : a) : [...prev, { ...activity, id: Date.now() }]);
     };
 
-    const handleDeleteActivity = (id) => setActivities(prev => prev.filter(a => a.id !== id));
+              const handleDeleteActivity = (id) => setActivities(prev => prev.filter(a => a.id !== id));
     const handleMarkDone = (id) => setActivities(prev => prev.map(a => a.id === id ? { ...a, status: 'done' } : a));
     const handleAddNote = (note) => setNotes(prev => [note, ...prev]);
 
-    if (!lead) return <div className="p-6 text-center">Lead not found.</div>;
+              if (!lead) return <div className="p-6 text-center">Lead not found.</div>;
 
     const updatedLead = { ...lead, activities, notes };
 
-    return (
+              return (
         <div className="bg-gray-50 min-h-screen flex flex-col">
-            <OdooHeader
+                      <OdooHeader
                 lead={updatedLead}
-                stages={stages}
-                onStatusChange={handleStatusChange}
-                onMarkLost={handleMarkLost}
-                onMarkJunk={handleMarkJunk}
-            />
-            <OdooDetailBody
+                          stages={stages}
+                          onStatusChange={handleStatusChange}
+                          onMarkLost={handleMarkLost}
+                          onMarkJunk={handleMarkJunk}
+                      />
+                      <OdooDetailBody
                 lead={updatedLead}
-                isEditing={isEditing}
-                setIsEditing={setIsEditing}
-                onFieldChange={handleFieldChange}
-                activities={activities}
+                          isEditing={isEditing}
+                          setIsEditing={setIsEditing}
+                          onFieldChange={handleFieldChange}
+                          activities={activities}
                 onScheduleActivity={() => { setEditingActivity(null); setIsActivityModalOpen(true); }}
                 onEditActivity={(activity) => { setEditingActivity(activity); setIsActivityModalOpen(true); }}
-                onDeleteActivity={handleDeleteActivity}
-                onMarkDone={handleMarkDone}
-                notes={notes}
+                          onDeleteActivity={handleDeleteActivity}
+                          onMarkDone={handleMarkDone}
+                          notes={notes}
                 onAddNote={handleAddNote}
                 conversionData={conversionData}
                 timelineEvents={timelineEvents}
             />
-            <AddActivityModal isOpen={isActivityModalOpen} onClose={() => setIsActivityModalOpen(false)} onSaveActivity={handleAddOrEditActivity} />
+            <AddActivityModal isOpen={isActivityModalOpen} onClose={() => setIsActivityModalOpen(false)} onSaveActivity={handleAddOrEditActivity} initialData={editingActivity} />
             <LostReasonModal isOpen={isLostReasonModalOpen} onClose={() => setIsLostReasonModalOpen(false)} onSubmit={handleLostReasonSubmit} title="Reason for Lost Lead" placeholder="Enter reason..."/>
             <LostReasonModal isOpen={isJunkReasonModalOpen} onClose={() => setIsJunkReasonModalOpen(false)} onSubmit={handleJunkReasonSubmit} title="Reason for Junk" placeholder="Enter reason..." />
             <ConversionModal isOpen={isConversionModalOpen} onClose={() => setIsConversionModalOpen(false)} onConfirm={handleConfirmConversion} lead={lead} />
-        </div>
-    );
-};
+                  </div>
+              );
+          };
 
-const LeadDetailPage = () => {
-    return (
-        <MainLayout>
-            <LeadDetailContent />
-        </MainLayout>
-    );
-};
+          const LeadDetailPage = () => {
+              return (
+                  <MainLayout>
+                      <LeadDetailContent />
+                  </MainLayout>
+              );
+          };
 
-export default LeadDetailPage;
+          export default LeadDetailPage;
 

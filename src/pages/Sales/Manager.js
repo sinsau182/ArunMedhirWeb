@@ -35,6 +35,7 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
+import AdvancedScheduleActivityModal from '@/components/Sales/AdvancedScheduleActivityModal';
 
 const salesPersons = [
   { id: 1, name: 'Alice' },
@@ -330,6 +331,9 @@ const ManagerContent = ({ role }) => {
   const [pendingLost, setPendingLost] = useState(null); // {lead, fromStatus}
   const [pendingJunk, setPendingJunk] = useState(null); // {lead, fromStatus}
 
+  const [showScheduleActivityModal, setShowScheduleActivityModal] = useState(false);
+  const [leadToScheduleActivity, setLeadToScheduleActivity] = useState(null);
+
   // Remove backend fetch
   // useEffect(() => {
   //   dispatch(fetchLeads());
@@ -511,13 +515,32 @@ const ManagerContent = ({ role }) => {
     handleJunkModalClose();
   };
 
+  const handleScheduleActivity = (lead) => {
+    setLeadToScheduleActivity(lead);
+    setShowScheduleActivityModal(true);
+  };
+
+  const handleScheduleActivitySuccess = (activity) => {
+    setLeads(prevLeads => prevLeads.map(l => {
+      if (l.leadId === leadToScheduleActivity.leadId) {
+        const activities = Array.isArray(l.activities) ? [...l.activities] : [];
+        activities.push({ ...activity, createdAt: new Date().toISOString() });
+        return { ...l, activities, updatedAt: new Date().toISOString() };
+      }
+      return l;
+    }));
+    setShowScheduleActivityModal(false);
+    setLeadToScheduleActivity(null);
+    toast.success('Activity scheduled successfully!');
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-6">
           <button
             onClick={() => handleOpenAddLeadForm()}
-            className="bg-purple-600 text-white px-6 py-2 rounded-lg shadow hover:bg-purple-700 flex items-center min-w-24 justify-center"
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow flex items-center min-w-24 justify-center transition-colors duration-200 hover:bg-blue-700"
           >
             New
           </button>
@@ -568,14 +591,14 @@ const ManagerContent = ({ role }) => {
 
           <div className="flex items-center space-x-1 bg-gray-200 p-1 rounded-md">
             <button
-              className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-white shadow text-purple-700' : 'hover:bg-white/50 text-gray-600'}`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-blue-600 shadow text-white' : 'hover:bg-blue-100 text-blue-600'}`}
               onClick={() => setViewMode('kanban')}
               title="Kanban Board View"
             >
               <FaThLarge size={18} />
             </button>
             <button
-              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white shadow text-purple-700' : 'hover:bg-white/50 text-gray-600'}`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'hover:bg-blue-100 text-blue-600'}`}
               onClick={() => setViewMode('table')}
               title="Table View"
             >
@@ -603,6 +626,7 @@ const ManagerContent = ({ role }) => {
           setNewStageName={setNewStageName}
           onAddStage={handleAddStage}
           onCancelAddStage={handleCancelAddStage}
+          onScheduleActivity={handleScheduleActivity}
         />
       ) : (
         <LeadsTable leads={dedupedLeads} />
@@ -645,6 +669,13 @@ const ManagerContent = ({ role }) => {
         onClose={() => setShowDeletePipelineModal(false)}
         stages={kanbanStatuses}
         onDeleteStages={handleDeleteStages}
+      />
+
+      <AdvancedScheduleActivityModal
+        isOpen={showScheduleActivityModal}
+        onClose={() => { setShowScheduleActivityModal(false); setLeadToScheduleActivity(null); }}
+        lead={leadToScheduleActivity}
+        onSuccess={handleScheduleActivitySuccess}
       />
     </div>
   );

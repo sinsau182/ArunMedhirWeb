@@ -63,24 +63,11 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
   // Tooltip helpers
   const tooltip = (label, value) => `${label}: ${value || 'Unassigned'}`;
 
-  // Find the latest activity (by due date/time)
-  let latestActivity = null;
-  if (Array.isArray(lead.activities) && lead.activities.length > 0) {
-    latestActivity = [...lead.activities]
-      .filter(a => a.dueDate)
-      .sort((a, b) => new Date(b.dueDate + 'T' + (b.dueTime || '00:00')) - new Date(a.dueDate + 'T' + (a.dueTime || '00:00')))[0];
-  }
-
-  function formatRelativeTime(dateString) {
-    const now = new Date();
+  function formatDate(dateString) {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    const diff = Math.floor((now - date) / 1000); // in seconds
-    if (isNaN(diff)) return '';
-    if (diff < 60) return `${diff} sec ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
-    if (diff < 172800) return 'Yesterday';
-    return date.toLocaleDateString();
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric'});
   }
 
   function CustomTooltip({ children, text }) {
@@ -120,7 +107,7 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
         <h3 className="font-semibold text-gray-900 text-base truncate">{lead.name}</h3>
         <div className="mt-1 flex items-center">{renderStars(lead.rating || 0)}</div>
       </div>
-      {/* Second row: Budget • Due Date */}
+      {/* Second row: Budget • Date of Creation */}
       <div className="flex items-center gap-2 mb-2 text-sm text-gray-700">
         <span className="flex items-center gap-1 font-semibold">
           <FaRupeeSign className="text-blue-500" />
@@ -129,18 +116,10 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
         <span className="text-gray-300 text-lg mx-1">•</span>
         <span className="flex items-center gap-1">
           <FaCalendarAlt className="text-gray-400" />
-          {latestActivity ? (
-            new Date(latestActivity.dueDate + 'T' + (latestActivity.dueTime || '00:00')) < new Date() ? (
-              <span className="text-red-600 font-semibold">
-                {new Date(latestActivity.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-              </span>
-            ) : (
-              new Date(latestActivity.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-            )
-          ) : 'No due date'}
+          {formatDate(lead.dateOfCreation)}
         </span>
       </div>
-      {/* Third row: Overlapping Team, Recent Activity */}
+      {/* Team/summary row */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           {/* Overlapping initials */}
@@ -161,24 +140,10 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
             </CustomTooltip>
           </div>
         </div>
-        {/* Recent Activity summary */}
-        {latestActivity ? (
-          <span className="text-xs text-blue-700 truncate max-w-[120px] text-right" title={latestActivity.summary}>
-            {latestActivity.type === 'Email' && 'Email sent'}
-            {latestActivity.type === 'Meeting' && 'Meeting scheduled'}
-            {latestActivity.type === 'Call' && 'Call scheduled'}
-            {latestActivity.type === 'To-Do' && 'To-Do'}
-            {latestActivity.type === 'Document' && 'Document added'}
-            {latestActivity.user ? ` — ${latestActivity.user}` : ''}
-          </span>
-        ) : null}
       </div>
-      {/* Horizontal divider with extra margin above */}
+      {/* Horizontal divider and activity row at the bottom */}
       <div className="mt-4 border-t border-gray-200 mb-0.5" />
-      {/* Scheduled Activity (latest only) */}
-      {/* Removed: No activity scheduled fallback */}
-      {/* Row: Watch icon left, due date, recent activity, updated just now right-aligned */}
-      <div className="flex items-center justify-between mt-1 mb-1 w-full">
+      <div className="flex items-center justify-between mt-2 mb-2">
         <button
           type="button"
           title="Schedule Activity"
@@ -187,14 +152,7 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
         >
           <FaRegClock size={20} />
         </button>
-        <div className="flex items-center gap-3 ml-auto text-xs text-gray-500">
-          <span className="text-gray-400">{latestActivity
-            ? formatRelativeTime(
-                latestActivity.createdAt ||
-                (latestActivity.dueDate + 'T' + (latestActivity.dueTime || '00:00'))
-              )
-            : 'No activity scheduled'}</span>
-        </div>
+        <span className="text-xs text-gray-400 ml-2">No activity scheduled</span>
       </div>
     </div>
   );

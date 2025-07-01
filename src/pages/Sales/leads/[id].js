@@ -6,6 +6,7 @@ import { FaStar, FaRegStar, FaUser, FaEnvelope, FaPhone, FaBuilding, FaMapMarker
     FaRegCheckCircle, FaRegClock } from 'react-icons/fa';
 import MainLayout from '@/components/MainLayout';
 import { toast } from 'sonner';
+import AdvancedScheduleActivityModal from '@/components/Sales/AdvancedScheduleActivityModal';
 
 // Add these lists for dropdowns/selects
 const salesPersons = [
@@ -265,42 +266,48 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                     <ul className="space-y-4">
                                         {combinedLog.map(item => {
                                             const isEvent = item.type === 'event';
-                                        const isDone = item.status === 'done';
-                                            const iconBg = isEvent || isDone ? 'bg-green-100' : 'bg-blue-100';
-                                            const iconColor = isEvent || isDone ? 'text-green-600' : 'text-blue-600';
-                                            const icon = isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />);
+                                            const isDone = item.status === 'done';
+                                            const isDeleted = isEvent && item.action === 'Activity Deleted';
+                                            const iconBg = isDeleted ? 'bg-red-100' : (isEvent || isDone ? 'bg-green-100' : 'bg-blue-100');
+                                            const iconColor = isDeleted ? 'text-red-600' : (isEvent || isDone ? 'text-green-600' : 'text-blue-600');
+                                            const icon = isDeleted ? <FaTimes /> : (isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />));
 
-                                        return (
+                                            return (
                                                 <li key={item.id} className="relative pl-12">
                                                     {/* The dot on the timeline */}
                                                     <div className="absolute left-0 top-1 flex items-center justify-center">
                                                         <span className={`w-8 h-8 flex items-center justify-center rounded-full border-4 border-gray-50 ${iconBg}`}>
                                                             <span className={iconColor}>{icon}</span>
-                                            </span>
-                                              </div>
+                                                        </span>
+                                                    </div>
                                                     
                                                     {/* The content */}
-                                                    <div className="flex items-center justify-between p-3 rounded-md">
+                                                    <div className={`flex items-center justify-between p-3 rounded-md ${isDeleted ? 'bg-red-50' : ''}`}>
                                                         <div className="flex items-center gap-3">
-                                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-600`}>
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isDeleted ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
                                                                 {isEvent ? item.action : item.type}
                                                             </span>
-                                                            <span className="text-gray-800 font-medium">
-                                                                {isEvent ? item.details : item.title || item.summary}
-                                                            </span>
-                                                </div>
+                                                            <span className={`font-medium ${isDeleted ? 'text-red-700' : 'text-gray-800'}`}>{isEvent ? item.details : item.title || item.summary}</span>
+                                                        </div>
                                                         <div className="flex items-center gap-4">
                                                             <span className="text-sm text-gray-500">{formatDateTime(item.date)}</span>
                                                             <button onClick={() => setExpandedActivities(prev => ({...prev, [item.id]: !prev[item.id]}))} className="text-gray-400 hover:text-gray-600">
                                                                 <FaChevronDown size={12} className={`transition-transform ${expandedActivities[item.id] ? 'rotate-180' : ''}`}/>
                                                             </button>
-                                            </div>
+                                                        </div>
                                                     </div>
-                                                    {/* You can add expanded content here if needed */}
-                                          </li>
-                                        );
+                                                    {/* Expanded details for notes, attachment, outcome */}
+                                                    {(!isEvent && (item.note || item.attachment || (['Email','Call','Meeting'].includes(item.type) && item.callOutcome))) && (
+                                                        <div className="ml-12 mt-1 mb-2 bg-gray-50 rounded p-3 border border-gray-100 text-xs text-gray-700 flex flex-col gap-1">
+                                                            {item.note && <div><span className="font-semibold">Note:</span> {item.note}</div>}
+                                                            {item.attachment && <div className="flex items-center gap-2"><FaPaperclip className="text-blue-500" /><span className="font-semibold">Attachment:</span> {typeof item.attachment === 'string' ? <a href={item.attachment} target="_blank" rel="noopener noreferrer" className="underline">View</a> : (item.attachment.name || 'Attached')}</div>}
+                                                            {['Email','Call','Meeting'].includes(item.type) && item.callOutcome && <div><span className="font-semibold">Outcome:</span> {item.callOutcome}</div>}
+                                                        </div>
+                                                    )}
+                                                </li>
+                                            );
                                         })}
-                                        </ul>
+                                    </ul>
                             </div>
                         )}
                         {activeTab === 'conversion' && (
@@ -378,118 +385,6 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
             </div>
         </div>
     );
-};
-
-const AddActivityModal = ({ isOpen, onClose, onSaveActivity, initialData }) => {
-  const [activeType, setActiveType] = useState('To-Do');
-  const [title, setTitle] = useState('');
-  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
-  const [dueTime, setDueTime] = useState('');
-  const [note, setNote] = useState('');
-  const [attachment, setAttachment] = useState(null);
-  const [callPurpose, setCallPurpose] = useState('');
-  const [callOutcome, setCallOutcome] = useState('');
-  const [nextFollowUpDate, setNextFollowUpDate] = useState('');
-  const [nextFollowUpTime, setNextFollowUpTime] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [participants, setParticipants] = useState('');
-  const [meetingLine, setMeetingLine] = useState('');
-
-  useEffect(() => {
-    const data = initialData || {};
-    setActiveType(data.type || 'To-Do');
-    setTitle(data.title || '');
-    setDueDate(data.dueDate || new Date().toISOString().split('T')[0]);
-    setDueTime(data.dueTime || '');
-    setNote(data.note || '');
-    setAttachment(data.attachment || null);
-    setCallPurpose(data.callPurpose || '');
-    setCallOutcome(data.callOutcome || '');
-    setNextFollowUpDate(data.nextFollowUpDate || '');
-    setNextFollowUpTime(data.nextFollowUpTime || '');
-    setStartTime(data.startTime || '');
-    setEndTime(data.endTime || '');
-    setParticipants(data.participants || '');
-    setMeetingLine(data.meetingLine || '');
-  }, [initialData, isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleSave = (status) => {
-    onSaveActivity({
-        id: initialData?.id,
-      type: activeType,
-        title: title || `${activeType} with lead`,
-        status: status || 'pending',
-        dueDate, dueTime, note, attachment, callPurpose, callOutcome, nextFollowUpDate, nextFollowUpTime, startTime, endTime, participants, meetingLine,
-    });
-      onClose();
-  };
-
-  const activityTypes = [
-    { name: 'To-Do', icon: <FaCheck /> }, { name: 'Email', icon: <FaEnvelope /> }, { name: 'Call', icon: <FaPhone /> }, { name: 'Meeting', icon: <FaUsers /> }
-  ];
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Schedule Activity</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
-            </div>
-            <div className="flex border-b mb-4">
-              {activityTypes.map(type => (
-              <button key={type.name} onClick={() => setActiveType(type.name)} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${activeType === type.name ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}>
-                {type.icon}{type.name}
-                </button>
-              ))}
-            </div>
-          <div className="flex flex-col" style={{ minHeight: '420px' }}>
-            <div className="flex-grow space-y-4">
-              <div><label className="text-sm font-semibold text-gray-700">Title</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 mt-1 border rounded-md" placeholder="Enter activity title" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-sm font-semibold text-gray-700">Due Date</label><input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                <div><label className="text-sm font-semibold text-gray-700">Time</label><input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                </div>
-              <div><label className="text-sm font-semibold text-gray-700">Assigned to</label><div className="flex items-center gap-2 mt-2"><div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">H</div><span className="font-medium text-gray-800">hjhjj</span></div></div>
-                {activeType === 'Call' && (
-                <div className="space-y-4 pt-4 border-t mt-4">
-                  <div><label className="text-sm font-semibold text-gray-700">Purpose</label><input type="text" value={callPurpose} onChange={e => setCallPurpose(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                  <div><label className="text-sm font-semibold text-gray-700">Outcome</label><input type="text" value={callOutcome} onChange={e => setCallOutcome(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-sm font-semibold">Next Follow Up</label><input type="date" value={nextFollowUpDate} onChange={e => setNextFollowUpDate(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                    <div><label className="text-sm font-semibold invisible">Time</label><input type="time" value={nextFollowUpTime} onChange={e => setNextFollowUpTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                    </div>
-                    </div>
-                )}
-                {activeType === 'Meeting' && (
-                <div className="space-y-4 pt-4 border-t mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-sm font-semibold">Start Time</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                    <div><label className="text-sm font-semibold">End Time</label><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                    </div>
-                  <div><label className="text-sm font-semibold">Participants</label><textarea value={participants} onChange={e => setParticipants(e.target.value)} className="w-full p-2 mt-1 border rounded-md" rows={2} /></div>
-                  <div><label className="text-sm font-semibold">Venue/Link</label><input type="text" value={meetingLine} onChange={e => setMeetingLine(e.target.value)} className="w-full p-2 mt-1 border rounded-md" /></div>
-                      </div>
-                      )}
-                    </div>
-            <div className="mt-auto pt-4">
-              <label className="text-sm font-semibold text-gray-700">Note</label>
-              <textarea value={note} onChange={e => setNote(e.target.value)} className="w-full p-2 mt-1 border rounded-md" rows={3} />
-              <div className="text-right mt-1"><label className="cursor-pointer flex items-center justify-end gap-1 text-blue-600 hover:text-blue-800"><FaPaperclip /><input type="file" className="hidden" onChange={e => setAttachment(e.target.files[0])} /><span className="text-sm font-medium">Attach</span></label></div>
-                </div>
-            </div>
-        </div>
-        <div className="bg-gray-50 px-6 py-4 flex justify-end items-center gap-3 rounded-b-lg">
-          <button onClick={() => handleSave('pending')} className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-purple-700">Save</button>
-          <button onClick={() => handleSave('done')} className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-green-700">Mark Done</button>
-          <button onClick={onClose} className="bg-white border border-gray-300 px-4 py-2 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50">Discard</button>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 const LostReasonModal = ({ isOpen, onClose, onSubmit, title, placeholder }) => {
@@ -670,7 +565,19 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
         setActivities(prev => activity.id ? prev.map(a => a.id === activity.id ? activity : a) : [...prev, { ...activity, id: Date.now() }]);
     };
 
-              const handleDeleteActivity = (id) => setActivities(prev => prev.filter(a => a.id !== id));
+              const handleDeleteActivity = (id) => {
+        setActivities(prev => {
+          const toDelete = prev.find(a => a.id === id);
+          if (toDelete) {
+            addTimelineEvent({
+              action: 'Activity Deleted',
+              details: `${toDelete.type}: ${toDelete.title || toDelete.summary || ''}`,
+            });
+          }
+          return prev.filter(a => a.id !== id);
+        });
+    };
+
     const handleMarkDone = (id) => setActivities(prev => prev.map(a => a.id === id ? { ...a, status: 'done' } : a));
     const handleAddNote = (note) => setNotes(prev => [note, ...prev]);
 
@@ -702,7 +609,13 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                 conversionData={conversionData}
                 timelineEvents={timelineEvents}
             />
-            <AddActivityModal isOpen={isActivityModalOpen} onClose={() => setIsActivityModalOpen(false)} onSaveActivity={handleAddOrEditActivity} initialData={editingActivity} />
+            <AdvancedScheduleActivityModal
+              isOpen={isActivityModalOpen}
+              onClose={() => setIsActivityModalOpen(false)}
+              lead={lead}
+              initialData={editingActivity}
+              onSuccess={handleAddOrEditActivity}
+            />
             <LostReasonModal isOpen={isLostReasonModalOpen} onClose={() => setIsLostReasonModalOpen(false)} onSubmit={handleLostReasonSubmit} title="Reason for Lost Lead" placeholder="Enter reason..."/>
             <LostReasonModal isOpen={isJunkReasonModalOpen} onClose={() => setIsJunkReasonModalOpen(false)} onSubmit={handleJunkReasonSubmit} title="Reason for Junk" placeholder="Enter reason..." />
             <ConversionModal isOpen={isConversionModalOpen} onClose={() => setIsConversionModalOpen(false)} onConfirm={handleConfirmConversion} lead={lead} />

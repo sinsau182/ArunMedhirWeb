@@ -36,6 +36,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import AdvancedScheduleActivityModal from '@/components/Sales/AdvancedScheduleActivityModal';
+import Tooltip from '@/components/ui/ToolTip';
 
 const defaultLeadData = {
   name: "",
@@ -630,16 +631,22 @@ const LeadManagementContent = ({ role }) => {
     toast.success('Activity scheduled successfully!');
   };
 
+  const isPipelinePresent = kanbanStatuses && kanbanStatuses.length > 0;
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-6">
-          <button
-            onClick={() => handleOpenAddLeadForm()}
-            className="bg-purple-600 text-white px-6 py-2 rounded-lg shadow hover:bg-purple-700 flex items-center min-w-24 justify-center"
-          >
-            New
-          </button>
+          <Tooltip text={!isPipelinePresent ? 'Please add pipeline.' : ''}>
+            <button
+              onClick={() => handleOpenAddLeadForm()}
+              className={`bg-blue-600 text-white px-6 py-2 rounded-lg shadow flex items-center min-w-24 justify-center transition-colors duration-200 ${!isPipelinePresent ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+              disabled={!isPipelinePresent}
+              tabIndex={isPipelinePresent ? 0 : -1}
+            >
+              New
+            </button>
+          </Tooltip>
           <div className="flex items-center space-x-1">
             <h2 className="text-xl font-semibold text-gray-700">Pipeline</h2>
             <div className="relative pipeline-dropdown">
@@ -687,14 +694,14 @@ const LeadManagementContent = ({ role }) => {
           {/* View toggle icons */}
           <div className="flex items-center space-x-1 bg-gray-200 p-1 rounded-md">
             <button
-              className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-white shadow text-purple-700' : 'hover:bg-white/50 text-gray-600'}`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-blue-600 shadow text-white' : 'hover:bg-blue-100 text-blue-600'}`}
               onClick={() => setViewMode('kanban')}
               title="Kanban Board View"
             >
               <FaThLarge size={18} />
             </button>
             <button
-              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white shadow text-purple-700' : 'hover:bg-white/50 text-gray-600'}`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'hover:bg-blue-100 text-blue-600'}`}
               onClick={() => setViewMode('table')}
               title="Table View"
             >

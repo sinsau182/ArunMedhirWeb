@@ -199,10 +199,10 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       roles: ["SALES"],
     },
     {
-      label: "Manager",
+      label: "Manager Lead Management",
       icon: <FaUsers />,
-      link: "/Sales/Manager",
-      roles: ["SALES"],
+      link: "/SalesManager/Manager",
+      roles: ["SALESMANAGER"],
     },
     
 

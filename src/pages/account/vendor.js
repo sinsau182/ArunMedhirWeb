@@ -3,24 +3,19 @@ import { useState, useEffect } from 'react';
 import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch, FaArrowLeft } from 'react-icons/fa';
 import Modal from '../../components/Modal';
 import { AddBillForm, BulkPaymentForm, AddVendorForm, AddRefundForm } from '../../components/Forms';
-import Sidebar from "../../components/Sidebar";
-import HradminNavbar from "../../components/HradminNavbar";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchVendors } from '../../redux/slices/vendorSlice';
 import { toast } from 'sonner';
 import SearchBarWithFilter from '../../components/SearchBarWithFilter';
+import MainLayout from '@/components/MainLayout'; // Import MainLayout
 
 const Vendor = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const dispatch = useDispatch();
   const { vendors, loading, error } = useSelector((state) => state.vendors);
 
     useEffect(() => {
       dispatch(fetchVendors());
     }, []);
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
   const [activeTab, setActiveTab] = useState('bills'); // Default to bills tab
   const [showAddForm, setShowAddForm] = useState(null); // 'bill' | 'refund' | 'payment' | 'vendor' | null
   const [bills, setBills] = useState([
@@ -313,306 +308,147 @@ const Vendor = () => {
   };
 
   const renderContent = () => {
-    if (showAddForm) {
-      return renderAddForm();
-    }
+    let data, columns;
     switch (activeTab) {
       case 'bills':
-        return (
-          <div>
-            <div className="overflow-x-auto bg-white rounded-lg shadow">
-              <table className="min-w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Bill No.</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Bill Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Due Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">GSTIN</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Amount</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Reference/PO No.</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Attachments</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {bills.map((bill) => (
-                    <tr key={bill.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-blue-600">{bill.billNo}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-gray-900">{bill.vendorName}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{bill.billDate}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{bill.dueDate}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{bill.gstin}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">₹{bill.totalAmount.toLocaleString()}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          bill.paymentStatus === 'Paid' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {bill.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`text-sm ${bill.referencePo ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
-                          {bill.referencePo || '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-center">
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
-                          bill.attachments === 'Yes' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {bill.attachments === 'Yes' ? '📎' : '-'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        data = bills;
+        columns = [
+          { id: 'billNo', label: 'Bill No.', accessor: 'billNo' },
+          { id: 'vendorName', label: 'Vendor Name', accessor: 'vendorName' },
+          { id: 'billDate', label: 'Bill Date', accessor: 'billDate' },
+          { id: 'dueDate', label: 'Due Date', accessor: 'dueDate' },
+          { id: 'gstin', label: 'GSTIN', accessor: 'gstin' },
+          { id: 'totalAmount', label: 'Total Amount', accessor: 'totalAmount' },
+          { id: 'paymentStatus', label: 'Payment Status', accessor: 'paymentStatus' },
+          { id: 'referencePo', label: 'Reference/PO No.', accessor: 'referencePo' },
+          { id: 'attachments', label: 'Attachments', accessor: 'attachments' }
+        ];
+        break;
       case 'vendorCredits':
-        return (
-          <div>
-            <div className="overflow-x-auto bg-white rounded-lg shadow">
-              <table className="min-w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Referenced Bill</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">PO Reference</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Items Returned</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Credit</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status/Applied</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {vendorCredits.map((credit) => (
-                    <tr key={credit.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{credit.referencedBill}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.poReference}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">{credit.vendor}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.date}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.itemsReturned}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-right">₹{credit.totalCredit.toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          credit.type === 'Vendor Credit' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-orange-100 text-orange-800'
-                        }`}>
-                          {credit.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{credit.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        data = vendorCredits;
+        columns = [
+          { id: 'referencedBill', label: 'Referenced Bill', accessor: 'referencedBill' },
+          { id: 'poReference', label: 'PO Reference', accessor: 'poReference' },
+          { id: 'vendor', label: 'Vendor', accessor: 'vendor' },
+          { id: 'date', label: 'Date', accessor: 'date' },
+          { id: 'itemsReturned', label: 'Items Returned', accessor: 'itemsReturned' },
+          { id: 'totalCredit', label: 'Total Credit', accessor: 'totalCredit' },
+          { id: 'type', label: 'Type', accessor: 'type' },
+          { id: 'status', label: 'Status/Applied', accessor: 'status' }
+        ];
+        break;
       case 'payments':
-        return (
-          <div>
-            <div className="overflow-x-auto bg-white rounded-lg shadow">
-              <table className="min-w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Bill Reference</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">GSTIN (Vendor)</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Method</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Reference</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Proof</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {payments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-gray-900">{payment.vendorName}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm text-blue-600 font-medium">{payment.billReference}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{payment.gstin}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          payment.paymentMethod === 'Bank Transfer' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : payment.paymentMethod === 'Cheque'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {payment.paymentMethod}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">₹{payment.amount.toLocaleString()}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-600 font-mono">{payment.paymentReference}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-center">
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
-                          payment.attachments === 'Yes' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {payment.attachments === 'Yes' ? '📎' : '-'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        data = payments;
+        columns = [
+          { id: 'vendorName', label: 'Vendor Name', accessor: 'vendorName' },
+          { id: 'billReference', label: 'Bill Reference', accessor: 'billReference' },
+          { id: 'gstin', label: 'GSTIN (Vendor)', accessor: 'gstin' },
+          { id: 'paymentMethod', label: 'Payment Method', accessor: 'paymentMethod' },
+          { id: 'amount', label: 'Amount', accessor: 'amount' },
+          { id: 'paymentReference', label: 'Payment Reference', accessor: 'paymentReference' },
+          { id: 'attachments', label: 'Payment Proof', accessor: 'attachments' }
+        ];
+        break;
       case 'vendors':
-        return (
-          <div>
-            <div className="overflow-x-auto bg-white rounded-lg shadow">
-              <table className="min-w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Contact Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">GSTIN</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">City</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">State</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Vendor Tags</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {vendors.map((vendor) => (
-                    <tr key={vendor.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-gray-900">{vendor.vendorName}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-800">{vendor.contactName || '-'}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{vendor.gstin}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{vendor.phone}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm text-blue-600 hover:text-blue-800">{vendor.email}</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{vendor.city}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{vendor.state}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex flex-wrap gap-1">
-                          {vendor.vendorTags?.slice(0, 2).map((tag, index) => (
-                            <span key={index} className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-                              {tag}
-                            </span>
-                          ))}
-                          {vendor.vendorTags?.length > 2 && (
-                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-600">
-                              +{vendor.vendorTags?.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        data = vendors;
+        columns = [
+          { id: 'vendorName', label: 'Vendor Name', accessor: 'vendorName' },
+          { id: 'contactName', label: 'Contact Name', accessor: 'contactName' },
+          { id: 'gstin', label: 'GSTIN', accessor: 'gstin' },
+          { id: 'phone', label: 'Phone', accessor: 'phone' },
+          { id: 'email', label: 'Email', accessor: 'email' },
+          { id: 'city', label: 'City', accessor: 'city' },
+          { id: 'state', label: 'State', accessor: 'state' },
+          { id: 'vendorTags', label: 'Vendor Tags', accessor: 'vendorTags' }
+        ];
+        break;
       default:
         return null;
     }
+
+    const table = (
+          <div>
+            <div className="overflow-x-auto bg-white rounded-lg shadow">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                {columns.map((column) => (
+                  <th key={column.id} className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    {column.label}
+                  </th>
+                ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+              {data.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                  {columns.map((column) => (
+                    <td key={column.id} className="px-4 py-4 whitespace-nowrap">
+                      {column.accessor ? (
+                        <span className="text-sm font-medium text-gray-900">{item[column.accessor]}</span>
+                      ) : (
+                        <span className="text-sm text-gray-900">{item[column.id]}</span>
+                      )}
+                      </td>
+                  ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="overflow-x-auto">{table}</div>
+      </div>
+    );
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        toggleSidebar={toggleSidebar}
-        currentRole={"employee"}
-      />
-
-      {/* Main Content */}
-      <div
-        className={`flex-1 ${
-          isSidebarCollapsed ? "ml-16" : "ml-56"
-        } transition-all duration-300 overflow-x-auto`}
-      >
-        {/* Navbar */}
-        <HradminNavbar />
-
-        {/* Main Content Area */}
-        <div className="mt-20 p-6">
-          {/* Vendors heading and Add Button + Tabs as a single block, pushed down together */}
-          <div className="mb-0">
+    <MainLayout>
+      <div className="space-y-6">
+        <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Vendors</h1>
-            <div className="flex justify-between items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
-              <div className="flex items-center">
-                {/* Add Button */}
-                <button
-                  onClick={handleAddClick}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors font-semibold shadow-sm mr-6 text-sm"
-                  style={{ minWidth: 120 }}
-                >
-                  {getAddButtonIcon()} <span>{getAddButtonLabel()}</span>
-                </button>
-                {/* Tabs */}
-                <nav className="flex space-x-4">
-                  {tabs.map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => {
-                        setActiveTab(tab.id);
-                        setShowAddForm(null); // Always reset form on tab switch
-                      }}
-                      className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm transition-colors focus:outline-none py-1 ${
-                        activeTab === tab.id
-                          ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                      style={{ minWidth: 110 }}
-                    >
-                      <tab.icon className="w-5 h-5" />
-                      <span>{tab.label}</span>
-                    </button>
-                  ))}
-                </nav>
-              </div>
-              <div className="w-96">
-                <SearchBarWithFilter />
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content Area */}
-          {renderContent()}
         </div>
+        <div className="flex justify-between items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
+          <div className="flex items-center">
+              <button
+                onClick={handleAddClick}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 font-semibold shadow-sm mr-6 text-sm"
+                style={{ minWidth: 120 }}
+              >
+                {getAddButtonIcon()} <span>{getAddButtonLabel()}</span>
+              </button>
+            <nav className="flex space-x-4">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setShowAddForm(null); // Always reset form on tab switch
+                    }}
+                    className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm transition-colors focus:outline-none py-1 ${
+                      activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    style={{ minWidth: 110 }}
+                  >
+                    <tab.icon className="w-5 h-5" />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          <div className="w-96">
+            <SearchBarWithFilter />
+          </div>
+        </div>
+        {showAddForm ? renderAddForm() : renderContent()}
       </div>
-    </div>
+    </MainLayout>
   );
 };
 

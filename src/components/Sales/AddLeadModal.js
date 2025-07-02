@@ -51,7 +51,7 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
     budget: '',
     designStyle: '',
     leadSource: '',
-    notes: '',
+    notes: [],
     status: 'New',
     rating: 0,
     salesRep: null,
@@ -71,6 +71,7 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
     submittedBy: null,
     paymentDetailsFileName: null,
     bookingFormFileName: null,
+    newNote: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -108,7 +109,7 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
         budget: '',
         designStyle: '',
         leadSource: '',
-        notes: '',
+        notes: [],
         status: 'New',
         rating: 0,
         salesRep: null,
@@ -128,6 +129,7 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
         submittedBy: null,
         paymentDetailsFileName: null,
         bookingFormFileName: null,
+        newNote: '',
       });
       setErrors({});
     }
@@ -197,6 +199,20 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
       setErrors(prev => ({
         ...prev,
         [field]: undefined
+      }));
+    }
+  };
+
+  const handleAddNote = () => {
+    if (formData.newNote && formData.newNote.trim() !== '') {
+      const newNote = {
+        text: formData.newNote,
+        timestamp: new Date().toISOString(),
+      };
+      setFormData(prev => ({
+        ...prev,
+        notes: [...(prev.notes || []), newNote],
+        newNote: '' // Clear the input field
       }));
     }
   };
@@ -318,8 +334,11 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
                 placeholder="Enter address"
                 value={formData.address}
                 onChange={(e) => handleInputChange('address', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                  errors.address ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
+              {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
             </div>
 
             {/* Area and Budget Row */}
@@ -430,16 +449,36 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
             )}
 
             {/* Notes Field */}
-            <div className="bg-white rounded-xl shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold">Notes</h2>
-                <button className="flex items-center gap-2 bg-black text-white px-3 py-1 rounded font-medium text-sm">
-                  <FaPlus /> Add Note
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notes
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Add a new note..."
+                  value={formData.newNote || ''}
+                  onChange={(e) => handleInputChange('newNote', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 border-gray-300"
+                />
+                <button
+                  onClick={handleAddNote}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-300"
+                  disabled={!formData.newNote || formData.newNote.trim() === ''}
+                >
+                  <FaPlus />
                 </button>
               </div>
-              <div className="space-y-3">
-                {formData.notes.map(note => (
-                  <div className="bg-gray-50 rounded p-3 text-sm border">{note.text}<div className="text-xs text-gray-400 mt-1">{note.date}</div></div>
+
+              {/* Display existing notes */}
+              <div className="mt-2 space-y-2">
+                {(formData.notes || []).map((note, index) => (
+                  <div key={index} className="bg-gray-100 p-2 rounded-md text-sm">
+                    <p>{note.text}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(note.timestamp).toLocaleString()}
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>

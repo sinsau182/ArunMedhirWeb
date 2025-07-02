@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
-import HradminNavbar from "../../components/HradminNavbar";
-import Sidebar from "../../components/Sidebar";
 import withAuth from "@/components/withAuth";
 import { useRouter } from "next/router";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchIncomeByEmployeeId } from "@/redux/slices/incomesSlice";
 import { FaFilePdf, FaFileImage, FaLink, FaFilter, FaCalendarAlt, FaSearch } from "react-icons/fa";
 import { FiChevronDown, FiChevronRight, FiX } from "react-icons/fi";
+import MainLayout from "@/components/MainLayout";
 
 // Mock data to simulate what's coming from Redux for development
 const mockIncomes = [
@@ -101,8 +100,6 @@ const ProofOfPaymentLink = ({ file }) => {
 };
 
 const Income = () => {
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
     const router = useRouter();
     // const dispatch = useDispatch();
     // const { incomes, loading, error } = useSelector((state) => state.incomes);
@@ -178,11 +175,8 @@ const Income = () => {
     const uniquePaymentMethods = [...new Set(incomes.map(i => i.paymentMethod))];
 
     return (
-        <>
-            <HradminNavbar />
-            <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
-            <div style={styles.pageContainer}>
-                <div style={styles.contentArea(isSidebarCollapsed)}>
+        <MainLayout>
+            <div className="flex-1 space-y-6 p-6">
                     <header style={styles.header}>
                         <h1 style={styles.title}>Payment Records</h1>
                         <button style={styles.addButton} onClick={() => router.push('/employee/add-income')}>
@@ -257,56 +251,42 @@ const Income = () => {
                                                                 {expandedRows.includes(group.projectId) && (
                                                                     <tr>
                                                                         <td colSpan="5" style={styles.expandedContent}>
-                                                                            <div style={{ padding: '16px 24px' }}>
                                                                                 <table style={styles.subTable}>
                                                                                     <thead>
                                                                                         <tr>
-                                                                                            <th style={styles.subTh}>Payment Date</th>
+                                                                            <th style={styles.subTh}>Payment ID</th>
+                                                                            <th style={styles.subTh}>Date</th>
                                                                                             <th style={styles.subTh}>Amount</th>
-                                                                                            <th style={styles.subTh}>Payment Method</th>
+                                                                            <th style={styles.subTh}>Method</th>
                                                                                             <th style={styles.subTh}>Proof</th>
-                                                                                            <th style={styles.subTh}>Notes</th>
                                                                                         </tr>
                                                                                     </thead>
                                                                                     <tbody>
-                                                                                    {group.payments.map(payment => (
-                                                                                        <tr key={payment.incomeId}>
-                                                                                            <td style={styles.subTd}>{formatDate(payment.paymentDate)}</td>
-                                                                                            <td style={styles.subTd}>{formatCurrency(payment.amount)}</td>
-                                                                                            <td style={styles.subTd}>{payment.paymentMethod}</td>
-                                                                                            <td style={styles.subTd}><ProofOfPaymentLink file={payment.file} /></td>
-                                                                                            <td style={styles.subTd}>{payment.comments}</td>
+                                                                        {group.payments.map(p => (
+                                                                            <tr key={p.incomeId}>
+                                                                                <td style={styles.subTd}>{p.incomeId}</td>
+                                                                                <td style={styles.subTd}>{formatDate(p.paymentDate)}</td>
+                                                                                <td style={styles.subTd}>{formatCurrency(p.amount)}</td>
+                                                                                <td style={styles.subTd}>{p.paymentMethod}</td>
+                                                                                <td style={styles.subTd}><ProofOfPaymentLink file={p.file} /></td>
                                                                                         </tr>
                                                                                     ))}
                                                                                     </tbody>
                                                                                 </table>
-                                                                            </div>
                                                                         </td>
                                                                     </tr>
                                                                 )}
                                                               </React.Fragment>
                                                             ))
                                                         ) : (
-                                                            <tr>
-                                                                <td colSpan="5">
-                                                                    <div style={styles.emptyState}>
-                                                                        <FaSearch size={48} color="#d1d5db" style={{ marginBottom: 16 }}/>
-                                                                        <h3 style={{ fontSize: 18, fontWeight: 600, color: '#374151' }}>No matching records found</h3>
-                                                                        <p style={{ color: '#6b7280', marginBottom: 24 }}>Try adjusting your filters or add a new payment record.</p>
-                                                                         <button style={styles.addButton} onClick={() => router.push('/employee/add-income')}>
-                                                                            + Record New Payment
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
+                                                      <tr><td colSpan="5" style={styles.emptyState}>No income records found.</td></tr>
                                                         )}
                                                     </tbody>
                                                 </table>
                                             </div>
                                         </main>
                                     </div>
-                                </div>
-                            </>
+        </MainLayout>
                         );
                     };
 

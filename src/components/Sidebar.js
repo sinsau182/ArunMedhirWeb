@@ -1,40 +1,23 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import {
-  FaUsers,
-  FaMoneyCheckAlt,
-  FaCog,
-  FaBuilding,
-  FaCalendarAlt,
-  FaAngleLeft,
-  FaAngleRight,
-  FaTasks,
-  FaUserTie,
+  FaChevronRight,
 } from "react-icons/fa";
-import {
-  Briefcase,
-  Calendar,
-  ChartColumnIncreasing,
-  Clock,
-  CreditCard,
-  CreditCardIcon,
-  ReceiptIcon,
-  Users,
-  Wallet,
-} from "lucide-react";
 import Link from "next/link";
+import { menuItems, roleDisplayLabels } from "./menu";
 
-const Sidebar = ({ isCollapsed, toggleSidebar }) => {
+const Sidebar = ({ onHoverChange }) => {
   const [currentRole, setCurrentRole] = useState("");
   const [expandedMenus, setExpandedMenus] = useState({});
-  const [department, setDepartment] = useState("");
+  const [isHovered, setIsHovered] = useState(false);
   const router = useRouter();
+
+  // Sidebar is collapsed by default, expands on hover
+  const isCollapsed = !isHovered;
 
   useEffect(() => {
     const role = sessionStorage.getItem("currentRole");
-    const dept = sessionStorage.getItem("departmentName");
-    setCurrentRole(role);
-    setDepartment(dept);
+    setCurrentRole(role || "");
 
     // Initialize Settings menu as expanded
     setExpandedMenus((prev) => ({
@@ -50,204 +33,80 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     }));
   };
 
-  // Add display mapping for roles
-  const roleDisplayLabels = {
-    EMPLOYEE: "Employee",
-    MANAGER: "Manager",
-    HRADMIN: "HR Admin",
-    SALES: "Sales Employee",
-    ACCOUNTADMIN: "Accountant",
-    PROJECTADMIN: "Project Admin",
-    ACCOUNTANT: "Accountant",
-    PROJECTMANAGER: "Project Manager"
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    // Notify parent component about hover state change
+    if (onHoverChange) {
+      onHoverChange(true);
+    }
   };
 
-  // Define menu items based on the role
-  const menuItems = [
-    {
-      label: "Dashboard",
-      icon: <ChartColumnIncreasing />,
-      link: "/hradmin/dashboard",
-      roles: ["HRADMIN"],
-    },
-    {
-      label: "Employees",
-      icon: <Users />,
-      link: "/hradmin/employees",
-      roles: ["HRADMIN"],
-    },
-    {
-      label: "Attendance",
-      icon: <Clock />,
-      link: "/hradmin/attendance",
-      roles: ["HRADMIN"],
-    },
-    {
-      label: "Payroll",
-      icon: <ReceiptIcon />,
-      link: "/hradmin/payroll",
-      roles: ["HRADMIN"],
-    },
-    {
-      label: "Settings",
-      icon: <FaCog />,
-      roles: ["HRADMIN"],
-      hasSubmenu: true,
-      menuKey: "settings",
-      subItems: [
-        {
-          label: "Organization",
-          icon: <FaBuilding />,
-          link: "/hradmin/settings/organization",
-        },
-        {
-          label: "Payroll",
-          icon: <FaMoneyCheckAlt />,
-          link: "/hradmin/settings/payrollsettings",
-        },
-        {
-          label: "Leaves",
-          icon: <FaCalendarAlt />,
-          link: "/hradmin/settings/leave",
-        },
-        {
-          label: "Admin Access",
-          icon: <FaUsers />,
-          link: "/hradmin/settings/admin-access",
-        }
-      ],
-    },
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    // Notify parent component about hover state change
+    if (onHoverChange) {
+      onHoverChange(false);
+    }
+  };
 
-    {
-      label: "Dashboard",
-      icon: <ChartColumnIncreasing />,
-      link: "/manager/dashboard",
-      roles: ["MANAGER"],
-    },
-    {
-      label: "Team",
-      icon: <Briefcase />,
-      link: "/manager/team",
-      roles: ["MANAGER"],
-    },
-    {
-      label: "Attendance",
-      icon: <Clock />,
-      link: "/manager/attendance",
-      roles: ["MANAGER"],
-    },
-    {
-      label: "Lead Management",
-      icon: <FaTasks />,
-      link: "/manager/leads",
-      roles: ["MANAGER"],
-    },
+  // Group menu items by category (YouTube-style organization)
+  const groupedMenuItems = () => {
+    const filtered = (menuItems || []).filter((item) => {
+      return currentRole && item.roles && item.roles.includes(currentRole);
+    });
 
-    {
-      label: "Dashboard",
-      icon: <ChartColumnIncreasing />,
-      link: "/employee/dashboard",
-      roles: ["EMPLOYEE"],
-    },
-    {
-      label: "Leave",
-      icon: <Calendar />,
-      link: "/employee/leaves",
-      roles: ["EMPLOYEE"],
-    },
-    //  {
-    //    label: "Reimbursement",
-    //    icon: <CreditCard />,
-    //    link: "/employee/reimbursement",
-    //    roles: ["EMPLOYEE"],
-    //  },
-//    {
-//      label: "Expenses",
-//      icon: <ReceiptIcon />,
-//      link: "/employee/expenses",
-//      roles: ["EMPLOYEE"],
-//    },
-//    {
-//      label: "Income",
-//      icon: <Wallet />,
-//      link: "/employee/income",
-//      roles: ["EMPLOYEE"],
-//    },
-    {
-      label: "Attendance",
-      icon: <Clock />,
-      link: "/employee/attendances",
-      roles: ["EMPLOYEE"],
-    },
-    {
-      label: "My Payslips",
-      icon: <ReceiptIcon />,
-      link: "/employee/mypayslip",
-      roles: ["EMPLOYEE"],
-    },
-    {
-      label: "Lead Management",
-      icon: <FaTasks />,
-      link: "/employee/leads",
-      roles: ["EMPLOYEE"],
-    },
-
-    {
-      label: "Lead Management",
-      icon: <FaTasks />,
-      link: "/Sales/LeadManagement",
-      roles: ["SALES"],
-    },
-    {
-      label: "Manager",
-      icon: <FaUsers />,
-      link: "/Sales/Manager",
-      roles: ["SALES"],
-    },
+    const groups = [];
     
+    // Group 1: CORE - Dashboard & Lead Management
+    const coreItems = filtered.filter(item => 
+      item.label === "Dashboard" || 
+      item.label === "Lead Management" ||
+      item.label === "Team" ||
+      item.label === "Manager"
+    );
+    if (coreItems.length > 0) {
+      groups.push({ title: "CORE", items: coreItems });
+    }
 
-    // Add Account Admin items
-    {
-      label: "Customers",
-      icon: <FaUsers />,
-      link: "/account/customers",
-      roles: ["ACCOUNTANT"],
-    },
-    {
-      label: "Vendor",
-      icon: <FaBuilding />,
-      link: "/account/vendor",
-      roles: ["ACCOUNTANT"],
-    },
-    {
-      label: "Employee",
-      icon: <FaUserTie />,
-      link: "/account/employee",
-      roles: ["ACCOUNTANT"],
-    },
+    // Group 2: PERSONAL - Attendance, Leave, My Payslips  
+    const personalItems = filtered.filter(item => 
+      item.label === "Attendance" ||
+      item.label === "Leave" || 
+      item.label === "My Payslips"
+    );
+    if (personalItems.length > 0) {
+      groups.push({ title: "PERSONAL", items: personalItems });
+    }
 
-    // Add Project Admin items
-    {
-      label: "Expenses",
-      icon: <ReceiptIcon />,
-      link: "/project_Manager/expense",
-      roles: ["PROJECTMANAGER"],
-    },
-    {
-      label: "Income",
-      icon: <Wallet />,
-      link: "/project_Manager/income",
-      roles: ["PROJECTMANAGER"],
-    },
-  ];
+    // Group 3: WORKFORCE - Employees, Payroll
+    const workforceItems = filtered.filter(item => 
+      item.label === "Employees" || 
+      item.label === "Payroll"
+    );
+    if (workforceItems.length > 0) {
+      groups.push({ title: "WORKFORCE", items: workforceItems });
+    }
 
-  // Filter menu items based on currentRole and department
-  const filteredMenu = menuItems.filter((item) => {
-    // if (item.label === "Lead Management") {
-    //   return item.roles.includes(currentRole) && department === "Salesjhvjh";
-    // }
-    return item.roles.includes(currentRole);
-  });
+    // Group 4: BUSINESS - Customers, Vendor, Employee, Expenses, Income
+    const businessItems = filtered.filter(item => 
+      item.label === "Customers" || 
+      item.label === "Vendor" ||
+      item.label === "Employee" ||
+      item.label === "Expenses" ||
+      item.label === "Income"
+    );
+    if (businessItems.length > 0) {
+      groups.push({ title: "BUSINESS", items: businessItems });
+    }
+
+    // Group 5: CONFIGURATION - Settings (always last)
+    const settingsItems = filtered.filter(item => item.label === "Settings");
+    if (settingsItems.length > 0) {
+      groups.push({ title: "CONFIGURATION", items: settingsItems });
+    }
+
+    return groups;
+  };
 
   const isActiveLink = (link) => {
     if (!link) return false;
@@ -261,164 +120,159 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     );
   };
 
+  // Don't render if currentRole is not set yet
+  if (!currentRole) {
+    return null;
+  }
+
+  const sidebarWidth = isCollapsed ? "w-16" : "w-60"; // 64px collapsed, 240px expanded
+  const groups = groupedMenuItems();
+
   return (
-    <aside
-      className={`fixed top-16 left-0 h-[calc(100vh-64px)] bg-white shadow-md transition-all duration-300 ${
-        isCollapsed ? "w-16" : "w-56"
-      }`}
-    >
-      {/* Collapse/Expand Button - Moved to top left */}
-      <div className="absolute -right-4 top-3 z-50">
-        <button
-          onClick={toggleSidebar}
-          className={`
-            flex items-center justify-center w-8 h-8 
-            rounded-full bg-white text-gray-600
-            hover:text-blue-600 shadow-md 
-            transition-all duration-300
-            border border-gray-200 sticky top-16
-          `}
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? (
-            <FaAngleRight className="w-5 h-5" />
-          ) : (
-            <FaAngleLeft className="w-5 h-5" />
-          )}
-        </button>
-      </div>
-
-      <nav className="flex-1 pt-4">
-        <ul className="space-y-2">
-          {filteredMenu.map((item, index) => {
-            const isActive = isActiveLink(item.link);
-            const isParentActive = isActiveParent(item);
-            const isExpanded = item.menuKey
-              ? expandedMenus[item.menuKey]
-              : false;
-
-            return (
-              <li key={index} className="relative">
-                {item.hasSubmenu ? (
-                  <div>
-                    <div
-                      onClick={() => toggleMenu(item.menuKey)}
-                      className={`group flex items-center px-4 py-3 cursor-pointer transition-all duration-200 ${
-                        isCollapsed ? "justify-center" : "gap-4"
-                      } ${
-                        isParentActive
-                          ? "text-blue-600 bg-blue-50"
-                          : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span
-                        className={`text-xl ${
-                          isParentActive
-                            ? "text-blue-600"
-                            : "group-hover:text-blue-600"
-                        }`}
-                      >
-                        {item.icon}
-                      </span>
-                      {!isCollapsed && (
-                        <>
-                          <span className="text-lg flex-1">
-                            {item.label}
-                          </span>
-                          <span className="transform transition-transform duration-200">
-                            {isExpanded ? (
-                              <FaAngleLeft className="w-4 h-4" />
-                            ) : (
-                              <FaAngleRight className="w-4 h-4" />
-                            )}
-                          </span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Submenu items */}
-                    {isExpanded && (
-                      <div
-                        className={`
-                          ${isCollapsed ? "pl-0" : "pl-4"} 
-                          mt-1 
-                          transition-all duration-200 
-                          overflow-hidden
-                        `}
-                      >
-                        {item.subItems.map((subItem, subIndex) => {
-                          const isSubActive = isActiveLink(subItem.link);
-
-                          return (
-                            <Link
-                              key={subIndex}
-                              href={subItem.link}
-                              prefetch={true}
-                              className={`
-                                flex items-center px-4 py-2 
-                                transition-all duration-200 
-                                ${isCollapsed ? "justify-center" : "gap-3"}
-                                ${
-                                  isSubActive
-                                    ? "text-blue-600 bg-blue-50"
-                                    : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                                }
-                              `}
-                            >
-                              <span
-                                className={`text-lg ${
-                                  isSubActive ? "text-blue-600" : ""
-                                }`}
-                              >
-                                {subItem.icon}
-                              </span>
-                              {!isCollapsed && (
-                                <span className="text-sm">
-                                  {subItem.label}
-                                </span>
-                              )}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
+    <>
+      {/* Mobile Backdrop */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setIsHovered(false)}
+        />
+      )}
+      
+      {/* Sidebar - Hover to Expand */}
+      <aside
+        className={`fixed left-0 bg-white border-r border-gray-200 transition-all duration-300 z-50 ${sidebarWidth} flex flex-col`}
+        style={{
+          top: '64px', // Start below the navbar
+          height: 'calc(100vh - 64px)', // Fill remaining space
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="flex flex-col h-full">
+          {/* Navigation Menu */}
+          <nav className="flex-1 pt-4 overflow-y-auto overflow-x-hidden">
+            {groups.map((group, groupIndex) => (
+              <div key={groupIndex} className="mb-6">
+                {!isCollapsed && (
+                  <div className="px-6 mb-2">
+                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      {group.title}
+                    </h3>
                   </div>
-                ) : (
-                  <Link
-                    href={item.link}
-                    prefetch={true}
-                    className={`
-                      group flex items-center px-4 py-3 
-                      transition-all duration-200 
-                      ${isCollapsed ? "justify-center" : "gap-4"}
-                      ${
-                        isActive
-                          ? "text-blue-600 bg-blue-50"
-                          : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                      }
-                    `}
-                    aria-label={item.label}
-                  >
-                    <span
-                      className={`text-xl ${
-                        isActive
-                          ? "text-blue-600"
-                          : "group-hover:text-blue-600"
-                      }`}
-                    >
-                      {item.icon}
-                    </span>
-                    {!isCollapsed && (
-                      <span className="text-lg">{item.label}</span>
-                    )}
-                  </Link>
                 )}
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-    </aside>
+                
+                <ul className="space-y-1">
+                  {group.items.map((item, index) => {
+                    const isActive = isActiveLink(item.link);
+                    const isParentActive = isActiveParent(item);
+                    const isExpanded = item.menuKey ? expandedMenus[item.menuKey] : false;
+
+                    return (
+                      <li key={index} className="relative">
+                        {item.hasSubmenu ? (
+                          <div>
+                            <div
+                              onClick={() => !isCollapsed && toggleMenu(item.menuKey)}
+                              className={`group flex items-center px-6 py-3 cursor-pointer transition-all duration-150 ${
+                                isCollapsed ? "justify-center" : "justify-between"
+                              } ${
+                                isParentActive
+                                  ? "bg-gray-50 text-blue-600 font-semibold border-l-4 border-blue-600"
+                                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                              }`}
+                            >
+                              <div className={`flex items-center ${isCollapsed ? '' : 'space-x-4'}`}>
+                                <span
+                                  className={`text-xl ${
+                                    isParentActive ? "text-blue-600" : "text-gray-600"
+                                  }`}
+                                >
+                                  {item.icon}
+                                </span>
+                                {!isCollapsed && (
+                                  <span className="text-base whitespace-nowrap">
+                                    {item.label}
+                                  </span>
+                                )}
+                              </div>
+                              {!isCollapsed && (
+                                <FaChevronRight 
+                                  className={`w-3 h-3 transition-transform ${
+                                    isExpanded ? 'rotate-90' : ''
+                                  } ${isParentActive ? 'text-blue-600' : 'text-gray-400'}`} 
+                                />
+                              )}
+                            </div>
+
+                            {/* Submenu items - only show when expanded and not collapsed */}
+                            {isExpanded && !isCollapsed && (
+                              <div className="ml-8 mt-1 space-y-1">
+                                {item.subItems.map((subItem, subIndex) => {
+                                  const isSubActive = isActiveLink(subItem.link);
+
+                                  return (
+                                    <Link
+                                      key={subIndex}
+                                      href={subItem.link}
+                                      className={`flex items-center px-6 py-2 text-sm transition-all duration-150 space-x-4 ${
+                                        isSubActive
+                                          ? "bg-gray-50 text-blue-600 font-medium border-l-4 border-blue-600"
+                                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                      }`}
+                                    >
+                                      <span className={`text-lg ${isSubActive ? "text-blue-600" : "text-gray-500"}`}>
+                                        {subItem.icon}
+                                      </span>
+                                      <span className="whitespace-nowrap">{subItem.label}</span>
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <Link
+                            href={item.link}
+                            className={`group flex items-center px-6 py-3 transition-all duration-150 relative ${
+                              isCollapsed ? "justify-center" : "space-x-4"
+                            } ${
+                              isActive
+                                ? "bg-gray-50 text-blue-600 font-semibold border-l-4 border-blue-600"
+                                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                            }`}
+                            title={isCollapsed ? item.label : ""}
+                          >
+                            <span
+                              className={`text-xl flex-shrink-0 ${
+                                isActive ? "text-blue-600" : "text-gray-600"
+                              }`}
+                            >
+                              {item.icon}
+                            </span>
+                            {!isCollapsed && (
+                              <span className="text-base whitespace-nowrap">
+                                {item.label}
+                              </span>
+                            )}
+
+                            {/* Tooltip for collapsed state */}
+                            {isCollapsed && (
+                              <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                                {item.label}
+                              </div>
+                            )}
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        </div>
+      </aside>
+    </>
   );
 };
 

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import HradminNavbar from "../../components/HradminNavbar";
-import Sidebar from "../../components/Sidebar";
 import { useDispatch, useSelector } from "react-redux";
 import { Download, CalendarIcon } from "lucide-react";
 import html2canvas from "html2canvas";
@@ -11,6 +9,8 @@ import withAuth from "@/components/withAuth";
 import { toast } from "sonner";
 import { fetchPayslipDetails, fetchEmployeeDetails, resetPayslipState } from "@/redux/slices/payslipSlice";
 import { fetchOneEmployeeAttendanceOneMonth } from "@/redux/slices/attendancesSlice";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/HradminNavbar";
 
 const downloadPDF = () => {
   const content = document.getElementById("pdf-content");
@@ -79,7 +79,7 @@ const PayrollPage = () => {
   console.log(attendance);
   
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(monthsList[latestMonthIndex]);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [dateOfJoining, setDateOfJoining] = useState(null);
@@ -171,18 +171,22 @@ const PayrollPage = () => {
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
+    <div className="flex min-h-screen bg-gray-100">
+      <Sidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        toggleSidebar={toggleSidebar}
+      />
       <div
         className={`flex-1 ${
-          isSidebarCollapsed ? "ml-16" : "ml-56"
+          isSidebarCollapsed ? "ml-20" : "ml-64"
         } transition-all duration-300`}
       >
-        <HradminNavbar />
-        <div className="container mt-14 mx-auto">
-          <div className="space-y-4 mx-auto px-9 py-6">
-            <div className="flex items-center justify-between relative">
+        <Navbar toggleSidebar={toggleSidebar} />
+        <main className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold">My Payslips</h1>
+          <div className="flex items-center gap-4">
               <div className="relative">
                 <Badge
                   variant="outline"
@@ -234,6 +238,7 @@ const PayrollPage = () => {
                 <Download className="w-4 h-4 mr-1" />
                 Download
               </Button>
+          </div>
             </div>
 
             {loading ? (
@@ -248,359 +253,152 @@ const PayrollPage = () => {
             ) : payslipData ? (
               <div className="max-w-7xl mx-auto bg-white shadow-lg overflow-y-auto h-[calc(86vh-62px)] custom-scrollbar">
                 <div id="pdf-content">
+              {/* Payslip Content */}
+              <div className="p-0">
                   {/* Header */}
-                  <div className="bg-gray-600 text-white text-center py-2">
-                    <h1 className="text-xl font-bold mb-1">
-                      PAYSLIP for the Month of {payslipData?.monthYearDisplay}
+                <div className="bg-gray-600 text-white text-center py-4">
+                  <h1 className="text-xl font-bold">
+                    PAYSLIP for the Month of {selectedMonth}-{selectedYear}
                     </h1>
                   </div>
 
-                  {/* Employee Details */}
-                  <div className="border border-gray-400">
-                    <div className="grid grid-cols-2">
-                      <div className="px-2 border-l-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">Name</div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {payslipData?.employeeName || "Saurav Singh"}
-                        </div>
-                      </div>
-                      <div className="px-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">EMP ID</div>
-                        <div className="border-l-2 border-gray-400 h-full mx-2"></div>
-                        <div className="flex-1 text-center">
-                          {payslipData?.employeeId || "TLD187"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="px-2 border-l-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">
-                          Date of Joining
-                        </div>
-                        <div className="border-l-2 border-gray-400 h-full mx-2"></div>
-                        <div className="flex-1 text-center">
-                          {formattedDateOfJoining(payslipData?.dateOfJoining)}
-                        </div>
-                      </div>
-                      <div className="px-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">Designation</div>
-                        <div className="border-l-2 border-gray-400 h-full mx-2"></div>
-                        <div className="flex-1 text-center">
-                          {employeeData?.designationName || "Software Intern"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="px-2 border-l-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">PAN</div>
-                        <div className="border-l-2 border-gray-400 h-full mx-2"></div>
-                        <div className="flex-1 text-center">
-                          {payslipData?.pan || "NA"}
-                        </div>
-                      </div>
-                      <div className="px-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">UAN Number</div>
-                        <div className="border-l-2 border-gray-400 h-full mx-2"></div>
-                        <div className="flex-1 text-center">
-                          {payslipData?.uanNumber || "0"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                {/* Employee Details Table */}
+                <table className="w-full border-collapse border border-gray-400">
+                          <tbody>
+                    <tr>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100 w-1/4">Name</td>
+                      <td className="border border-gray-400 p-3 w-1/4">{employeeData?.employeeName || 'N/A'}</td>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100 w-1/4">EMP ID</td>
+                      <td className="border border-gray-400 p-3 w-1/4">{employeeData?.employeeId || 'N/A'}</td>
+                            </tr>
+                    <tr>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">Date of Joining</td>
+                      <td className="border border-gray-400 p-3">{formattedDateOfJoining(dateOfJoining)}</td>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">Designation</td>
+                      <td className="border border-gray-400 p-3">{employeeData?.designation || 'N/A'}</td>
+                            </tr>
+                    <tr>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">PAN</td>
+                      <td className="border border-gray-400 p-3">{employeeData?.pan || 'NA'}</td>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">UAN Number</td>
+                      <td className="border border-gray-400 p-3">{employeeData?.uanNumber || 'N/A'}</td>
+                            </tr>
+                  </tbody>
+                </table>
 
-                  <div className="grid grid-cols-1">
-                    <div className="px-2 p-1 border-l-2 border-b-2 border-r-2 border-gray-400 grid grid-cols-2">
-                      <div className="font-semibold">&nbsp;</div>
-                    </div>
-                  </div>
+                {/* Spacer */}
+                <div className="h-4"></div>
 
-                  {/* Attendance Details */}
-                  <div className="border-x border-b-2 border-gray-400 mt-0">
-                    <div className="grid grid-cols-2">
-                      <div className="px-2 border-l-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">Days in Month</div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {payslipData?.daysInMonth || "28"}
-                        </div>
-                      </div>
-                      <div className="px-2 grid border-b-2 border-r-2 border-gray-400 grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">
-                          Salary Paid for Days
-                        </div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {attendance?.payableDays || "28"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="px-2 border-l-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">Leaves Taken</div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {attendance?.leavesTaken || "0"}
-                        </div>
-                      </div>
-                      <div className="px-2 grid border-b-2 border-r-2 border-gray-400 grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold  py-1">
-                          Loss of Pay Days
-                        </div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {payslipData?.lossOfPayDays || "0"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="px-2 border-l-2 border-r-2 border-b-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">
-                          Annual Leaves Earned
-                        </div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {payslipData?.annualLeavesEarned || "1.5"}
-                        </div>
-                      </div>
-                      <div className="px-2 grid border-b-2 border-r-2 border-gray-400 grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">
-                          Comp-off Leaves Earned
-                        </div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {payslipData?.compOffLeavesEarned || "0"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="px-2 border-l-2 border-r-2 border-gray-400 grid grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">
-                          Old Leaves Balance
-                        </div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {attendance?.lastMonthBalance}
-                        </div>
-                      </div>
-                      <div className="px-2 grid border-r-2 border-gray-400 grid-cols-[1fr_auto_1fr] items-center">
-                        <div className="font-semibold py-1">
-                          New Leaves Balance
-                        </div>
-                        <div className="border-l-2 border-gray-400 h-full"></div>
-                        <div className="flex-1 text-center">
-                          {attendance?.netLeaveBalance}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                {/* Attendance Details Table */}
+                <table className="w-full border-collapse border border-gray-400">
+                  <tbody>
+                    <tr>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100 w-1/4">Days in Month</td>
+                      <td className="border border-gray-400 p-3 w-1/4">{payslipData?.daysInMonth || 30}</td>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100 w-1/4">Salary Paid for Days</td>
+                      <td className="border border-gray-400 p-3 w-1/4">{payslipData?.salaryPaidDays || attendance?.presentDays || 0}</td>
+                            </tr>
+                    <tr>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">Leaves Taken</td>
+                      <td className="border border-gray-400 p-3">{payslipData?.leavesTaken || attendance?.leavesTaken || 0}</td>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">Loss of Pay Days</td>
+                      <td className="border border-gray-400 p-3">{payslipData?.lossOfPayDays || 0}</td>
+                            </tr>
+                    <tr>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">Annual Leaves Earned</td>
+                      <td className="border border-gray-400 p-3">{payslipData?.annualLeavesEarned || 1.5}</td>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">Comp-off Leaves Earned</td>
+                      <td className="border border-gray-400 p-3">{payslipData?.compOffLeavesEarned || 0}</td>
+                            </tr>
+                    <tr>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">Old Leaves Balance</td>
+                      <td className="border border-gray-400 p-3">{payslipData?.oldLeavesBalance || ''}</td>
+                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100">New Leaves Balance</td>
+                      <td className="border border-gray-400 p-3">{payslipData?.newLeavesBalance || ''}</td>
+                            </tr>
+                          </tbody>
+                        </table>
 
-                  <div className="grid grid-cols-1">
-                    <div className="px-2 p-1 border-l-2 border-b-2 border-r-2 border-gray-400 grid grid-cols-2">
-                      <div className="font-semibold">&nbsp;</div>
-                    </div>
-                  </div>
+                {/* Spacer */}
+                <div className="h-4"></div>
 
-                  {/* Earnings and Deductions */}
-                  <div className="border-x border-b-2 border-gray-400 mt-0">
-                    <div className="grid grid-cols-2">
-                      <div className="border-r-2 border-gray-400">
-                        <table className="w-full">
-                          <thead className="bg-gray-100">
-                            <tr className="border-b-2 border-l-2 border-gray-400">
-                              <th className="px-2 p-1 text-center">Earnings</th>
-                              <th className="px-2 p-1 text-center border-l-2 border-gray-400">
-                                Per Month
-                              </th>
-                              <th className="px-2 p-1 text-center border-l-2 border-gray-400">
-                                This Month
-                              </th>
+                {/* Earnings and Deductions Table */}
+                <table className="w-full border-collapse border border-gray-400">
+                  <thead>
+                    <tr className="bg-gray-200">
+                      <th className="border border-gray-400 p-3 text-left font-semibold">Earnings</th>
+                      <th className="border border-gray-400 p-3 text-center font-semibold">Per Month</th>
+                      <th className="border border-gray-400 p-3 text-center font-semibold">This Month</th>
+                      <th className="border border-gray-400 p-3 text-left font-semibold">Deductions</th>
+                      <th className="border border-gray-400 p-3 text-center font-semibold">Amount</th>
                             </tr>
                           </thead>
                           <tbody>
-                            <tr className="border-b-2 border-l-2 border-gray-400">
-                              <td className="px-2 p-1">Basic</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.basicSalaryPerMonth || "10,000"}
+                    {/* Dynamically generate rows based on the larger of earnings or deductions */}
+                    {Array.from({ 
+                      length: Math.max(
+                        (payslipData.earnings || []).length, 
+                        (payslipData.deductions || []).length,
+                        6 // Minimum 6 rows to match the design
+                      ) 
+                    }).map((_, index) => {
+                      const earning = (payslipData.earnings || [])[index];
+                      const deduction = (payslipData.deductions || [])[index];
+                      
+                      return (
+                        <tr key={index}>
+                          <td className="border border-gray-400 p-3">
+                            {earning ? earning.description : ''}
                               </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.basicSalaryThisMonth || "10,000"}
+                          <td className="border border-gray-400 p-3 text-right">
+                            {earning ? (earning.perMonth || earning.amount || 0).toFixed(0) : ''}
                               </td>
-                            </tr>
-                            <tr className="border-b-2 border-l-2 border-gray-400">
-                              <td className="px-2 p-1">HRA</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.hraPerMonth || "5,000"}
+                          <td className="border border-gray-400 p-3 text-right">
+                            {earning ? (earning.amount || 0).toFixed(0) : ''}
                               </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.hraThisMonth || "5,000"}
+                          <td className="border border-gray-400 p-3">
+                            {deduction ? deduction.description : ''}
                               </td>
-                            </tr>
-                            <tr className="border-b-2 border-l-2 border-gray-400">
-                              <td className="px-2 p-1">
-                                PF Employer Contribution
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.pfEmployerContributionPerMonth ||
-                                  "0"}
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.pfEmployerContributionThisMonth ||
-                                  "0"}
+                          <td className="border border-gray-400 p-3 text-right">
+                            {deduction ? (deduction.amount || 0).toFixed(0) : ''}
                               </td>
                             </tr>
-                            <tr className="border-b-2 border-l-2 border-gray-400">
-                              <td className="px-2 p-1">PF Employee</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.pfEmployeePerMonth || "0"}
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.pfEmployeeThisMonth || "0"}
-                              </td>
+                      );
+                    })}
+                    
+                    {/* Total Row */}
+                    <tr className="bg-gray-100 font-semibold">
+                      <td className="border border-gray-400 p-3">Total</td>
+                      <td className="border border-gray-400 p-3 text-right">{(payslipData?.totalEarnings || 0).toFixed(0)}</td>
+                      <td className="border border-gray-400 p-3 text-right">{(payslipData?.totalEarnings || 0).toFixed(0)}</td>
+                      <td className="border border-gray-400 p-3">Total</td>
+                      <td className="border border-gray-400 p-3 text-right">{(payslipData?.totalDeductions || 0).toFixed(0)}</td>
                             </tr>
-                            <tr className="border-b-2 border-l-2 border-gray-400">
-                              <td className="px-2 p-1">Fuel Allowances</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.fuelAllowancesPerMonth || "2,000"}
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.fuelAllowancesThisMonth ||
-                                  "2,000"}
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-l-2 border-gray-400">
-                              <td className="px-2 p-1">Other Allowances</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.otherAllowancesPerMonth ||
-                                  "2,000"}
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.otherAllowancesThisMonth ||
-                                  "2,000"}
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-l-2 border-gray-400">
-                              <td className="px-2 p-1">Arrears Paid</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.arrearsPaidPerMonth || "0"}
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.arrearsPaidThisMonth || "0"}
-                              </td>
-                            </tr>
-                            <tr className="border-l-2 border-gray-400 bg-gray-100">
-                              <td className="px-2 p-1 font-semibold border-b-2 border-gray-400">
-                                Total Earnings
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400 font-semibold border-b-2">
-                                {payslipData?.totalEarningsPerMonth || "19,000"}
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400 font-semibold border-b-2">
-                                {payslipData?.totalEarningsThisMonth ||
-                                  "19,000"}
+                    
+                    {/* Net Salary Row */}
+                    <tr className="bg-gray-200 font-bold">
+                      <td className="border border-gray-400 p-3" colSpan="3">Net Salary</td>
+                      <td className="border border-gray-400 p-3 text-right" colSpan="2">
+                        {(payslipData?.netSalary || 0).toFixed(0)}
                               </td>
                             </tr>
                           </tbody>
                         </table>
-                      </div>
-                      <div>
-                        <table className="w-full">
-                          <thead className="bg-gray-100">
-                            <tr className="border-b-2 border-r-2 border-gray-400">
-                              <th className="px-2 p-1 text-center">
-                                Deductions
-                              </th>
-                              <th className="px-2 p-1 text-center border-l-2 border-gray-400">
-                                Amount
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="border-b-2 border-r-2 border-gray-400">
-                              <td className="px-2 p-1">
-                                PF Employer contribution
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.pfEmployerContribution || "0"}
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-r-2 border-gray-400">
-                              <td className="px-2 p-1">PF Employee</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                0
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-r-2 border-gray-400">
-                              <td className="px-2 p-1">Professional Tax</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.professionalTax || "0"}
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-r-2 border-gray-400">
-                              <td className="px-2 p-1">TDS</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.tds || "0"}
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-r-2 border-gray-400">
-                              <td className="px-2 p-1">Advance Adjusted</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.advanceAdjusted || "0"}
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-r-2 border-gray-400">
-                              <td className="px-2 p-1">Arrears Deducted</td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400">
-                                {payslipData?.arrearsDeducted || "0"}
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-r-2 border-gray-400 bg-gray-50">
-                              <td className="px-2 p-1 font-semibold">&nbsp;</td>
-                              <td className="px-2 p-1 text-center border-l-2 border-gray-400 font-semibold">
-                                &nbsp;
-                              </td>
-                            </tr>
-                            <tr className="border-b-2 border-r-2 border-gray-400 bg-gray-100">
-                              <td className="px-2 p-1 font-semibold">
-                                Total Deductions
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-gray-400 font-semibold">
-                                {payslipData?.totalDeductions || "0"}
-                              </td>
-                            </tr>
-                            <tr>
-                              <td className="px-2 p-1">
-                                Salary Advance Balance
-                              </td>
-                              <td className="px-2 p-1 text-right border-l-2 border-r-2 border-gray-400">
-                                {payslipData?.salaryAdvanceBalance || "0"}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Net Pay */}
-                  <div className="border-x-2 border-b-2 border-gray-400 p-3 bg-gray-50">
-                    <div className="grid grid-cols-2">
-                      <div className="font-bold text-xl">Net Pay</div>
-                      <div className="text-right font-bold text-xl">
-                        ₹ {payslipData?.netPay || "19,000"}
-                      </div>
+                {/* Footer */}
+                <div className="mt-6 text-xs text-gray-500 text-center">
+                  <p>This is a computer-generated payslip and does not require a signature.</p>
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative" role="alert">
-                <strong className="font-bold">No Data!</strong>
-                <span className="block sm:inline"> No payslip data available for the selected month.</span>
+          <div className="flex justify-center items-center h-64">
+            <p className="text-gray-500">No payslip data available for the selected period.</p>
               </div>
             )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

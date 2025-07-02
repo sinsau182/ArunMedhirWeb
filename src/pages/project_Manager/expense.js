@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from "react";
-import HradminNavbar from "../../components/HradminNavbar";
-import Sidebar from "../../components/Sidebar";
 import withAuth from "@/components/withAuth";
 import Modal from "@/components/Modal";
 import CreateExpenseForm from "@/components/ProjectManager/CreateExpenseForm";
 import { FiSearch, FiFilter, FiChevronDown, FiX } from "react-icons/fi";
 import { FaRegTrashAlt, FaPaperPlane } from "react-icons/fa";
 import AccountantExpenseTable from "@/components/Accountant/AccountantExpenseTable";
+import MainLayout from "@/components/MainLayout";
 
 const mockExpenses = [
   {
@@ -178,8 +177,6 @@ const styles = {
 };
 
 const PMExpensesPage = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
 
@@ -248,28 +245,42 @@ const PMExpensesPage = () => {
       });
   }, [statusFilter, searchQuery, loggedInUser, advFilters]);
 
-  const uniqueVendors = [...new Set(mockExpenses.map((e) => e.vendorName))];
+  // Bulk actions logic
+  const [selectedRows, setSelectedRows] = useState([]);
+  const allRowsSelected =
+    filteredExpenses.length > 0 &&
+    selectedRows.length === filteredExpenses.length;
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedRows(filteredExpenses.map((exp) => exp.id));
+    } else {
+      setSelectedRows([]);
+    }
+  };
+  const handleSelectRow = (id) => {
+    setSelectedRows((prev) =>
+      prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
+    );
+  };
 
   return (
-    <>
-      <HradminNavbar />
-      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
-      <div style={styles.pageContainer(isSidebarCollapsed)}>
+    <MainLayout>
+      <div className="flex-1 space-y-6 p-6">
         <div style={styles.header}>
           <div>
             <h1 style={styles.title}>My Expenses</h1>
-            <div style={styles.subtitle}>
-              Track and manage your expense submissions
-            </div>
+            <p style={styles.subtitle}>
+              Track, submit, and manage all your project-related expenses.
+            </p>
           </div>
-          <button style={styles.createButton} onClick={handleCreateExpense}>
+          <button onClick={handleCreateExpense} style={styles.createButton}>
             + Create New Expense
           </button>
         </div>
 
         <div style={styles.toolbar}>
           <div style={styles.filters}>
-            {["All", "Paid", "Pending", "Rejected"].map((status) => (
+            {["All", "Pending", "Paid", "Rejected"].map((status) => (
               <button
                 key={status}
                 style={styles.filterButton(statusFilter === status)}
@@ -278,131 +289,131 @@ const PMExpensesPage = () => {
                 {status}
               </button>
             ))}
+          </div>
+
+          <div style={styles.filters}>
+            <div style={styles.searchContainer}>
+              <FiSearch style={styles.searchIcon} />
+              <input
+                type="text"
+                placeholder="Search by any field..."
+                style={styles.searchInput}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
             <div style={{ position: "relative" }}>
               <button
                 style={styles.advancedFilterButton}
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
               >
-                <FiFilter size={14} />
-                <span>More Filters</span>
-                <FiChevronDown size={16} />
+                <FiFilter />
+                <span>Advanced</span>
+                <FiChevronDown />
               </button>
               {showAdvancedFilters && (
                 <div style={styles.filterMenu}>
-                  <h4 style={{ margin: "0 0 16px 0", fontWeight: 600 }}>
-                    Filter by
-                  </h4>
-                  <select
-                    name="vendor"
-                    value={advFilters.vendor}
-                    onChange={handleAdvFilterChange}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      borderRadius: 6,
-                      border: "1px solid #e5e7eb",
-                      marginBottom: 16,
-                    }}
-                  >
-                    <option value="">All Vendors</option>
-                    {uniqueVendors.map((v) => (
-                      <option key={v} value={v}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                  <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: "#6b7280",
-                        }}
+                        htmlFor="dateFrom"
+                        className="block text-sm font-medium text-gray-700 mb-1"
                       >
-                        From
+                        Date From
                       </label>
                       <input
                         type="date"
+                        id="dateFrom"
                         name="dateFrom"
                         value={advFilters.dateFrom}
                         onChange={handleAdvFilterChange}
-                        style={{
-                          width: "100%",
-                          padding: "8px 12px",
-                          borderRadius: 6,
-                          border: "1px solid #e5e7eb",
-                          marginTop: 4,
-                        }}
+                        className="w-full p-2 border rounded-md"
                       />
                     </div>
                     <div>
                       <label
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: "#6b7280",
-                        }}
+                        htmlFor="dateTo"
+                        className="block text-sm font-medium text-gray-700 mb-1"
                       >
-                        To
+                        Date To
                       </label>
                       <input
                         type="date"
+                        id="dateTo"
                         name="dateTo"
                         value={advFilters.dateTo}
                         onChange={handleAdvFilterChange}
-                        style={{
-                          width: "100%",
-                          padding: "8px 12px",
-                          borderRadius: 6,
-                          border: "1px solid #e5e7eb",
-                          marginTop: 4,
-                        }}
+                        className="w-full p-2 border rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="vendor"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Vendor Name
+                      </label>
+                      <input
+                        type="text"
+                        id="vendor"
+                        name="vendor"
+                        value={advFilters.vendor}
+                        onChange={handleAdvFilterChange}
+                        placeholder="e.g., Amazon"
+                        className="w-full p-2 border rounded-md"
                       />
                     </div>
                   </div>
-                  <button
-                    onClick={clearAdvFilters}
-                    style={{
-                      width: "100%",
-                      background: "none",
-                      border: "none",
-                      color: "#6b7280",
-                      cursor: "pointer",
-                      textAlign: "right",
-                    }}
-                  >
-                    Clear all
-                  </button>
+                  <div className="flex justify-end mt-4 pt-4 border-t">
+                    <button
+                      onClick={clearAdvFilters}
+                      className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                    >
+                      <FiX /> Clear Filters
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
-          <div style={styles.searchContainer}>
-            <FiSearch style={styles.searchIcon} />
-            <input
-              type="text"
-              placeholder="Search anything..."
-              style={styles.searchInput}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
         </div>
+        
+        {selectedRows.length > 0 && (
+          <div style={styles.bulkActionBar} className="mb-4">
+            <span className="font-semibold">{selectedRows.length} selected</span>
+            <div className="flex-grow" />
+            <button className="flex items-center gap-2 text-red-600 hover:text-red-800">
+              <FaRegTrashAlt /> Delete Selected
+            </button>
+            <button className="flex items-center gap-2 text-blue-600 hover:text-blue-800">
+              <FaPaperPlane /> Submit Selected
+            </button>
+          </div>
+        )}
 
         <AccountantExpenseTable
           expenses={filteredExpenses}
           onEdit={handleEditExpense}
-          preferencesKey="pmExpenseColumns"
+          selectedRows={selectedRows}
+          onSelectRow={handleSelectRow}
+          onSelectAll={handleSelectAll}
+          allRowsSelected={allRowsSelected}
         />
+
+        {isModalOpen && (
+          <Modal onClose={handleCloseModal} title={editingExpense ? "Edit Expense" : "Create New Expense"}>
+            <CreateExpenseForm
+              expenseData={editingExpense}
+              onClose={handleCloseModal}
+              onSubmit={(data) => {
+                console.log("Form submitted:", data);
+                handleCloseModal();
+              }}
+            />
+          </Modal>
+        )}
       </div>
-      <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-        <CreateExpenseForm
-          expense={editingExpense}
-          onClose={handleCloseModal}
-        />
-      </Modal>
-    </>
+    </MainLayout>
   );
 };
 

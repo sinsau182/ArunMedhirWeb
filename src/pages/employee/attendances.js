@@ -6,15 +6,121 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { CheckCircle2, Clock, CalendarIcon, Calendar, Play } from "lucide-react";
-import HradminNavbar from "../../components/HradminNavbar";
-import Sidebar from "../../components/Sidebar";
+import { CheckCircle2, Clock, CalendarIcon, Calendar, Play, ChevronDown } from "lucide-react";
 import withAuth from "@/components/withAuth";
 import { toast } from "sonner";
 import { getItemFromSessionStorage } from "@/redux/slices/sessionStorageSlice";
 import { Badge } from "@/components/ui/badge";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchOneEmployeeAttendanceOneMonth } from "@/redux/slices/attendancesSlice";
+import MainLayout from "@/components/MainLayout";
+
+const MonthYearSelector = ({ selectedMonth, selectedYear, onSelect }) => {
+  const years = [new Date().getFullYear() - 1, new Date().getFullYear()];
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+
+  return (
+    <div className="absolute right-0 mt-2 w-60 bg-white border rounded-lg shadow-lg z-10 p-2">
+      <div className="flex justify-around mb-2">
+        {years.map(year => (
+          <button
+            key={year}
+            onClick={() => onSelect(selectedMonth, year.toString())}
+            className={`px-3 py-1 text-sm rounded ${selectedYear === year.toString() ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+          >
+            {year}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-1">
+        {months.map(month => (
+          <button
+            key={month}
+            onClick={() => onSelect(month, selectedYear)}
+            className={`p-2 text-sm rounded ${selectedMonth === month ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+          >
+            {month}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const DailyDetails = ({ data }) => {
+  if (!data) {
+    return (
+        <div className="text-center py-4">
+            <p className="text-gray-500">Select a date to see the details.</p>
+        </div>
+    );
+  }
+
+  const { status, checkIn, checkOut, totalWorkingMinutes, leaveType } = data;
+  
+  const getStatusBadge = () => {
+    switch(status) {
+        case 'Present': return <Badge variant="success">Present</Badge>;
+        case 'Absent': return <Badge variant="destructive">Absent</Badge>;
+        case 'Half Day': return <Badge variant="warning">Half Day</Badge>;
+        case 'On Leave': return <Badge variant="secondary">On Leave</Badge>;
+        case 'Holiday': return <Badge variant="outline">Holiday</Badge>;
+        default: return <Badge>{status}</Badge>
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <span className="font-medium">Status</span>
+        {getStatusBadge()}
+      </div>
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-gray-600">Check In</span>
+        <span className="text-sm font-semibold">{checkIn || 'N/A'}</span>
+      </div>
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-gray-600">Check Out</span>
+        <span className="text-sm font-semibold">{checkOut || 'N/A'}</span>
+      </div>
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-gray-600">Working Hours</span>
+        <span className="text-sm font-semibold">{totalWorkingMinutes ? `${(totalWorkingMinutes / 60).toFixed(1)}h` : 'N/A'}</span>
+      </div>
+       {leaveType && (
+         <div className="flex justify-between items-center">
+           <span className="text-sm text-gray-600">Leave Type</span>
+           <span className="text-sm font-semibold">{leaveType}</span>
+         </div>
+       )}
+    </div>
+  );
+};
+
+const MonthlySummary = ({ summary }) => {
+  const summaryItems = [
+    { label: "Present", value: summary["Present"] || 0, color: "text-green-600" },
+    { label: "Absent", value: summary["Absent"] || 0, color: "text-red-600" },
+    { label: "Half Day", value: summary["Half Day"] || 0, color: "text-yellow-600" },
+    { label: "On Leave", value: summary["On Leave"] || 0, color: "text-blue-600" },
+    { label: "Holiday", value: summary["Holiday"] || 0, color: "text-gray-600" },
+    { label: "Weekend", value: summary["Weekend"] || 0, color: "text-purple-600" },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {summaryItems.map(item => (
+        <div key={item.label} className="bg-gray-50 p-3 rounded-lg text-center">
+          <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
+          <p className="text-sm text-gray-500">{item.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const EmployeeAttendance = () => {
   const dispatch = useDispatch();
@@ -23,7 +129,7 @@ const EmployeeAttendance = () => {
   );
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [date, setDate] = useState(null); // State to manage selected date
+    const [date, setDate] = useState(null); // State to manage selected date
   const [attendanceData, setAttendanceData] = useState([]); // State for attendance data for the calendar
   const [showReasonForm, setShowReasonForm] = useState(false); // State to control reason form visibility
   const [reason, setReason] = useState(""); // State to store the reason
@@ -249,6 +355,7 @@ const EmployeeAttendance = () => {
       }
       setAttendanceData(formattedData);
       setMonthlySummary(summaryCounts);
+      setDailyAttendanceData(null); // Reset daily data on month change
     } else if (error) {
       toast.error(`Failed to fetch attendance data: ${error}`);
       setAttendanceData([]);
@@ -270,10 +377,8 @@ const EmployeeAttendance = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
-  const generateCalendarDays = () => {
-    const monthIndex = new Date(
-      `${selectedMonth} 1, ${selectedYear}`
-    ).getMonth();
+    const generateCalendarDays = () => {
+    const monthIndex = new Date(`${selectedMonth} 1, ${selectedYear}`).getMonth();
     const year = parseInt(selectedYear);
     const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
     let daysArray = [];
@@ -282,7 +387,35 @@ const EmployeeAttendance = () => {
       daysArray.push(new Date(year, monthIndex, day));
     }
 
-    return daysArray;
+    return daysArray.map((day) => (
+      <div
+        key={day.toDateString()}
+        className={`w-[14.2857%] text-center p-2 cursor-pointer rounded-md transition ${
+          attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status
+            ? attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status === "Present"
+              ? "bg-green-100 hover:bg-green-200 text-green-800"
+              : attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status === "Present with Leave"
+              ? "bg-lime-100 hover:bg-lime-200 text-lime-800"
+              : attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status === "Absent"
+              ? "bg-red-200 hover:bg-red-300 text-red-900"
+              : attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status === "Half Day"
+              ? "bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
+              : attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status === "Holiday"
+              ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
+              : attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status === "Present on Holiday"
+              ? "bg-blue-100 hover:bg-blue-200 text-blue-800"
+              : attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status === "Half Day on Holiday"
+              ? "bg-orange-200 hover:bg-orange-300 text-orange-800"
+              : attendanceData.find((d) => d.date.toDateString() === day.toDateString())?.status === "Loss of Pay"
+              ? "bg-purple-100 hover:bg-purple-200 text-purple-800"
+              : "hover:bg-gray-200"
+            : "hover:bg-gray-200"
+        }`}
+        onClick={() => setDate(day)}
+      >
+        {day.getDate()}
+      </div>
+    ));
   };
 
   const handleSubmitReason = (e) => {
@@ -400,14 +533,6 @@ const EmployeeAttendance = () => {
     return hours * 60 + minutes + seconds / 60;
   };
 
-  // Helper function to calculate additional time since last checkout
-  // const calculateAdditionalTime = (lastCheckout) => {
-  //   if (!lastCheckout) return 0;
-  //   const lastCheckoutTime = new Date(lastCheckout);
-  //   const timeDiff = currentTime.getTime() - lastCheckoutTime.getTime();
-  //   return timeDiff / (1000 * 60); // Convert to minutes
-  // };
-
   // Helper function to calculate additional time since latest checkin
   const calculateAdditionalTimeFromLatestCheckin = (latestCheckin) => {
     if (!latestCheckin) return 0;
@@ -415,16 +540,6 @@ const EmployeeAttendance = () => {
     const timeDiff = currentTime.getTime() - latestCheckinTime.getTime();
     return timeDiff / (1000 * 60); // Convert to minutes
   };
-
-  // Helper function to format total working hours
-  // const formatWorkingHours = (workingHoursTillNow, lastCheckout) => {
-  //   const baseMinutes = parseTimeDuration(workingHoursTillNow);
-  //   const additionalMinutes = calculateAdditionalTime(lastCheckout);
-  //   const totalMinutes = baseMinutes + additionalMinutes;
-  //   const hours = Math.floor(totalMinutes / 60);
-  //   const minutes = Math.floor(totalMinutes % 60);
-  //   return `${hours}h ${minutes}m`;
-  // };
 
   // Helper function to format live working hours (using latestCheckin)
   const formatLiveWorkingHours = (workingHoursTillNow, latestCheckin) => {
@@ -438,561 +553,95 @@ const EmployeeAttendance = () => {
 
   // Helper function to format workingHoursTillNow string to xh ym format
   const formatWorkingHoursString = (workingHoursString) => {
-    if (!workingHoursString) return "0h 0m";
-    const [hours, minutes, seconds] = workingHoursString.split(':').map(Number);
+    const [hours, minutes] = workingHoursString.split(":").map(Number);
     return `${hours}h ${minutes}m`;
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
-
-      {/* Main Content */}
-      <div
-        className={`flex-1 ${
-          isSidebarCollapsed ? "ml-16" : "ml-56"
-        } transition-all duration-300`}
-      >
-        {/* Navbar */}
-        <HradminNavbar />
-
-        {/* Content */}
-        <div className="p-6 space-y-6 mt-16">
-          {" "}
-          {/* Increased mt-16 for more spacing */}
-          {/* Monthly Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Monthly Summary</CardTitle>
-              <CardDescription>
-                Your attendance statistics for this month
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {/* Present */}
-                  <div className="flex flex-col bg-green-100 p-3 rounded-lg">
-                    <span className="font-medium text-green-800">
-                      Present (P)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Present"] || 0}
-                    </span>
-                  </div>
-                  {/* Present with Leave */}
-                  <div className="flex flex-col bg-lime-100 p-3 rounded-lg">
-                    <span className="font-medium text-green-800">
-                      Present with Leave (PL)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Present with Leave"] || 0}
-                    </span>
-                  </div>
-                  {/* Half Day */}
-                  <div className="flex flex-col bg-yellow-100 p-3 rounded-lg">
-                    <span className="font-medium text-yellow-800">
-                      Half Day (P/A)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Half Day"] || 0}
-                    </span>
-                  </div>
-                  {/* Absent */}
-                  <div className="flex flex-col bg-red-200 p-3 rounded-lg">
-                    <span className="font-medium text-red-900">Absent (A)</span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Absent"] || 0}
-                    </span>
-                  </div>
-                  {/* Holiday */}
-                  <div className="flex flex-col bg-gray-200 p-3 rounded-lg">
-                    <span className="font-medium text-gray-700">
-                      Holiday (H)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Holiday"] || 0}
-                    </span>
-                  </div>
-                  {/* Present on Holiday */}
-                  <div className="flex flex-col bg-blue-100 p-3 rounded-lg">
-                    <span className="font-medium text-blue-800">
-                      Present on Holiday (PH)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Present on Holiday"] || 0}
-                    </span>
-                  </div>
-                  {/* Half Day on Holiday */}
-                  <div className="flex flex-col bg-orange-200 p-3 rounded-lg">
-                    <span className="font-medium text-orange-800">
-                      Half Day on Holiday (PH/A)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Half Day on Holiday"] || 0}
-                    </span>
-                  </div>
-                  {/* Loss of Pay */}
-                  <div className="flex flex-col bg-purple-100 p-3 rounded-lg">
-                    <span className="font-medium text-purple-800">
-                      Loss of Pay (LOP)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Loss of Pay"] || 0}
-                    </span>
-                  </div>
-                  {/* No Data removed */}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Attendance Calendar */}
-            <Card className="md:col-span-2">
-              <CardHeader>
+    <MainLayout>
+      <div className="flex flex-col gap-6">
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle className="text-xl">
-                      Attendance Calendar
-                    </CardTitle>
-                    <CardDescription>
-                      View and track your attendance history
-                    </CardDescription>
+            <h1 className="text-2xl font-bold">My Attendance</h1>
+            <p className="text-gray-500">
+              View and manage your attendance record.
+            </p>
                   </div>
                   <div className="relative" ref={calendarRef}>
-                    <Badge
-                      variant="outline"
-                      className="px-4 py-2 cursor-pointer bg-blue-500 hover:bg-blue-600 transition-colors duration-200 flex items-center gap-2 text-white"
+            <button
                       onClick={toggleCalendar}
+              className="flex items-center gap-2 px-4 py-2 bg-white border rounded-md shadow-sm hover:bg-gray-50"
                     >
-                      <Calendar className="h-4 w-4" />
-                      <span className="font-medium text-sm">
-                        {selectedYear}-{selectedMonth}
-                      </span>
-                    </Badge>
+              <CalendarIcon className="h-5 w-5 text-gray-600" />
+              <span className="font-semibold">{`${selectedMonth}, ${selectedYear}`}</span>
+              <ChevronDown className="h-4 w-4" />
+            </button>
                     {isCalendarOpen && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30">
-                        {/* Existing calendar content */}
-                        <div className="p-3 border-b flex justify-between items-center">
-                          <div className="text-sm font-medium text-gray-700">
-                            {selectedYear}
-                          </div>
-                          <select
-                            value={selectedYear}
-                            onChange={(e) => {
-                              const newYear = e.target.value;
-                              setSelectedYear(newYear);
-
-                              // Set default month based on year
-                              if (newYear === "2024") {
-                                setSelectedMonth("Aug");
-                                // Fetch data for August 2024
-                                const employeeId =
-                                  sessionStorage.getItem("employeeId");
-                                if (employeeId) {
-                                  dispatch(
-                                    fetchOneEmployeeAttendanceOneMonth({
-                                      employeeId,
-                                      month: "Aug",
-                                      year: newYear,
-                                    })
-                                  );
-                                }
-                              } else {
-                                setSelectedMonth("Jan");
-                                // Fetch data for January 2025
-                                const employeeId =
-                                  sessionStorage.getItem("employeeId");
-                                if (employeeId) {
-                                  dispatch(
-                                    fetchOneEmployeeAttendanceOneMonth({
-                                      employeeId,
-                                      month: "Jan",
-                                      year: newYear,
-                                    })
-                                  );
-                                }
-                              }
-                            }}
-                            className="ml-2 border rounded px-2 py-1 text-sm"
-                          >
-                            {[2024, 2025].map((year) => (
-                              <option key={year} value={year}>
-                                {year}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1.5 p-3">
-                          {(() => {
-                            const currentYear = new Date().getFullYear();
-                            const currentMonthIdx = new Date().getMonth(); // 0-based
-                            let months = [
-                              "Jan",
-                              "Feb",
-                              "Mar",
-                              "Apr",
-                              "May",
-                              "Jun",
-                              "Jul",
-                              "Aug",
-                              "Sep",
-                              "Oct",
-                              "Nov",
-                              "Dec",
-                            ];
-
-                            // Determine which months to show based on year
-                            let startIdx = 0;
-                            let endIdx = 11;
-
-                            if (parseInt(selectedYear) === 2024) {
-                              startIdx = 7; // August (0-based)
-                              endIdx = 11; // December
-                            } else if (parseInt(selectedYear) === 2025) {
-                              startIdx = 0; // January
-                              endIdx =
-                                currentYear === 2025 ? currentMonthIdx : 11;
-                            }
-
-                            return months
-                              .slice(startIdx, endIdx + 1)
-                              .map((month) => (
-                                <button
-                                  key={month}
-                                  className={`p-3 text-sm rounded-md transition-colors duration-200 ${
-                                    month === selectedMonth
-                                      ? "bg-blue-50 text-blue-600 font-medium hover:bg-blue-100"
-                                      : "hover:bg-gray-50 text-gray-700"
-                                  }`}
-                                  onClick={() =>
-                                    handleMonthSelection(month, selectedYear)
-                                  }
-                                >
-                                  {month}
-                                </button>
-                              ));
-                          })()}
-                        </div>
-                      </div>
+              <MonthYearSelector
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                onSelect={handleMonthSelection}
+              />
                     )}
                   </div>
                 </div>
-              </CardHeader>
-
-              <CardContent>
-                {/* Calendar Days */}
-                {loading ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                    <p>Loading attendance data...</p>
-                  </div>
-                ) : error ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                    <CalendarIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
-                    <p className="text-lg font-medium">
-                      Error loading attendance data
-                    </p>
-                    <p className="text-sm text-muted-foreground/80">{error}</p>
-                  </div>
-                ) : !attendance ||
-                  (!attendance.presentDates &&
-                    !attendance.fullLeaveDates &&
-                    !attendance.halfDayLeaveDates &&
-                    !attendance.fullCompoffDates &&
-                    !attendance.halfCompoffDates &&
-                    !attendance.weeklyOffDates &&
-                    !attendance.absentDates) ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                    <CalendarIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
-                    <p className="text-lg font-medium">
-                      No attendance data available
-                    </p>
-                    <p className="text-sm text-muted-foreground/80">
-                      There is no attendance data for the selected month.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1 border rounded-md p-2">
-                    {calendarDays.map((day, index) => {
-                      // Find attendance status for the current day
-                      const dayData = attendanceData.find(
-                        (d) => d.date.toDateString() === day.toDateString()
-                      );
-                      const status = dayData?.status;
-                      const dayNumber = day.getDate();
-
-                      // Determine background color based on status
-                      let bgColorClass = "hover:bg-gray-200";
-                      if (dayData) {
-                        switch (status) {
-                          case "Present":
-                            bgColorClass =
-                              "bg-green-100 hover:bg-green-200 text-green-800";
-                            break;
-                          case "Present with Leave":
-                            bgColorClass =
-                              "bg-lime-100 hover:bg-lime-200 text-lime-800";
-                            break;
-                          case "Absent":
-                            bgColorClass =
-                              "bg-red-200 hover:bg-red-300 text-red-900";
-                            break;
-                          case "Half Day":
-                            bgColorClass =
-                              "bg-yellow-100 hover:bg-yellow-200 text-yellow-800";
-                            break;
-                          case "Holiday":
-                            bgColorClass =
-                              "bg-gray-200 hover:bg-gray-300 text-gray-700";
-                            break;
-                          case "Present on Holiday":
-                            bgColorClass =
-                              "bg-blue-100 hover:bg-blue-200 text-blue-800";
-                            break;
-                          case "Half Day on Holiday":
-                            bgColorClass =
-                              "bg-orange-200 hover:bg-orange-300 text-orange-800";
-                            break;
-                          case "Loss of Pay":
-                            bgColorClass =
-                              "bg-purple-100 hover:bg-purple-200 text-purple-800";
-                            break;
-                          case "Weekend":
-                            bgColorClass =
-                              "bg-gray-300 hover:bg-gray-400 text-gray-600";
-                            break;
-                          default:
-                            bgColorClass = "hover:bg-gray-200";
-                        }
-                      }
-
-                      return (
-                        <div
-                          key={index}
-                          onClick={() => handleDateClick(day)}
-                          className={`w-[6.5%] text-center p-2 cursor-pointer rounded-md transition ${bgColorClass}`}
-                        >
-                          {dayNumber}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {/* Legend Table removed */}
-              </CardContent>
-            </Card>
-
-            {/* Attendance Details */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">
-                  {date ? (
-                    <>
-                      {date.toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                      <div className="text-base font-semibold text-gray-800 mt-1">
-                        {getDayName(date)}
-                      </div>
-                    </>
-                  ) : (
-                    "Select a date"
-                  )}
-                </CardTitle>
-                <CardDescription>Attendance details</CardDescription>
+                <CardTitle>Attendance Calendar</CardTitle>
               </CardHeader>
               <CardContent>
-                {date ? (
-                  (() => {
-                    // Find attendance details for the selected date
-                    const selectedDayData = attendanceData.find(
-                      (d) => d.date.toDateString() === date.toDateString()
-                    );
-
-                    if (!selectedDayData) {
-                      return (
-                        <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                          <p>No attendance data for this date.</p>
-                        </div>
-                      );
-                    }
-
-                    const {
-                      status,
-                      checkinTimes,
-                      checkoutTimes,
-                      totalWorkingMinutes,
-                      dailyAttendanceData,
-                    } = selectedDayData;
-
-                    // Calculate total working hours
-                    const totalWorkingHours = (
-                      totalWorkingMinutes / 60
-                    ).toFixed(1);
-
-                    // Check if this is a present date and has daily attendance data
-                    const isPresentDate = status === "Present" && (dailyAttendanceData || (date && dailyAttendanceData));
-                    
-                    // Get check-in and check-out times for present dates
-                    const attendanceDataForDate = dailyAttendanceData || selectedDayData?.dailyAttendanceData;
-                    const checkInTime = isPresentDate ? attendanceDataForDate?.firstCheckin : null;
-                    const checkOutTime = isPresentDate ? attendanceDataForDate?.lastCheckout : null;
-                    const workingHoursTillNow = isPresentDate ? attendanceDataForDate?.workingHoursTillNow : null;
-                    
-                    // Determine if employee is currently checked in (has latest check-in after last check-out)
-                    const isCurrentlyCheckedIn = isPresentDate && 
-                      attendanceDataForDate?.latestCheckin && 
-                      attendanceDataForDate?.lastCheckout &&
-                      new Date(attendanceDataForDate.latestCheckin) > new Date(attendanceDataForDate.lastCheckout);
-
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Status:</span>
-                          <span
-                            className={`${
-                              status === "Present"
-                                ? "bg-green-100 text-green-800"
-                                : status === "Present with Leave"
-                                ? "bg-lime-100 text-lime-800"
-                                : status === "Absent"
-                                ? "bg-red-200 text-red-900"
-                                : status === "Half Day"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : status === "Holiday"
-                                ? "bg-gray-200 text-gray-700"
-                                : status === "Present on Holiday"
-                                ? "bg-blue-100 text-blue-800"
-                                : status === "Half Day on Holiday"
-                                ? "bg-orange-200 text-orange-800"
-                                : status === "Loss of Pay"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-gray-100 text-gray-700"
-                            } text-xs font-semibold px-2 py-1 rounded-full`}
-                          >
-                            {status}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-blue-500" /> Check In
-                          </span>
-                          <span>
-                            {isPresentDate && checkInTime
-                              ? formatTime(checkInTime)
-                              : checkinTimes?.[0]
-                              ? formatTime(checkinTimes[0])
-                              : "-"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-blue-500" /> Check
-                            Out
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {isPresentDate && isCurrentlyCheckedIn ? (
-                              <>
-                                <Play className="h-4 w-4 text-green-500 animate-pulse" />
-                                <span className="text-green-600 font-medium">Running</span>
-                              </>
-                            ) : isPresentDate && checkOutTime ? (
-                              formatTime(checkOutTime)
-                            ) : checkoutTimes?.[0] ? (
-                              formatTime(checkoutTimes[0])
-                            ) : (
-                              "-"
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">
-                            Total Working Hours:
-                          </span>
-                          <span>
-                            {isPresentDate && workingHoursTillNow ? (
-                              isCurrentlyCheckedIn ? (
-                                formatLiveWorkingHours(workingHoursTillNow, attendanceDataForDate?.latestCheckin)
-                              ) : (
-                                // For past days or when not currently checked in, show workingHoursTillNow in xh ym format
-                                formatWorkingHoursString(workingHoursTillNow)
-                              )
-                            ) : (
-                              `${totalWorkingHours}h`
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()
+                <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-gray-500 mb-2">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div key={day}>{day}</div>
+                    )
+                  )}
+                  </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {generateCalendarDays()}
+                  </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Details</CardTitle>
+                <CardDescription>
+                  {date
+                    ? new Date(date).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "Select a date to see details"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dailyAttendanceData ? (
+                  <DailyDetails data={dailyAttendanceData} />
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                    <CalendarIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
-                    <p>Select a date to view attendance details</p>
+                  <div className="text-center text-gray-500 py-8">
+                    <p>No details to show for the selected date.</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MonthlySummary summary={monthlySummary} />
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-
-      {/* Reason Form Modal */}
-      {showReasonForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">
-              Submit Reason for Unapproved Absence
-            </h3>
-            <form onSubmit={handleSubmitReason}>
-              <div className="mb-4">
-                <label
-                  htmlFor="reason"
-                  className="block text-sm font-medium mb-2"
-                >
-                  Reason for unapproved absence
-                </label>
-                <textarea
-                  id="reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full p-2 border rounded-md"
-                  rows="4"
-                  placeholder="Please provide a reason for your unapproved absence..."
-                  required
-                ></textarea>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowReasonForm(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-teal-400 text-white rounded-md hover:bg-teal-500"
-                >
-                  Submit
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-md shadow-lg z-50 flex items-center">
-          <CheckCircle2 className="h-5 w-5 mr-2" />
-          <span>Reason saved successfully!</span>
-        </div>
-      )}
-    </div>
+    </MainLayout>
   );
 };
 

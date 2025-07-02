@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { FaCalendarAlt } from "react-icons/fa"; // Removed FaUser since we won't need it
 import Link from "next/link";
-import HradminNavbar from "../../components/HradminNavbar";
-import Sidebar from "../../components/Sidebar";
 import { useDispatch, useSelector } from "react-redux";
 import withAuth from "@/components/withAuth";
 import {
   fetchLeaveBalance,
   resetLeaveBalanceState,
 } from "@/redux/slices/leaveBalanceSlice";
+import MainLayout from "@/components/MainLayout"; // Import MainLayout
 
 const Overview = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const dispatch = useDispatch();
   const employeeId = sessionStorage.getItem("employeeId"); // Retrieve the employee ID from sessionStorage
   const { balance, loading, error } = useSelector(
@@ -50,32 +48,11 @@ const Overview = () => {
     }
   }, [balance]);
 
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        toggleSidebar={toggleSidebar}
-        currentRole={"employee"}
-      />
-
-      {/* Main Content */}
-      <div
-        className={`flex-1 ${
-          isSidebarCollapsed ? "ml-16" : "ml-56"
-        } transition-all duration-300`}
-      >
-        {/* Navbar */}
-        <HradminNavbar />
-
-        {/* Main Content Area */}
-        <div className="p-5 bg-gray-100 h-full">
+    <MainLayout>
+      <div className="flex-1 space-y-6">
           {/* Page Heading */}
-          <div className="mb-10 pt-16">
+        <div className="mb-10">
             <h1 className="text-2xl font-bold text-gray-800 text-left">
               Employee Dashboard
             </h1>
@@ -129,8 +106,7 @@ const Overview = () => {
             </Link>
           </div>
         </div>
-      </div>
-    </div>
+    </MainLayout>
   );
 };
 

@@ -2,13 +2,11 @@
 import { useState } from 'react';
 import { FaReceipt, FaPlus, FaSearch, FaArrowLeft } from 'react-icons/fa';
 import { AddExpenseForm } from '../../components/Forms';
-import Sidebar from "../../components/Sidebar";
-import HradminNavbar from "../../components/HradminNavbar";
 import { toast } from 'sonner';
 import SearchBarWithFilter from '../../components/SearchBarWithFilter';
+import MainLayout from '@/components/MainLayout'; // Import MainLayout
 
 const Employee = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('expenses');
   const [showAddForm, setShowAddForm] = useState(null);
   const [expenses, setExpenses] = useState([
@@ -66,7 +64,6 @@ const Employee = () => {
     }
   ]);
 
-  const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   const handleTabClick = (tab) => setActiveTab(tab);
   const handleAddClick = () => setShowAddForm('expense');
   const handleBackFromForm = () => setShowAddForm(null);
@@ -210,50 +207,42 @@ const Employee = () => {
   };
 
   return (
-    <div className="flex h-screen">
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        toggleSidebar={toggleSidebar}
-        currentRole={"employee"}
-      />
-      <div className={`flex-1 ${isSidebarCollapsed ? "ml-16" : "ml-56"} transition-all duration-300 overflow-x-auto`}>
-        <HradminNavbar />
-        <div className="p-6 pt-24">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Employees</h1>
-          </div>
-          <div className="flex justify-between items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
-            <div className="flex items-center">
-              <button
-                onClick={handleAddClick}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 font-semibold shadow-sm mr-6 text-sm"
-              >
-                <FaPlus className="w-4 h-4" />
-                <span>Add Reimb.</span>
-              </button>
-              <nav className="flex space-x-6">
-                {tabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabClick(tab.id)}
-                    className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-            <SearchBarWithFilter />
-          </div>
-          {renderContent()}
+    <MainLayout>
+      <div className="space-y-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Employees</h1>
         </div>
+        <div className="flex justify-between items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
+          <div className="flex items-center">
+            <button
+              onClick={handleAddClick}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 font-semibold shadow-sm mr-6 text-sm"
+            >
+              <FaPlus className="w-4 h-4" />
+              <span>Add Reimb.</span>
+            </button>
+            <nav className="flex space-x-6">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <tab.icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+          <SearchBarWithFilter />
+        </div>
+        {renderContent()}
       </div>
-    </div>
+    </MainLayout>
   );
 };
 

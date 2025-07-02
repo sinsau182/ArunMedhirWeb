@@ -1,11 +1,10 @@
 // Updated customers page with PRD implementation
 import { useState } from 'react';
 import { FaFileInvoiceDollar, FaReceipt, FaUsers, FaPlus, FaSearch, FaArrowLeft, FaEye, FaTimes } from 'react-icons/fa';
-import Sidebar from "../../components/Sidebar";
-import HradminNavbar from "../../components/HradminNavbar";
 import { AddInvoiceForm, AddReceiptForm, AddClientForm } from '../../components/Forms';
 import { toast } from 'sonner';
 import SearchBarWithFilter from '../../components/SearchBarWithFilter';
+import MainLayout from '@/components/MainLayout'; // Import MainLayout
 
 const InvoicePreviewModal = ({ invoice, receipts: allReceipts, onClose }) => {
   if (!invoice) return null;
@@ -274,9 +273,9 @@ const Customers = () => {
     switch (activeTab) {
       case 'invoice':
         table = (
-          <table className="min-w-full bg-white">
-            <thead className="bg-gray-100">
-              <tr>
+              <table className="min-w-full bg-white">
+                <thead className="bg-gray-100">
+                  <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice no.</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
@@ -286,9 +285,9 @@ const Customers = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Receipt Generated</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
               {invoices.map(invoice => {
                 const amountRemaining = invoice.totalAmount - invoice.amountReceived;
                 return (
@@ -321,15 +320,15 @@ const Customers = () => {
                   </tr>
                 )
               })}
-            </tbody>
-          </table>
+                </tbody>
+              </table>
         );
         break;
       case 'receipts':
         table = (
-          <table className="min-w-full bg-white">
-            <thead className="bg-gray-100">
-              <tr>
+              <table className="min-w-full bg-white">
+                <thead className="bg-gray-100">
+                  <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt No.</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer name</th>
@@ -340,9 +339,9 @@ const Customers = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Invoice Generated</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
               {receipts.map(r => (
                 <tr key={r.id}>
                   <td className="px-6 py-4 text-sm font-medium text-blue-600">{r.id}</td>
@@ -371,34 +370,34 @@ const Customers = () => {
                       <FaEye />
                     </button>
                   </td>
-                </tr>
+                  </tr>
               ))}
-            </tbody>
-          </table>
+                </tbody>
+              </table>
         );
         break;
       case 'clients':
         table = (
-          <table className="min-w-full bg-white">
-             <thead className="bg-gray-100">
-              <tr>
+              <table className="min-w-full bg-white">
+                <thead className="bg-gray-100">
+                  <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
               {clients.map(c => (
                 <tr key={c.id}>
                   <td className="px-6 py-4 text-sm">{c.name}</td>
                   <td className="px-6 py-4 text-sm">{c.company}</td>
                   <td className="px-6 py-4 text-sm">{c.email}</td>
                   <td className="px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${c.status === 'Active' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>{c.status}</span></td>
-                </tr>
+                  </tr>
               ))}
-            </tbody>
-          </table>
+                </tbody>
+              </table>
         );
         break;
       default: return null;
@@ -412,53 +411,49 @@ const Customers = () => {
   };
 
   return (
-    <div className="flex h-screen">
-      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} currentRole={"employee"} />
-      <div className={`flex-1 ${isSidebarCollapsed ? "ml-16" : "ml-56"} transition-all duration-300 overflow-x-auto`}>
-        <HradminNavbar />
-        <div className="p-6 pt-24">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Customers</h1>
-            <p className="text-gray-600">Manage customer relationships and transactions</p>
-          </div>
-          <div className="flex justify-between items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
-            <div className="flex items-center">
-              <button onClick={handleAddClick} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 font-semibold shadow-sm mr-6 text-sm" style={{ minWidth: 120 }}>
-                <FaPlus className="w-4 h-4" /> <span>{getAddButtonLabel()}</span>
-              </button>
-              <nav className="flex space-x-6">
-                {tabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabClick(tab.id)}
-                    className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    style={{ minWidth: 110 }}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-            <SearchBarWithFilter />
-          </div>
-          {renderContent()}
-          {selectedInvoiceForPreview && (
-            <InvoicePreviewModal 
-              invoice={selectedInvoiceForPreview} 
-              receipts={receipts}
-              onClose={() => setSelectedInvoiceForPreview(null)} 
-            />
-          )}
-          {selectedReceiptForPreview && (
-            <ReceiptPreviewModal
-              receipt={selectedReceiptForPreview}
-              onClose={() => setSelectedReceiptForPreview(null)}
-            />
-          )}
-        </div>
+    <MainLayout>
+      <div className="space-y-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Customers</h1>
+          <p className="text-gray-600">Manage customer relationships and transactions</p>
       </div>
-    </div>
+        <div className="flex justify-between items-center mb-6 bg-gray-50 rounded-lg px-4 py-3">
+          <div className="flex items-center">
+            <button onClick={handleAddClick} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 font-semibold shadow-sm mr-6 text-sm" style={{ minWidth: 120 }}>
+              <FaPlus className="w-4 h-4" /> <span>{getAddButtonLabel()}</span>
+            </button>
+            <nav className="flex space-x-6">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabClick(tab.id)}
+                  className={`flex items-center space-x-2 whitespace-nowrap pb-1 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                  style={{ minWidth: 110 }}
+              >
+                <tab.icon className="w-5 h-5" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+          <SearchBarWithFilter />
+      </div>
+        {renderContent()}
+        {selectedInvoiceForPreview && (
+          <InvoicePreviewModal 
+            invoice={selectedInvoiceForPreview} 
+            receipts={receipts}
+            onClose={() => setSelectedInvoiceForPreview(null)} 
+          />
+        )}
+        {selectedReceiptForPreview && (
+          <ReceiptPreviewModal
+            receipt={selectedReceiptForPreview}
+            onClose={() => setSelectedReceiptForPreview(null)}
+          />
+        )}
+      </div>
+    </MainLayout>
   );
 };
 

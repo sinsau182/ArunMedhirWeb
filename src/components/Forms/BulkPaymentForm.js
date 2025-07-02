@@ -519,7 +519,7 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-lg">Final Payment</span>
                           <span className="font-bold text-lg">{formatCurrency(finalPaymentAmount)}</span>
-                        </div>
+                      </div>
                       </div>
                     </div>
                   </>

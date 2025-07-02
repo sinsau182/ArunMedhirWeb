@@ -127,7 +127,7 @@ const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, onMarkJunk }) =>
     );
 };
 
-const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onScheduleActivity, activities, onEditActivity, onDeleteActivity, onMarkDone, notes, onAddNote, conversionData, timelineEvents }) => {
+const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onScheduleActivity, activities, onEditActivity, onDeleteActivity, onMarkDone, notes, onAddNote, conversionData, timelineEvents, deletedActivityIds }) => {
     const [activeTab, setActiveTab] = useState('activity');
     const [isEditingContact, setIsEditingContact] = useState(false);
     const [noteContent, setNoteContent] = useState('');
@@ -176,9 +176,29 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
     };
 
     const combinedLog = [
-        ...(activities || []).map(a => ({ ...a, date: new Date(a.dueDate ? `${a.dueDate}T${a.dueTime || '00:00'}`: Date.now()) })),
-        ...(timelineEvents || [])
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Include all activities (both active and deleted) to show them in their original timeline position
+        ...(activities || [])
+            .map(a => ({ 
+                ...a, 
+                // DON'T mark activities as deleted here - keep them as original
+                // Use createdAt for display and sorting to show when the activity was actually created
+                date: new Date(a.createdAt || Date.now()),
+                sortDate: new Date(a.createdAt || Date.now()),
+                timestamp: a.createdAt || new Date().toISOString()
+            })),
+        // Include all timeline events (including deletion events)
+        ...(timelineEvents || []).map(e => ({ 
+            ...e, 
+            // Use the event date for sorting (when the event actually happened)
+            sortDate: new Date(e.date),
+            timestamp: e.date instanceof Date ? e.date.toISOString() : new Date(e.date).toISOString()
+        }))
+    ].sort((a, b) => {
+        // Sort by when things actually happened (creation time for activities, event time for timeline events)
+        const dateA = new Date(a.sortDate);
+        const dateB = new Date(b.sortDate);
+        return dateB.getTime() - dateA.getTime(); // Most recent first
+    });
 
     return (
         <div className="flex-grow bg-gray-50 p-6">
@@ -264,16 +284,17 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                     {combinedLog.length > 0 && <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />}
 
                                     <ul className="space-y-4">
-                                        {combinedLog.map(item => {
+                                        {combinedLog.map((item, index) => {
                                             const isEvent = item.type === 'event';
                                             const isDone = item.status === 'done';
                                             const isDeleted = isEvent && item.action === 'Activity Deleted';
+                                            // Original activities remain unchanged - no special styling
                                             const iconBg = isDeleted ? 'bg-red-100' : (isEvent || isDone ? 'bg-green-100' : 'bg-blue-100');
                                             const iconColor = isDeleted ? 'text-red-600' : (isEvent || isDone ? 'text-green-600' : 'text-blue-600');
                                             const icon = isDeleted ? <FaTimes /> : (isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />));
 
                                             return (
-                                                <li key={item.id} className="relative pl-12">
+                                                <li key={`${item.type}-${item.id}-${index}`} className="relative pl-12">
                                                     {/* The dot on the timeline */}
                                                     <div className="absolute left-0 top-1 flex items-center justify-center">
                                                         <span className={`w-8 h-8 flex items-center justify-center rounded-full border-4 border-gray-50 ${iconBg}`}>
@@ -359,7 +380,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                             <button onClick={onScheduleActivity} className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 transition" title="Add Activity">+</button>
                         </div>
                         <div className="space-y-3">
-                            {(activities || []).filter(a => a.status !== 'done').map(activity => (
+                            {(activities || []).filter(a => a.status !== 'done' && !deletedActivityIds.has(a.id)).map(activity => (
                                 <div key={activity.id} className="bg-gray-50 rounded-lg border border-gray-200 p-3">
                                     <div className="flex items-center justify-between text-xs mb-1">
                                         <span className="px-2 py-0.5 rounded font-semibold bg-gray-200 text-gray-700">{activity.type}</span>
@@ -376,7 +397,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 </div>
                             </div>
                             ))}
-                            {(activities || []).filter(a => a.status !== 'done').length === 0 && (
+                            {(activities || []).filter(a => a.status !== 'done' && !deletedActivityIds.has(a.id)).length === 0 && (
                                 <div className="text-center text-sm text-gray-400 py-4">No pending activities.</div>
                           )}
                         </div>
@@ -499,8 +520,25 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
             projectType: 'Residential', propertyType: 'Apartment', address: '123 Main St', budget: '1500000',
             leadSource: 'Website', designStyle: 'Modern', status: 'Qualified', rating: 2,
             activities: [
-                { id: 1, type: 'To-Do', title: 'Follow up with client', dueDate: '2025-06-24', status: 'done', date: new Date('2025-06-24') },
-                { id: 2, type: 'Call', title: 'Initial consultation', dueDate: '2025-06-28', status: 'pending', date: new Date('2025-06-28') },
+                { 
+                    id: 1, 
+                    type: 'To-Do', 
+                    title: 'Follow up with client', 
+                    dueDate: '2025-06-24', 
+                    status: 'done', 
+                    date: new Date('2025-06-24'),
+                    createdAt: '2025-06-20T09:00:00.000Z',
+                    completedAt: '2025-06-24T14:30:00.000Z'
+                },
+                { 
+                    id: 2, 
+                    type: 'Call', 
+                    title: 'Initial consultation', 
+                    dueDate: '2025-06-28', 
+                    status: 'pending', 
+                    date: new Date('2025-06-28'),
+                    createdAt: '2025-06-25T10:15:00.000Z'
+                },
             ],
             notes: [ {user: 'Alice', time: new Date(), content: 'Client is interested in minimalist designs.'} ]
                   },
@@ -517,25 +555,42 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               const [editingActivity, setEditingActivity] = useState(null);
     const [activities, setActivities] = useState(lead?.activities || []);
     const [notes, setNotes] = useState(lead?.notes || []);
-              const [timelineEvents, setTimelineEvents] = useState([]);
+    const [timelineEvents, setTimelineEvents] = useState([]);
+    const [deletedActivityIds, setDeletedActivityIds] = useState(new Set());
     const [conversionData, setConversionData] = useState(lead?.status === 'Converted' ? lead : null);
     
     // Handlers
-    const addTimelineEvent = ({ action, details, user = 'You' }) => {
-        setTimelineEvents(prev => [{ id: Date.now(), type: 'event', action, details, user, date: new Date() }, ...prev]);
+    const addTimelineEvent = ({ action, details, user = 'You', date = null }) => {
+        const eventDate = date || new Date();
+        setTimelineEvents(prev => [{ 
+            id: Date.now(), 
+            type: 'event', 
+            action, 
+            details, 
+            user, 
+            date: eventDate 
+        }, ...prev]);
     };
     
               const handleStatusChange = (newStatus) => {
         if (newStatus === 'Converted') return setIsConversionModalOpen(true);
                   if (lead && newStatus !== lead.status) {
-            addTimelineEvent({ action: 'Stage Changed', details: `${lead.status} → ${newStatus}` });
+            // Use current timestamp for stage changes as they happen now
+            addTimelineEvent({ 
+                action: 'Stage Changed', 
+                details: `${lead.status} → ${newStatus}`,
+                date: new Date() // This is correct - stage changes happen now
+            });
             setLeads(prev => prev.map(l => l.leadId === lead.leadId ? { ...l, status: newStatus } : l));
                       toast.success(`Lead moved to ${newStatus}`);
                   }
               };
 
     const handleConfirmConversion = (formData) => {
-        addTimelineEvent({ action: 'Converted to Project' });
+        addTimelineEvent({ 
+            action: 'Converted to Project',
+            date: new Date() // Conversion happens now
+        });
         const updatedLead = { ...lead, status: 'Converted', ...formData };
         setLeads(prev => prev.map(l => l.leadId === lead.leadId ? updatedLead : l));
         setConversionData(updatedLead);
@@ -545,14 +600,22 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
     
     const handleMarkLost = () => setIsLostReasonModalOpen(true);
               const handleLostReasonSubmit = (reason) => {
-        addTimelineEvent({ action: 'Marked as Lost', details: reason });
+        addTimelineEvent({ 
+            action: 'Marked as Lost', 
+            details: reason,
+            date: new Date() // Lost marking happens now
+        });
         handleStatusChange('Lost');
                       setIsLostReasonModalOpen(false);
     };
     
     const handleMarkJunk = () => setIsJunkReasonModalOpen(true);
     const handleJunkReasonSubmit = (reason) => {
-        addTimelineEvent({ action: 'Marked as Junk', details: reason });
+        addTimelineEvent({ 
+            action: 'Marked as Junk', 
+            details: reason,
+            date: new Date() // Junk marking happens now
+        });
         handleStatusChange('Junk');
         setIsJunkReasonModalOpen(false);
               };
@@ -562,23 +625,57 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               };
 
               const handleAddOrEditActivity = (activity) => {
-        setActivities(prev => activity.id ? prev.map(a => a.id === activity.id ? activity : a) : [...prev, { ...activity, id: Date.now() }]);
+        const now = new Date().toISOString();
+        const activityWithTimestamp = {
+            ...activity,
+            createdAt: activity.createdAt || now,
+            updatedAt: now
+        };
+        setActivities(prev => activity.id ? 
+            prev.map(a => a.id === activity.id ? activityWithTimestamp : a) : 
+            [...prev, { ...activityWithTimestamp, id: Date.now() }]
+        );
     };
 
               const handleDeleteActivity = (id) => {
-        setActivities(prev => {
-          const toDelete = prev.find(a => a.id === id);
-          if (toDelete) {
-            addTimelineEvent({
-              action: 'Activity Deleted',
-              details: `${toDelete.type}: ${toDelete.title || toDelete.summary || ''}`,
-            });
-          }
-          return prev.filter(a => a.id !== id);
-        });
+        const toDelete = activities.find(a => a.id === id);
+        if (toDelete) {
+          // Mark the activity as deleted (don't remove it from activities array)
+          setDeletedActivityIds(prev => new Set([...prev, id]));
+          
+          // Add a separate timeline event for deletion happening now
+          const deletionDate = new Date();
+          setTimelineEvents(prevEvents => [{
+            id: `deleted-${id}-${Date.now()}`, // Unique ID for deletion event
+            type: 'event',
+            action: 'Activity Deleted',
+            details: `${toDelete.type}: ${toDelete.title || toDelete.summary || ''}`,
+            user: 'You',
+            date: deletionDate // Deletion happens now
+          }, ...prevEvents]);
+        }
     };
 
-    const handleMarkDone = (id) => setActivities(prev => prev.map(a => a.id === id ? { ...a, status: 'done' } : a));
+    const handleMarkDone = (id) => {
+        const completedAt = new Date().toISOString();
+        const completionDate = new Date();
+        setActivities(prev => prev.map(a => a.id === id ? { 
+            ...a, 
+            status: 'done', 
+            completedAt: completedAt,
+            updatedAt: completedAt 
+        } : a));
+        
+        // Add a timeline event for completion using the completion date
+        const activity = activities.find(a => a.id === id);
+        if (activity) {
+            addTimelineEvent({
+                action: 'Activity Completed',
+                details: `${activity.type}: ${activity.title || activity.summary || ''}`,
+                date: completionDate
+            });
+        }
+    };
     const handleAddNote = (note) => setNotes(prev => [note, ...prev]);
 
               if (!lead) return <div className="p-6 text-center">Lead not found.</div>;
@@ -608,6 +705,7 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                 onAddNote={handleAddNote}
                 conversionData={conversionData}
                 timelineEvents={timelineEvents}
+                deletedActivityIds={deletedActivityIds}
             />
             <AdvancedScheduleActivityModal
               isOpen={isActivityModalOpen}

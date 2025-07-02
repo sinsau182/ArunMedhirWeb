@@ -132,6 +132,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
     const [isEditingContact, setIsEditingContact] = useState(false);
     const [noteContent, setNoteContent] = useState('');
     const [expandedActivities, setExpandedActivities] = useState({});
+    const [showAllHistory, setShowAllHistory] = useState(false);
 
     const [contactFields, setContactFields] = useState({
       name: lead.name || '',
@@ -262,8 +263,9 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'notes' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('notes')}>Notes</button>
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'activity' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('activity')}>Activity Log</button>
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'conversion' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('conversion')}>Conversion Details</button>
+                                <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('history')}>Activity History</button>
                             </nav>
-            </div>
+                        </div>
                         <div className="pt-4">
                         {activeTab === 'notes' && (
                                 <div>
@@ -280,22 +282,17 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
             )}
                         {activeTab === 'activity' && (
                                 <div className="relative">
-                                    {/* The main vertical line - only if there are items */}
-                                    {combinedLog.length > 0 && <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />}
-
+                                    {combinedLog.filter(item => item.status === 'done').length > 0 && <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />}
                                     <ul className="space-y-4">
-                                        {combinedLog.map((item, index) => {
+                                        {combinedLog.filter(item => item.status === 'done').map((item, index) => {
                                             const isEvent = item.type === 'event';
                                             const isDone = item.status === 'done';
                                             const isDeleted = isEvent && item.action === 'Activity Deleted';
-                                            // Original activities remain unchanged - no special styling
                                             const iconBg = isDeleted ? 'bg-red-100' : (isEvent || isDone ? 'bg-green-100' : 'bg-blue-100');
                                             const iconColor = isDeleted ? 'text-red-600' : (isEvent || isDone ? 'text-green-600' : 'text-blue-600');
                                             const icon = isDeleted ? <FaTimes /> : (isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />));
-
                                             return (
-                                                <li key={`${item.type}-${item.id}-${index}`} className="relative pl-12">
-                                                    {/* The dot on the timeline */}
+                                                <li key={`done-${item.type}-${item.id}-${index}`} className="relative pl-12">
                                                     <div className="absolute left-0 top-1 flex items-center justify-center">
                                                         <span className={`w-8 h-8 flex items-center justify-center rounded-full border-4 border-gray-50 ${iconBg}`}>
                                                             <span className={iconColor}>{icon}</span>
@@ -342,8 +339,63 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                     ) : <p className="text-center text-gray-400 py-4">Lead not converted yet.</p>}
                             </div>
                                 )}
-                            </div>
+                            {activeTab === 'history' && (
+                                <div className="relative">
+                                    {combinedLog.length > 0 && <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />}
+                                    <ul className="space-y-4">
+                                        {(showAllHistory ? combinedLog : combinedLog.slice(0, 5)).map((item, index) => {
+                                            const isEvent = item.type === 'event';
+                                            const isDone = item.status === 'done';
+                                            const isDeleted = isEvent && item.action === 'Activity Deleted';
+                                            const iconBg = isDeleted ? 'bg-red-100' : (isEvent || isDone ? 'bg-green-100' : 'bg-blue-100');
+                                            const iconColor = isDeleted ? 'text-red-600' : (isEvent || isDone ? 'text-green-600' : 'text-blue-600');
+                                            const icon = isDeleted ? <FaTimes /> : (isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />));
+                                            return (
+                                                <li key={`history-${item.type}-${item.id}-${index}`} className="relative pl-12">
+                                                    <div className="absolute left-0 top-1 flex items-center justify-center">
+                                                        <span className={`w-8 h-8 flex items-center justify-center rounded-full border-4 border-gray-50 ${iconBg}`}>
+                                                            <span className={iconColor}>{icon}</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className={`flex items-center justify-between p-3 rounded-md ${isDeleted ? 'bg-red-50' : ''}`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isDeleted ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                {isEvent ? item.action : item.type}
+                                                            </span>
+                                                            <span className={`font-medium ${isDeleted ? 'text-red-700' : 'text-gray-800'}`}>{isEvent ? item.details : item.title || item.summary}</span>
+                                                            {isDone && !isEvent && (
+                                                                <span className="flex items-center gap-1 ml-2 text-green-600 text-xs font-semibold"><FaCheck className="inline" /> Done</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <span className="text-sm text-gray-500">{formatDateTime(item.date)}</span>
+                                                            <button onClick={() => setExpandedActivities(prev => ({...prev, [item.id]: !prev[item.id]}))} className="text-gray-400 hover:text-gray-600">
+                                                                <FaChevronDown size={12} className={`transition-transform ${expandedActivities[item.id] ? 'rotate-180' : ''}`}/>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {(!isEvent && (item.note || item.attachment || (['Email','Call','Meeting'].includes(item.type) && item.callOutcome))) && (
+                                                        <div className="ml-12 mt-1 mb-2 bg-gray-50 rounded p-3 border border-gray-100 text-xs text-gray-700 flex flex-col gap-1">
+                                                            {item.note && <div><span className="font-semibold">Note:</span> {item.note}</div>}
+                                                            {item.attachment && <div className="flex items-center gap-2"><FaPaperclip className="text-blue-500" /><span className="font-semibold">Attachment:</span> {typeof item.attachment === 'string' ? <a href={item.attachment} target="_blank" rel="noopener noreferrer" className="underline">View</a> : (item.attachment.name || 'Attached')}</div>}
+                                                            {['Email','Call','Meeting'].includes(item.type) && item.callOutcome && <div><span className="font-semibold">Outcome:</span> {item.callOutcome}</div>}
+                                                        </div>
+                                                    )}
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                    {!showAllHistory && combinedLog.length > 5 && (
+                                        <div className="flex justify-center mt-8">
+                                            <button className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-all font-semibold" onClick={() => setShowAllHistory(true)}>
+                                                View More
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
+                    </div>
                 </div>
 
                 {/* Right Column */}

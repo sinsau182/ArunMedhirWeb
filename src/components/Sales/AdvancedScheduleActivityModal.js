@@ -17,8 +17,9 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
   const [attachment, setAttachment] = useState(null);
   const [showAttachmentPreview, setShowAttachmentPreview] = useState(false);
 
-  // Add a flag to determine if editing
+  // Add a flag to determine if editing and which tab is being edited
   const isEditingActivity = !!(initialData && initialData.id);
+  const editingType = initialData?.type;
 
   // Per-tab state
   const [todo, setTodo] = useState({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null });
@@ -29,7 +30,13 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
 
   // Reset all tab states on open/close
   useEffect(() => {
-    if (isOpen && !initialData) {
+    if (isOpen && initialData && initialData.id) {
+      setActiveType(initialData.type || 'To-Do');
+      if (initialData.type === 'To-Do') setTodo({ ...todo, ...initialData });
+      if (initialData.type === 'Email') setEmail({ ...email, ...initialData });
+      if (initialData.type === 'Call') setCall({ ...call, ...initialData });
+      if (initialData.type === 'Meeting') setMeeting({ ...meeting, ...initialData });
+    } else if (isOpen && !initialData) {
       setTodo({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null });
       setEmail({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callOutcome: '' });
       setCall({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callPurpose: '', callOutcome: '', nextFollowUpDate: '', nextFollowUpTime: '' });
@@ -71,14 +78,25 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
   const handleAttendeeChange = (id, name) => setMeeting(m => ({ ...m, attendees: m.attendees.map(att => att.id === id ? { ...att, name } : att) }));
   const handleRemoveAttendee = (id) => setMeeting(m => ({ ...m, attendees: m.attendees.filter(att => att.id !== id) }));
 
-  // Save: create activity for each filled tab
+  // Save: if editing, only update the selected activity; if creating, create all filled tabs
   const handleSave = (statusOverride) => {
-    const activities = [];
-    if (todo.title) activities.push({ ...todo, type: 'To-Do', status: statusOverride || 'pending' });
-    if (email.title) activities.push({ ...email, type: 'Email', status: statusOverride || 'pending' });
-    if (call.title) activities.push({ ...call, type: 'Call', status: statusOverride || 'pending' });
-    if (meeting.title) activities.push({ ...meeting, type: 'Meeting', status: statusOverride || 'pending' });
-    if (activities.length && onSuccess) activities.forEach(activity => onSuccess(activity));
+    if (isEditingActivity && initialData && initialData.id) {
+      // Only update the edited activity
+      let updated = null;
+      if (editingType === 'To-Do') updated = { ...todo, type: 'To-Do', id: initialData.id, status: statusOverride || todo.status || 'pending' };
+      if (editingType === 'Email') updated = { ...email, type: 'Email', id: initialData.id, status: statusOverride || email.status || 'pending' };
+      if (editingType === 'Call') updated = { ...call, type: 'Call', id: initialData.id, status: statusOverride || call.status || 'pending' };
+      if (editingType === 'Meeting') updated = { ...meeting, type: 'Meeting', id: initialData.id, status: statusOverride || meeting.status || 'pending' };
+      if (updated && onSuccess) onSuccess(updated);
+    } else {
+      // Multi-create as before
+      const activities = [];
+      if (todo.title) activities.push({ ...todo, type: 'To-Do', status: statusOverride || 'pending' });
+      if (email.title) activities.push({ ...email, type: 'Email', status: statusOverride || 'pending' });
+      if (call.title) activities.push({ ...call, type: 'Call', status: statusOverride || 'pending' });
+      if (meeting.title) activities.push({ ...meeting, type: 'Meeting', status: statusOverride || 'pending' });
+      if (activities.length && onSuccess) activities.forEach(activity => onSuccess(activity));
+    }
     onClose();
     setTodo({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null });
     setEmail({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callOutcome: '' });
@@ -317,7 +335,7 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
           </div>
         </div>
         <div className="bg-white border-t shadow-lg flex items-center justify-end gap-2 p-4 z-10 rounded-b-2xl sticky bottom-0">
-          <button onClick={() => handleSave()} className="bg-blue-600 text-white px-4 py-2 rounded-md text-xs font-semibold hover:bg-blue-700">Save</button>
+          <button onClick={() => handleSave()} className="bg-blue-600 text-white px-4 py-2 rounded-md text-xs font-semibold hover:bg-blue-700">{isEditingActivity ? 'Edit' : 'Save'}</button>
           <button onClick={() => handleSave('done')} className="bg-gray-600 text-white px-4 py-2 rounded-md text-xs font-semibold hover:bg-gray-700">Mark Done</button>
           <button onClick={onClose} className="bg-white border border-gray-300 px-4 py-2 rounded-md text-xs font-semibold text-gray-700 hover:bg-gray-50">Discard</button>
         </div>

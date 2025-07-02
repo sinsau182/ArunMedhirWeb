@@ -20,6 +20,23 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
   // Add a flag to determine if editing
   const isEditingActivity = !!(initialData && initialData.id);
 
+  // Per-tab state
+  const [todo, setTodo] = useState({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null });
+  const [email, setEmail] = useState({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callOutcome: '' });
+  const [call, setCall] = useState({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callPurpose: '', callOutcome: '', nextFollowUpDate: '', nextFollowUpTime: '' });
+  const [meeting, setMeeting] = useState({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, meetingVenue: 'In Office', meetingLink: '', attendees: [{ id: 1, name: '' }], callOutcome: '' });
+  const [attachmentPreviewTab, setAttachmentPreviewTab] = useState(null);
+
+  // Reset all tab states on open/close
+  useEffect(() => {
+    if (isOpen && !initialData) {
+      setTodo({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null });
+      setEmail({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callOutcome: '' });
+      setCall({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callPurpose: '', callOutcome: '', nextFollowUpDate: '', nextFollowUpTime: '' });
+      setMeeting({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, meetingVenue: 'In Office', meetingLink: '', attendees: [{ id: 1, name: '' }], callOutcome: '' });
+    }
+  }, [isOpen, initialData]);
+
   useEffect(() => {
     if (initialData) {
       setActiveType(initialData.type || 'To-Do');
@@ -40,6 +57,35 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
 
   if (!isOpen) return null;
 
+  // Per-tab field/handler mapping
+  const tabState = {
+    'To-Do': [todo, setTodo],
+    'Email': [email, setEmail],
+    'Call': [call, setCall],
+    'Meeting': [meeting, setMeeting],
+  };
+  const [tabData, setTabData] = tabState[activeType];
+
+  // Per-tab attendee handlers for Meeting
+  const handleAddAttendee = () => setMeeting(m => ({ ...m, attendees: [...m.attendees, { id: Date.now(), name: '' }] }));
+  const handleAttendeeChange = (id, name) => setMeeting(m => ({ ...m, attendees: m.attendees.map(att => att.id === id ? { ...att, name } : att) }));
+  const handleRemoveAttendee = (id) => setMeeting(m => ({ ...m, attendees: m.attendees.filter(att => att.id !== id) }));
+
+  // Save: create activity for each filled tab
+  const handleSave = (statusOverride) => {
+    const activities = [];
+    if (todo.title) activities.push({ ...todo, type: 'To-Do', status: statusOverride || 'pending' });
+    if (email.title) activities.push({ ...email, type: 'Email', status: statusOverride || 'pending' });
+    if (call.title) activities.push({ ...call, type: 'Call', status: statusOverride || 'pending' });
+    if (meeting.title) activities.push({ ...meeting, type: 'Meeting', status: statusOverride || 'pending' });
+    if (activities.length && onSuccess) activities.forEach(activity => onSuccess(activity));
+    onClose();
+    setTodo({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null });
+    setEmail({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callOutcome: '' });
+    setCall({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callPurpose: '', callOutcome: '', nextFollowUpDate: '', nextFollowUpTime: '' });
+    setMeeting({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, meetingVenue: 'In Office', meetingLink: '', attendees: [{ id: 1, name: '' }], callOutcome: '' });
+  };
+
   const activityTypes = [
     { name: 'To-Do', icon: <FaCheck /> },
     { name: 'Email', icon: <FaEnvelope /> },
@@ -48,41 +94,6 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
   ];
 
   const summary = activeType === 'Call' ? 'Call Information' : activeType;
-
-  const handleSave = (statusOverride) => {
-    const activity = {
-      id: initialData && initialData.id ? initialData.id : undefined,
-      type: activeType,
-      title,
-      dueDate,
-      dueTime,
-      user: 'hjhjj', // Replace with actual user if needed
-      status: statusOverride || 'pending',
-      meetingLink,
-      attendees,
-      callPurpose,
-      callOutcome,
-      nextFollowUpDate,
-      nextFollowUpTime,
-      meetingVenue,
-      note,
-      attachment,
-    };
-    if (onSuccess) onSuccess(activity);
-    onClose();
-  };
-
-  const handleAddAttendee = () => {
-    setAttendees([...attendees, { id: Date.now(), name: '' }]);
-  };
-
-  const handleAttendeeChange = (id, name) => {
-    setAttendees(attendees.map(att => att.id === id ? { ...att, name } : att));
-  };
-
-  const handleRemoveAttendee = (id) => {
-    setAttendees(attendees.filter(att => att.id !== id));
-  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
@@ -111,8 +122,8 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
             <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
             <input
               type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
+              value={tabData.title}
+              onChange={e => setTabData({ ...tabData, title: e.target.value })}
               className="w-full p-2 mt-1 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300"
               placeholder="Enter activity title"
             />
@@ -120,11 +131,11 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-xs font-medium text-gray-700">Due Date</label>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 mt-1 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300" />
+              <input type="date" value={tabData.dueDate} onChange={e => setTabData({ ...tabData, dueDate: e.target.value })} className="w-full p-2 mt-1 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300" />
             </div>
             <div className="flex-1">
               <label className="text-xs font-medium text-gray-700">Time</label>
-              <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-full p-2 mt-1 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300" />
+              <input type="time" value={tabData.dueTime} onChange={e => setTabData({ ...tabData, dueTime: e.target.value })} className="w-full p-2 mt-1 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300" />
             </div>
           </div>
           <div>
@@ -204,7 +215,7 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
                   <select
                     className="w-full p-2 mt-1 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 bg-gray-100 border-gray-300 text-gray-800 pr-10 pl-3 hover:border-blue-400 transition-all"
                     value={meetingVenue}
-                    onChange={e => setMeetingVenue(e.target.value)}
+                    onChange={e => setMeeting(m => ({ ...m, meetingVenue: e.target.value }))}
                     style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
                   >
                     <option value="In Office">In Office</option>
@@ -223,7 +234,7 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
                   <input
                     type="text"
                     value={meetingLink}
-                    onChange={e => setMeetingLink(e.target.value)}
+                    onChange={e => setMeeting(m => ({ ...m, meetingLink: e.target.value }))}
                     placeholder="https://..."
                     className="w-full p-2 mt-1 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300"
                   />
@@ -231,7 +242,7 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-700">Attendees</label>
-                {attendees.map((attendee, index) => (
+                {meeting.attendees.map((attendee, index) => (
                   <div key={attendee.id} className="flex items-center gap-2 mt-1">
                     <input
                       type="text"
@@ -267,8 +278,8 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
             <textarea
               className="w-full h-16 p-2 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300"
               placeholder="Add a note..."
-              value={note}
-              onChange={e => setNote(e.target.value)}
+              value={tabData.note}
+              onChange={e => setTabData({ ...tabData, note: e.target.value })}
             />
             <div className="flex items-center gap-2 mt-2">
               <label className="cursor-pointer flex items-center gap-1 text-blue-600 hover:text-blue-800">
@@ -277,26 +288,26 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
                   type="file"
                   className="hidden"
                   onChange={e => {
-                    if (e.target.files && e.target.files[0]) setAttachment(e.target.files[0]);
+                    if (e.target.files && e.target.files[0]) setTabData({ ...tabData, attachment: e.target.files[0] });
                   }}
                 />
                 <span className="text-xs font-medium">Attach</span>
               </label>
-              {attachment && (
+              {tabData.attachment && (
                 <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded flex items-center gap-1 cursor-pointer text-xs" onClick={() => setShowAttachmentPreview(true)}>
-                  {attachment.name}
-                  <FaTimes className="ml-1 text-xs hover:text-red-500" onClick={e => { e.stopPropagation(); setAttachment(null); }} />
+                  {tabData.attachment.name}
+                  <FaTimes className="ml-1 text-xs hover:text-red-500" onClick={e => { e.stopPropagation(); setTabData({ ...tabData, attachment: null }); }} />
                 </span>
               )}
             </div>
             {/* Attachment Preview Popup */}
-            {showAttachmentPreview && attachment && (
+            {showAttachmentPreview && tabData.attachment && (
               <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full relative">
                   <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-700" onClick={() => setShowAttachmentPreview(false)}><FaTimes /></button>
-                  <div className="text-xs font-semibold mb-2">{attachment.name}</div>
-                  {attachment.type && attachment.type.startsWith('image/') ? (
-                    <img src={URL.createObjectURL(attachment)} alt="Attachment Preview" className="max-h-96 w-auto mx-auto rounded" />
+                  <div className="text-xs font-semibold mb-2">{tabData.attachment.name}</div>
+                  {tabData.attachment.type && tabData.attachment.type.startsWith('image/') ? (
+                    <img src={URL.createObjectURL(tabData.attachment)} alt="Attachment Preview" className="max-h-96 w-auto mx-auto rounded" />
                   ) : (
                     <div className="bg-gray-100 p-4 rounded text-center">Preview not available for this file type.</div>
                   )}

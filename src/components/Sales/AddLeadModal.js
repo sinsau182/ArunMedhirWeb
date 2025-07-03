@@ -60,6 +60,7 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
     projectType: '',
     propertyType: '',
     address: '',
+    area: '',
     budget: '',
     designStyle: '',
     leadSource: '',
@@ -90,7 +91,7 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
 
   useEffect(() => {
     if (initialData) {
-      setFormData({ ...initialData, priority: initialData.priority || 'Low', dateOfCreation: initialData.dateOfCreation || new Date().toISOString().split('T')[0] });
+      setFormData({ ...initialData, area: initialData.area || '', priority: initialData.priority || 'Low', dateOfCreation: initialData.dateOfCreation || new Date().toISOString().split('T')[0] });
     }
   }, [initialData]);
 
@@ -103,6 +104,7 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
         projectType: '',
         propertyType: '',
         address: '',
+        area: '',
         budget: '',
         designStyle: '',
         leadSource: '',
@@ -319,6 +321,21 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
                 placeholder="Enter address"
                 value={formData.address}
                 onChange={(e) => handleInputChange('address', e.target.value)}
+                className="border-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150"
+              />
+            </div>
+
+            {/* Area Field (optional) */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Area (sq. ft.) <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="Enter area in sq. ft."
+                value={formData.area}
+                onChange={(e) => handleInputChange('area', e.target.value)}
                 className="border-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150"
               />
             </div>

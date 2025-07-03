@@ -379,13 +379,13 @@ const LeadManagementContent = ({ role }) => {
   // Use local state for leads and pipeline stages
   const [leads, setLeads] = useState(MOCK_LEADS);
   const [kanbanStatuses, setKanbanStatuses] = useState([
-    'New',
-    'Contacted',
-    'Qualified',
-    'Quoted',
-    'Converted',
-    'Lost',
-    'Junk',
+    { name: 'New', isForm: false, color: '#3b82f6' },
+    { name: 'Contacted', isForm: false, color: '#6366f1' },
+    { name: 'Qualified', isForm: false, color: '#10b981' },
+    { name: 'Quoted', isForm: false, color: '#f59e42' },
+    { name: 'Converted', isForm: false, color: '#22d3ee' },
+    { name: 'Lost', isForm: false, color: '#ef4444' },
+    { name: 'Junk', isForm: false, color: '#a3a3a3' },
   ]);
 
   // Deduplicate leads by leadId (keep first occurrence)
@@ -422,6 +422,10 @@ const LeadManagementContent = ({ role }) => {
   const [showScheduleActivityModal, setShowScheduleActivityModal] = useState(false);
   const [leadToScheduleActivity, setLeadToScheduleActivity] = useState(null);
 
+  // Add state for new stage options
+  const [newStageIsForm, setNewStageIsForm] = useState(false);
+  const [newStageColor, setNewStageColor] = useState('#3b82f6');
+
   // Remove backend fetch
   // useEffect(() => {
   //   dispatch(fetchLeads());
@@ -436,7 +440,7 @@ const LeadManagementContent = ({ role }) => {
   const leadsByStatus = useMemo(() => {
     const grouped = {};
     kanbanStatuses.forEach(status => {
-      grouped[status] = [];
+      grouped[status.name] = [];
     });
     const filteredLeads = dedupedLeads.filter(lead =>
       Object.values(lead).some(value =>
@@ -541,9 +545,11 @@ const LeadManagementContent = ({ role }) => {
   };
 
   const handleAddStage = () => {
-    if (newStageName && !kanbanStatuses.includes(newStageName)) {
-      setKanbanStatuses(prev => [...prev, newStageName]);
+    if (newStageName && !kanbanStatuses.some(s => s.name === newStageName)) {
+      setKanbanStatuses(prev => [...prev, { name: newStageName, isForm: newStageIsForm, color: newStageColor }]);
       setNewStageName("");
+      setNewStageIsForm(false);
+      setNewStageColor('#3b82f6');
       setIsAddingStage(false);
     }
   };
@@ -569,7 +575,7 @@ const LeadManagementContent = ({ role }) => {
       toast.error(`Cannot delete stages with active leads. Please move ${leadsInStages.length} lead(s) to other stages first.`);
       return;
     }
-    setKanbanStatuses(prev => prev.filter(stage => !stagesToDelete.includes(stage)));
+    setKanbanStatuses(prev => prev.filter(stage => !stagesToDelete.includes(stage.name)));
     toast.success(`Successfully deleted ${stagesToDelete.length} stage(s)`);
   };
 
@@ -718,7 +724,7 @@ const LeadManagementContent = ({ role }) => {
       <KanbanBoard
         leadsByStatus={leadsByStatus}
         onDragEnd={handleDragEnd}
-        statuses={kanbanStatuses}
+        statuses={kanbanStatuses.map(s => s.name)}
         onEdit={handleEdit}
         onConvert={handleConvert}
         onMarkLost={handleMarkLost}
@@ -730,6 +736,11 @@ const LeadManagementContent = ({ role }) => {
         onAddStage={handleAddStage}
         onCancelAddStage={handleCancelAddStage}
         onScheduleActivity={handleScheduleActivity}
+        setIsForm={setNewStageIsForm}
+        setStageColor={setNewStageColor}
+        stageColor={newStageColor}
+        isForm={newStageIsForm}
+        kanbanStatuses={kanbanStatuses}
       />
       ) : (
         <LeadsTable leads={dedupedLeads} />
@@ -769,7 +780,7 @@ const LeadManagementContent = ({ role }) => {
       <DeletePipelineModal
         isOpen={showDeletePipelineModal}
         onClose={() => setShowDeletePipelineModal(false)}
-        stages={kanbanStatuses}
+        stages={kanbanStatuses.map(s => s.name)}
         onDeleteStages={handleDeleteStages}
       />
 

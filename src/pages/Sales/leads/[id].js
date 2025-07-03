@@ -7,6 +7,7 @@ import { FaStar, FaRegStar, FaUser, FaEnvelope, FaPhone, FaBuilding, FaMapMarker
 import MainLayout from '@/components/MainLayout';
 import { toast } from 'sonner';
 import AdvancedScheduleActivityModal from '@/components/Sales/AdvancedScheduleActivityModal';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 // Add these lists for dropdowns/selects
 const salesPersons = [
@@ -142,6 +143,16 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
 
     const [projectFields, setProjectFields] = useState({});
 
+    // --- Assigned Team Edit State ---
+    const [isEditingTeam, setIsEditingTeam] = useState(false);
+    const [assignedSalesRep, setAssignedSalesRep] = useState(lead.salesRep || '');
+    const [assignedDesigner, setAssignedDesigner] = useState(lead.designer || '');
+    useEffect(() => {
+      setAssignedSalesRep(lead.salesRep || '');
+      setAssignedDesigner(lead.designer || '');
+    }, [lead]);
+    // --- End Assigned Team Edit State ---
+
     useEffect(() => {
       setProjectFields({
         projectType: lead.projectType || '',
@@ -223,24 +234,25 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                             {/* Fields */}
                             {[
                                 {label: 'Project Type', field: 'projectType', type: 'select', options: projectTypes},
+                                {label: 'Address', field: 'address', type: 'text'},
+                                {label: 'Area (sq. ft.)', field: 'area', type: 'number', optional: true},
                                 {label: 'Budget', field: 'budget', type: 'number'},
                                 {label: 'Project Timeline', field: 'projectTimeline', type: 'text'},
                                 {label: 'Property Type', field: 'propertyType', type: 'select', options: propertyTypes},
                                 {label: 'Lead Source', field: 'leadSource', type: 'text', required: true},
                                 {label: 'Design Style', field: 'designStyle', type: 'text'},
-                                {label: 'Address', field: 'address', type: 'text'},
-                            ].map(({label, field, type, options, required}) => (
+                            ].map(({label, field, type, options, required, optional}) => (
                                 <div key={field}>
-                                    <div className="text-sm text-gray-500">{label}{required && <span className="text-red-500">*</span>}</div>
+                                    <div className="text-sm text-gray-500">{label}{required && <span className="text-red-500">*</span>}{optional && <span className="text-gray-400 font-normal ml-1">(optional)</span>}</div>
                                 {isEditing ? (
                                         type === 'select' ? (
-                                            <select value={projectFields[field]} onChange={e => handleProjectFieldChange(field, e.target.value)} className="w-full p-1 mt-1 border-b text-gray-900 focus:outline-none focus:border-blue-500">
+                                            <select value={projectFields[field] || ''} onChange={e => handleProjectFieldChange(field, e.target.value)} className="w-full p-1 mt-1 border-b text-gray-900 focus:outline-none focus:border-blue-500">
                                                 {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                     </select>
                                 ) : (
                                             <input 
                                                 type={type} 
-                                                value={projectFields[field]} 
+                                                value={projectFields[field] || ''} 
                                                 onChange={e => handleProjectFieldChange(field, e.target.value)} 
                                                 className="w-full p-1 mt-1 border-b text-gray-900 focus:outline-none focus:border-blue-500"
                                             />
@@ -248,7 +260,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                     ) : (
                                         <div className="text-base text-gray-900 font-medium mt-1">
                                             {field === 'budget' && lead.budget ? <FaRupeeSign className="inline text-gray-400 text-sm mr-1" /> : null}
-                                            {field === 'budget' && lead.budget ? Number(lead.budget).toLocaleString('en-IN') : lead[field] || 'N/A'}
+                                            {field === 'budget' && lead.budget ? Number(lead.budget).toLocaleString('en-IN') : field === 'area' ? (lead.area ? `${lead.area} sq. ft.` : 'N/A') : lead[field] || 'N/A'}
                     </div>
                                 )}
                 </div>
@@ -265,7 +277,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'conversion' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('conversion')}>Conversion Details</button>
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('history')}>Activity History</button>
                             </nav>
-                        </div>
+            </div>
                         <div className="pt-4">
                         {activeTab === 'notes' && (
                                 <div>
@@ -286,18 +298,18 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                     <ul className="space-y-4">
                                         {combinedLog.filter(item => item.status === 'done').map((item, index) => {
                                             const isEvent = item.type === 'event';
-                                            const isDone = item.status === 'done';
+                                        const isDone = item.status === 'done';
                                             const isDeleted = isEvent && item.action === 'Activity Deleted';
                                             const iconBg = isDeleted ? 'bg-red-100' : (isEvent || isDone ? 'bg-green-100' : 'bg-blue-100');
                                             const iconColor = isDeleted ? 'text-red-600' : (isEvent || isDone ? 'text-green-600' : 'text-blue-600');
                                             const icon = isDeleted ? <FaTimes /> : (isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />));
-                                            return (
+                                        return (
                                                 <li key={`done-${item.type}-${item.id}-${index}`} className="relative pl-12">
                                                     <div className="absolute left-0 top-1 flex items-center justify-center">
                                                         <span className={`w-8 h-8 flex items-center justify-center rounded-full border-4 border-gray-50 ${iconBg}`}>
                                                             <span className={iconColor}>{icon}</span>
-                                                        </span>
-                                                    </div>
+                                            </span>
+                                              </div>
                                                     
                                                     {/* The content */}
                                                     <div className={`flex items-center justify-between p-3 rounded-md ${isDeleted ? 'bg-red-50' : ''}`}>
@@ -306,13 +318,13 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                                                 {isEvent ? item.action : item.type}
                                                             </span>
                                                             <span className={`font-medium ${isDeleted ? 'text-red-700' : 'text-gray-800'}`}>{isEvent ? item.details : item.title || item.summary}</span>
-                                                        </div>
+                                                </div>
                                                         <div className="flex items-center gap-4">
                                                             <span className="text-sm text-gray-500">{formatDateTime(item.date)}</span>
                                                             <button onClick={() => setExpandedActivities(prev => ({...prev, [item.id]: !prev[item.id]}))} className="text-gray-400 hover:text-gray-600">
                                                                 <FaChevronDown size={12} className={`transition-transform ${expandedActivities[item.id] ? 'rotate-180' : ''}`}/>
                                                             </button>
-                                                        </div>
+                                            </div>
                                                     </div>
                                                     {/* Expanded details for notes, attachment, outcome */}
                                                     {(!isEvent && (item.note || item.attachment || (['Email','Call','Meeting'].includes(item.type) && item.callOutcome))) && (
@@ -322,10 +334,10 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                                             {['Email','Call','Meeting'].includes(item.type) && item.callOutcome && <div><span className="font-semibold">Outcome:</span> {item.callOutcome}</div>}
                                                         </div>
                                                     )}
-                                                </li>
-                                            );
+                                          </li>
+                                        );
                                         })}
-                                    </ul>
+                                        </ul>
                             </div>
                         )}
                         {activeTab === 'conversion' && (
@@ -392,10 +404,10 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                             </button>
                                         </div>
                                     )}
-                                </div>
-                            )}
+                            </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
                 </div>
 
                 {/* Right Column */}
@@ -421,10 +433,89 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 )}
                         </div>
 
+                    {/* --- Assigned Team Section --- */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-                        <h3 className="text-base font-semibold text-gray-800 mb-4">Assigned Team</h3>
-                        <div className="text-gray-500 text-sm">No team assigned.</div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-semibold text-gray-800">Assigned Team</h3>
+                            {isEditingTeam ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setIsEditingTeam(false)}
+                                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    onFieldChange('salesRep', assignedSalesRep);
+                                    onFieldChange('designer', assignedDesigner);
+                                    setIsEditingTeam(false);
+                                  }}
+                                  className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-semibold shadow-sm hover:bg-blue-700"
+                                >
+                                  Save
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setIsEditingTeam(true)}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-semibold hover:bg-gray-50"
+                              >
+                                <FaPencilAlt className="w-3 h-3" /> Edit
+                              </button>
+                            )}
+                        </div>
+                        {isEditingTeam ? (
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person</label>
+                              <Select
+                                value={assignedSalesRep || "unassigned"}
+                                onValueChange={val => setAssignedSalesRep(val === "unassigned" ? "" : val)}
+                              >
+                                <SelectTrigger className="w-full border-gray-300 text-sm rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                                  <SelectValue placeholder="Unassigned" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-md shadow-lg">
+                                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                                  {salesPersons.map(person => (
+                                    <SelectItem key={person.id} value={person.name}>{person.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Designer</label>
+                              <Select
+                                value={assignedDesigner || "unassigned"}
+                                onValueChange={val => setAssignedDesigner(val === "unassigned" ? "" : val)}
+                              >
+                                <SelectTrigger className="w-full border-gray-300 text-sm rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                                  <SelectValue placeholder="Unassigned" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-md shadow-lg">
+                                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                                  {designers.map(designer => (
+                                    <SelectItem key={designer.id} value={designer.name}>{designer.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div>
+                              <span className="text-gray-500 text-sm">Sales Person: </span>
+                              <span className="font-medium text-gray-800">{lead.salesRep || <span className="text-gray-400">Unassigned</span>}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 text-sm">Designer: </span>
+                              <span className="font-medium text-gray-800">{lead.designer || <span className="text-gray-400">Unassigned</span>}</span>
+                            </div>
+                          </div>
+                        )}
                 </div>
+                    {/* --- End Assigned Team Section --- */}
 
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
@@ -454,10 +545,10 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                           )}
                         </div>
                     </div>
-                </div>
-            </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 const LostReasonModal = ({ isOpen, onClose, onSubmit, title, placeholder }) => {
@@ -607,7 +698,7 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               const [editingActivity, setEditingActivity] = useState(null);
     const [activities, setActivities] = useState(lead?.activities || []);
     const [notes, setNotes] = useState(lead?.notes || []);
-    const [timelineEvents, setTimelineEvents] = useState([]);
+              const [timelineEvents, setTimelineEvents] = useState([]);
     const [deletedActivityIds, setDeletedActivityIds] = useState(new Set());
     const [conversionData, setConversionData] = useState(lead?.status === 'Converted' ? lead : null);
     

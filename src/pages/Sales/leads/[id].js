@@ -128,7 +128,7 @@ const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, onMarkJunk }) =>
     );
 };
 
-const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onScheduleActivity, activities, onEditActivity, onDeleteActivity, onMarkDone, notes, onAddNote, conversionData, timelineEvents, deletedActivityIds }) => {
+const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onScheduleActivity, activities, onEditActivity, onDeleteActivity, onMarkDone, notes, onAddNote, conversionData, timelineEvents, deletedActivityIds, currentRole }) => {
     const [activeTab, setActiveTab] = useState('activity');
     const [isEditingContact, setIsEditingContact] = useState(false);
     const [noteContent, setNoteContent] = useState('');
@@ -434,7 +434,8 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                         </div>
 
                     {/* --- Assigned Team Section --- */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+                    {(currentRole === 'MANAGER' || currentRole === 'SALESMANAGER') && (
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-base font-semibold text-gray-800">Assigned Team</h3>
                             {isEditingTeam ? (
@@ -514,7 +515,8 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                             </div>
                           </div>
                         )}
-                </div>
+                    </div>
+                    )}
                     {/* --- End Assigned Team Section --- */}
 
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
@@ -702,6 +704,14 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
     const [deletedActivityIds, setDeletedActivityIds] = useState(new Set());
     const [conversionData, setConversionData] = useState(lead?.status === 'Converted' ? lead : null);
     
+    // Get currentRole from sessionStorage
+    const [currentRole, setCurrentRole] = useState(null);
+    useEffect(() => {
+      if (typeof window !== 'undefined') {
+        setCurrentRole(sessionStorage.getItem('currentRole'));
+      }
+    }, []);
+    
     // Handlers
     const addTimelineEvent = ({ action, details, user = 'You', date = null }) => {
         const eventDate = date || new Date();
@@ -849,6 +859,7 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                 conversionData={conversionData}
                 timelineEvents={timelineEvents}
                 deletedActivityIds={deletedActivityIds}
+                currentRole={currentRole}
             />
             <AdvancedScheduleActivityModal
               isOpen={isActivityModalOpen}

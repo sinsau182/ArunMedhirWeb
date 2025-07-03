@@ -21,6 +21,7 @@ import leadsReducer from "./slices/leadsSlice";
 import incomesReducer from "./slices/incomesSlice";
 import attendancesReducer from "./slices/attendancesSlice";
 import vendorReducer from "./slices/vendorSlice";
+import pipelineReducer from "./slices/pipelineSlice";
 
 
 export const store = configureStore({
@@ -47,6 +48,7 @@ export const store = configureStore({
     incomes: incomesReducer,
     attendances: attendancesReducer,
     vendors: vendorReducer,
+    pipelines: pipelineReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

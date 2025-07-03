@@ -1,32 +1,25 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { getItemFromSessionStorage } from "./sessionStorageSlice";
 import getConfig from "next/config";
+import axios from 'axios';
 const { publicRuntimeConfig } = getConfig();
 const API_BASE_URL = publicRuntimeConfig.apiURL;
 
+const getAuthHeaders = () => {
+const token = getItemFromSessionStorage("token", null);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 export const fetchLeads = createAsyncThunk(
-  "leads/fetchLeads",
+  'leads/fetchLeads',
   async (_, { rejectWithValue }) => {
     try {
-        const token = getItemFromSessionStorage("token", null);
-
-        const response = await fetch(`${API_BASE_URL}/leads`, {
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to fetch leads");
-        }
-
-        const data = await response.json();
-        console.log('Fetched leads:', data);
-        return data;
-
+      const res = await axios.get('http://localhost:8080/leads', {
+        headers: getAuthHeaders(),
+      });
+      return res.data;
     } catch (error) {
-        return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
@@ -115,12 +108,25 @@ export const updateLead = createAsyncThunk(
     }
 );
 
-export const leadsSlice = createSlice({
+export const moveLeadToPipeline = createAsyncThunk(
+  'leads/moveToPipeline',
+  async ({ leadId, newPipelineId }, { dispatch }) => {
+    await axios.patch(`http://localhost:8080/leads/${leadId}/pipeline?newPipelineId=${newPipelineId}`, {}, {
+      headers: getAuthHeaders(),
+    });
+    // Optionally, refetch all leads after move
+    dispatch(fetchLeads());
+    return { leadId, newPipelineId };
+  }
+);
+
+const leadsSlice = createSlice({
     name: "leads",
     initialState: {
         leads: [],
         loading: false,
         error: null,
+        status: 'idle',
     },
     reducers: {},
     extraReducers: (builder) => {
@@ -128,14 +134,17 @@ export const leadsSlice = createSlice({
             .addCase(fetchLeads.pending, (state) => {
                 state.loading = true;
                 state.error = null;
+                state.status = 'loading';
             })
             .addCase(fetchLeads.fulfilled, (state, action) => {
                 state.loading = false;
                 state.leads = action.payload;
+                state.status = 'succeeded';
             })
             .addCase(fetchLeads.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.error.message;
+                state.error = action.payload || action.error.message;
+                state.status = 'failed';
             })
 
             .addCase(updateLead.pending, (state) => {
@@ -177,4 +186,5 @@ export const leadsSlice = createSlice({
 });
 
 export default leadsSlice.reducer;
+
 

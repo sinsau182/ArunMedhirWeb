@@ -43,11 +43,11 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
     router.push(`/Sales/leads/${lead.leadId}`);
   };
 
-  const renderStars = (rating) => {
+  const renderStars = (priority) => {
     const stars = [];
     for (let i = 0; i < 3; i++) {
       stars.push(
-        i < rating ? (
+        i < priority ? (
           <FaStar key={i} className="text-yellow-400" />
         ) : (
           <FaRegStar key={i} className="text-gray-300" />
@@ -57,8 +57,20 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
     return <div className="flex items-center">{stars}</div>;
   };
 
-  // Initials for Sales Rep and Designer
-  const getInitial = (name) => name ? name.charAt(0).toUpperCase() : '?';
+  // Map priority string to stars
+  const priorityToStars = (priority) => {
+    if (typeof priority === 'number') return priority;
+    if (!priority) return 0;
+    const map = { low: 1, medium: 2, high: 3 };
+    return map[String(priority).toLowerCase()] || 0;
+  };
+
+  // Initials for Sales Rep and Designer (fallback to salesRep/designer if assignSalesPersonEmpId/assignDesignerEmpId are null)
+  const getInitial = (id, fallback) => {
+    if (id) return id.toString().charAt(0).toUpperCase();
+    if (fallback) return fallback.toString().charAt(0).toUpperCase();
+    return '--';
+  };
 
   // Tooltip helpers
   const tooltip = (label, value) => `${label}: ${value || 'Unassigned'}`;
@@ -105,13 +117,13 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
       {/* Top: Name, then Stars below, both left-aligned */}
       <div className="mb-1">
         <h3 className="font-semibold text-gray-900 text-base truncate">{lead.name}</h3>
-        <div className="mt-1 flex items-center">{renderStars(lead.rating || 0)}</div>
+        <div className="mt-1 flex items-center">{renderStars(priorityToStars(lead.priority))}</div>
       </div>
       {/* Second row: Budget • Date of Creation */}
       <div className="flex items-center gap-2 mb-2 text-sm text-gray-700">
         <span className="flex items-center gap-1 font-semibold">
           <FaRupeeSign className="text-blue-500" />
-          {lead.budget ? Number(lead.budget).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '₹0'}
+          {lead.expectedBudget ? Number(lead.expectedBudget).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '₹0'}
         </span>
         <span className="text-gray-300 text-lg mx-1">•</span>
         <span className="flex items-center gap-1">
@@ -124,18 +136,18 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
         <div className="flex items-center gap-3">
           {/* Overlapping initials */}
           <div className="flex -space-x-2">
-            <CustomTooltip text={`${lead.salesRep || 'Unassigned'}\nSales Rep`}>
+            <CustomTooltip text={`${lead.assignSalesPersonEmpId || lead.salesRep || '--'}\nSales Person`}>
               <span
                 className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm cursor-pointer border-2 border-white shadow"
               >
-                {getInitial(lead.salesRep)}
+                {getInitial(lead.assignSalesPersonEmpId, lead.salesRep)}
               </span>
             </CustomTooltip>
-            <CustomTooltip text={`${lead.designer || 'Unassigned'}\nDesigner`}>
+            <CustomTooltip text={`${lead.assignDesignerEmpId || lead.designer || '--'}\nDesigner`}>
               <span
                 className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm cursor-pointer border-2 border-white shadow"
               >
-                {getInitial(lead.designer)}
+                {getInitial(lead.assignDesignerEmpId, lead.designer)}
               </span>
             </CustomTooltip>
           </div>
@@ -152,7 +164,7 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
         >
           <FaRegClock size={20} />
         </button>
-        <span className="text-xs text-gray-400 ml-2">No activity scheduled</span>
+        <span className="text-xs text-gray-400 ml-2">{lead.latestActivityTitle || ''}</span>
       </div>
     </div>
   );

@@ -13,7 +13,8 @@ import { getItemFromSessionStorage } from "@/redux/slices/sessionStorageSlice";
 import { Badge } from "@/components/ui/badge";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchOneEmployeeAttendanceOneMonth } from "@/redux/slices/attendancesSlice";
-import MainLayout from "@/components/MainLayout";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/HradminNavbar";
 
 const MonthYearSelector = ({ selectedMonth, selectedYear, onSelect }) => {
   const years = [new Date().getFullYear() - 1, new Date().getFullYear()];
@@ -558,90 +559,106 @@ const EmployeeAttendance = () => {
   };
 
   return (
-    <MainLayout>
-      <div className="flex flex-col gap-6">
-                <div className="flex justify-between items-center">
-                  <div>
-            <h1 className="text-2xl font-bold">My Attendance</h1>
-            <p className="text-gray-500">
-              View and manage your attendance record.
-            </p>
-                  </div>
-                  <div className="relative" ref={calendarRef}>
-            <button
-                      onClick={toggleCalendar}
-              className="flex items-center gap-2 px-4 py-2 bg-white border rounded-md shadow-sm hover:bg-gray-50"
-                    >
-              <CalendarIcon className="h-5 w-5 text-gray-600" />
-              <span className="font-semibold">{`${selectedMonth}, ${selectedYear}`}</span>
-              <ChevronDown className="h-4 w-4" />
-            </button>
-                    {isCalendarOpen && (
-              <MonthYearSelector
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                onSelect={handleMonthSelection}
-              />
-                    )}
-                  </div>
-                </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Attendance Calendar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-gray-500 mb-2">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                    (day) => (
-                      <div key={day}>{day}</div>
-                    )
-                  )}
-                  </div>
-                <div className="grid grid-cols-7 gap-2">
-                  {generateCalendarDays()}
-                  </div>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Daily Details</CardTitle>
-                <CardDescription>
-                  {date
-                    ? new Date(date).toLocaleDateString("en-US", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })
-                    : "Select a date to see details"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {dailyAttendanceData ? (
-                  <DailyDetails data={dailyAttendanceData} />
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    <p>No details to show for the selected date.</p>
-                  </div>
+    <div className="flex min-h-screen bg-gray-100">
+      <Sidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        toggleSidebar={toggleSidebar}
+      />
+      <div
+        className={`flex-1 ${
+          isSidebarCollapsed ? "ml-20" : "ml-64"
+        } transition-all duration-300`}
+      >
+        <Navbar toggleSidebar={toggleSidebar} />
+        <main className="p-6">
+          <div className="flex flex-col gap-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold">My Attendance</h1>
+                <p className="text-gray-500">
+                  View and manage your attendance record.
+                </p>
+              </div>
+              <div className="relative" ref={calendarRef}>
+                <button
+                  onClick={toggleCalendar}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border rounded-md shadow-sm hover:bg-gray-50"
+                >
+                  <CalendarIcon className="h-5 w-5 text-gray-600" />
+                  <span className="font-semibold">{`${selectedMonth}, ${selectedYear}`}</span>
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                {isCalendarOpen && (
+                  <MonthYearSelector
+                    selectedMonth={selectedMonth}
+                    selectedYear={selectedYear}
+                    onSelect={handleMonthSelection}
+                  />
                 )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MonthlySummary summary={monthlySummary} />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Attendance Calendar</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-gray-500 mb-2">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        (day) => (
+                          <div key={day}>{day}</div>
+                        )
+                      )}
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                      {generateCalendarDays()}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Daily Details</CardTitle>
+                    <CardDescription>
+                      {date
+                        ? new Date(date).toLocaleDateString("en-US", {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })
+                        : "Select a date to see details"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {dailyAttendanceData ? (
+                      <DailyDetails data={dailyAttendanceData} />
+                    ) : (
+                      <div className="text-center text-gray-500 py-8">
+                        <p>No details to show for the selected date.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <MonthlySummary summary={monthlySummary} />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

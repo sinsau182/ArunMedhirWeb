@@ -1,8 +1,8 @@
 // Vendor page implementation based on PRD
 import { useState, useEffect } from 'react';
-import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch, FaArrowLeft } from 'react-icons/fa';
+import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch, FaArrowLeft, FaClipboardList } from 'react-icons/fa';
 import Modal from '../../components/Modal';
-import { AddBillForm, BulkPaymentForm, AddVendorForm, AddRefundForm } from '../../components/Forms';
+import { AddBillForm, BulkPaymentForm, AddVendorForm, AddRefundForm, AddPurchaseOrderForm } from '../../components/Forms';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchVendors } from '../../redux/slices/vendorSlice';
 import { toast } from 'sonner';
@@ -17,7 +17,40 @@ const Vendor = () => {
       dispatch(fetchVendors());
     }, []);
   const [activeTab, setActiveTab] = useState('bills'); // Default to bills tab
-  const [showAddForm, setShowAddForm] = useState(null); // 'bill' | 'refund' | 'payment' | 'vendor' | null
+  const [showAddForm, setShowAddForm] = useState(null); // 'bill' | 'refund' | 'payment' | 'vendor' | 'po' | null
+  
+  // Mock purchase orders data
+  const [purchaseOrders, setPurchaseOrders] = useState([
+    {
+      id: 1,
+      poNumber: 'PO-2025-001',
+      vendorName: 'Acme Ltd.',
+      vendorGstin: '27ABCDE1234F1Z5',
+      orderDate: '2025-01-15',
+      deliveryDate: '2025-01-25',
+      status: 'Draft',
+      subtotal: 10000,
+      totalGst: 1800,
+      grandTotal: 11800,
+      currency: 'INR',
+      company: 'ABC Pvt Ltd'
+    },
+    {
+      id: 2,
+      poNumber: 'PO-2025-002',
+      vendorName: 'XYZ India',
+      vendorGstin: '29XYZE5678K9Z2',
+      orderDate: '2025-01-16',
+      deliveryDate: '2025-01-26',
+      status: 'Approved',
+      subtotal: 8000,
+      totalGst: 1440,
+      grandTotal: 9440,
+      currency: 'INR',
+      company: 'ABC Pvt Ltd'
+    }
+  ]);
+
   const [bills, setBills] = useState([
     {
       id: 1,
@@ -86,29 +119,6 @@ const Vendor = () => {
     }
   ]);
 
-  const [vendorCredits, setVendorCredits] = useState([
-    {
-      id: 'RTRN-001',
-      referencedBill: 'BILL-12345',
-      vendor: 'WoodWorks',
-      date: '2025-06-28',
-      itemsReturned: 'Oak Tabletop',
-      totalCredit: 10000,
-      type: 'Vendor Credit',
-      status: 'Open (not used yet)'
-    },
-    {
-      id: 'RTRN-002',
-      referencedBill: 'BILL-12346',
-      vendor: 'MetalCo',
-      date: '2025-06-28',
-      itemsReturned: 'Chair Legs',
-      totalCredit: 2000,
-      type: 'Refund',
-      status: 'Paid (Bank Transfer)'
-    }
-  ]);
-
   const [vendorsList, setVendorsList] = useState(vendors);
 
   const handleTabClick = (tab) => {
@@ -119,8 +129,8 @@ const Vendor = () => {
   const handleAddClick = () => {
     if (activeTab === 'bills') {
       setShowAddForm('bill');
-    } else if (activeTab === 'vendorCredits') {
-      setShowAddForm('refund');
+    } else if (activeTab === 'purchaseOrders') {
+      setShowAddForm('po');
     } else if (activeTab === 'payments') {
       setShowAddForm('payment');
     } else if (activeTab === 'vendors') {
@@ -131,6 +141,30 @@ const Vendor = () => {
   // Back button handler for forms
   const handleBackFromForm = () => {
     setShowAddForm(null);
+  };
+
+  const handlePurchaseOrderSubmit = (poData) => {
+    const newPO = {
+      id: purchaseOrders.length + 1,
+      poNumber: `PO-2025-${String(purchaseOrders.length + 1).padStart(3, '0')}`,
+      vendorName: poData.vendorName,
+      vendorGstin: poData.vendorGstin,
+      orderDate: poData.orderDate,
+      deliveryDate: poData.deliveryDate,
+      status: poData.status || 'Draft',
+      subtotal: poData.subtotal,
+      totalGst: poData.totalGst,
+      grandTotal: poData.grandTotal,
+      currency: poData.currency,
+      company: poData.company,
+      items: poData.items,
+      notes: poData.notes
+    };
+    
+    setPurchaseOrders(prev => [...prev, newPO]);
+    toast.success('Purchase Order created successfully!');
+    setShowAddForm(null);
+    console.log('Purchase Order created successfully:', poData);
   };
 
   const handlePaymentSubmit = (paymentData) => {
@@ -198,27 +232,10 @@ const Vendor = () => {
     console.log('Vendor added successfully:', vendorData);
   };
 
-  const handleRefundSubmit = (refundData) => {
-    const newCredit = {
-      id: `RTRN-${String(vendorCredits.length + 1).padStart(3, '0')}`,
-      referencedBill: refundData.referencedBill,
-      poReference: refundData.poReference,
-      vendor: refundData.vendorName,
-      date: refundData.refundDate,
-      itemsReturned: refundData.itemsToReturn.filter(i => i.qtyToReturn > 0).map(i => i.name).join(', ') || 'N/A',
-      totalCredit: refundData.totalCredit,
-      type: refundData.refundType === 'credit' ? 'Vendor Credit' : 'Refund',
-      status: refundData.refundType === 'credit' ? 'Open (not used yet)' : 'Pending Payment'
-    };
-    setVendorCredits(prev => [...prev, newCredit]);
-    toast.success('Refund request submitted successfully!');
-    setShowAddForm(null);
-  };
-
   const tabs = [
     { id: 'bills', label: 'Bills', icon: FaFileInvoice },
+    { id: 'purchaseOrders', label: 'Purchase Orders', icon: FaClipboardList },
     { id: 'payments', label: 'Payments', icon: FaCreditCard },
-    { id: 'vendorCredits', label: 'Vendor Credit', icon: FaUndoAlt },
     { id: 'vendors', label: 'Vendors List', icon: FaBuilding },
   ];
 
@@ -226,7 +243,7 @@ const Vendor = () => {
   const getAddButtonLabel = () => {
     switch (activeTab) {
       case 'bills': return 'New Bill';
-      case 'vendorCredits': return 'New Credit';
+      case 'purchaseOrders': return 'New P.O';
       case 'payments': return 'New Payment';
       case 'vendors': return 'New Vendor';
       default: return 'Add';
@@ -250,6 +267,21 @@ const Vendor = () => {
             </div>
             <AddBillForm
               onSubmit={handleBillSubmit}
+              onCancel={handleBackFromForm}
+            />
+          </div>
+        );
+      case 'po':
+        return (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center mb-4">
+              <button onClick={handleBackFromForm} className="mr-4 text-gray-600 hover:text-blue-600 flex items-center gap-2">
+                <FaArrowLeft className="w-5 h-5" /> <span>Back</span>
+              </button>
+              <h2 className="text-xl font-bold text-gray-900">Create Purchase Order</h2>
+            </div>
+            <AddPurchaseOrderForm
+              onSubmit={handlePurchaseOrderSubmit}
               onCancel={handleBackFromForm}
             />
           </div>
@@ -287,21 +319,6 @@ const Vendor = () => {
             />
           </div>
         );
-      case 'refund':
-        return (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center mb-4">
-              <button onClick={handleBackFromForm} className="mr-4 text-gray-600 hover:text-blue-600 flex items-center gap-2">
-                <FaArrowLeft className="w-5 h-5" /> <span>Back</span>
-              </button>
-              <h2 className="text-xl font-bold text-gray-900">Add Refund Request</h2>
-            </div>
-            <AddRefundForm
-              onSubmit={handleRefundSubmit}
-              onCancel={handleBackFromForm}
-            />
-          </div>
-        );
       default:
         return null;
     }
@@ -324,17 +341,17 @@ const Vendor = () => {
           { id: 'attachments', label: 'Attachments', accessor: 'attachments' }
         ];
         break;
-      case 'vendorCredits':
-        data = vendorCredits;
+      case 'purchaseOrders':
+        data = purchaseOrders;
         columns = [
-          { id: 'referencedBill', label: 'Referenced Bill', accessor: 'referencedBill' },
-          { id: 'poReference', label: 'PO Reference', accessor: 'poReference' },
-          { id: 'vendor', label: 'Vendor', accessor: 'vendor' },
-          { id: 'date', label: 'Date', accessor: 'date' },
-          { id: 'itemsReturned', label: 'Items Returned', accessor: 'itemsReturned' },
-          { id: 'totalCredit', label: 'Total Credit', accessor: 'totalCredit' },
-          { id: 'type', label: 'Type', accessor: 'type' },
-          { id: 'status', label: 'Status/Applied', accessor: 'status' }
+          { id: 'poNumber', label: 'PO Number', accessor: 'poNumber' },
+          { id: 'vendorName', label: 'Vendor Name', accessor: 'vendorName' },
+          { id: 'vendorGstin', label: 'Vendor GSTIN', accessor: 'vendorGstin' },
+          { id: 'orderDate', label: 'Order Date', accessor: 'orderDate' },
+          { id: 'deliveryDate', label: 'Delivery Date', accessor: 'deliveryDate' },
+          { id: 'status', label: 'Status', accessor: 'status' },
+          { id: 'grandTotal', label: 'Total Amount', accessor: 'grandTotal' },
+          { id: 'currency', label: 'Currency', accessor: 'currency' }
         ];
         break;
       case 'payments':
@@ -359,7 +376,7 @@ const Vendor = () => {
           { id: 'email', label: 'Email', accessor: 'email' },
           { id: 'city', label: 'City', accessor: 'city' },
           { id: 'state', label: 'State', accessor: 'state' },
-          { id: 'vendorTags', label: 'Vendor Tags', accessor: 'vendorTags' }
+          { id: 'purchaseOrder', label: 'Purchase Order', accessor: 'purchaseOrder' }
         ];
         break;
       default:
@@ -385,7 +402,12 @@ const Vendor = () => {
                   {columns.map((column) => (
                     <td key={column.id} className="px-4 py-4 whitespace-nowrap">
                       {column.accessor ? (
-                        <span className="text-sm font-medium text-gray-900">{item[column.accessor]}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {column.id === 'grandTotal' || column.id === 'totalAmount' || column.id === 'amount' 
+                            ? `₹${item[column.accessor].toLocaleString()}`
+                            : item[column.accessor]
+                          }
+                        </span>
                       ) : (
                         <span className="text-sm text-gray-900">{item[column.id]}</span>
                       )}

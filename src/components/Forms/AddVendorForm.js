@@ -3,10 +3,10 @@ import { FaSave, FaTimes, FaPlus, FaTrash, FaChevronDown, FaChevronRight, FaBuil
 import { useDispatch, useSelector } from 'react-redux';
 import { addVendor } from '../../redux/slices/vendorSlice';
 import { toast } from 'sonner';
+import VendorPreview from '../Previews/VendorPreview';
 
 const steps = [
-  { label: 'Basic Details' },
-  { label: 'Contact & Address' },
+  { label: 'Basic Details & Contact' },
   { label: 'Compliance & Banking' },
 ];
 
@@ -19,6 +19,7 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
   const sentinelRef = useRef(null);
   const [showTagsDropdown, setShowTagsDropdown] = useState(false);
   const tagsDropdownRef = useRef(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -302,97 +303,188 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
       case 1:
         return (
           <>
-            <div className="flex items-center mb-6">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <FaBuilding className="text-gray-400" /> Basic Details
-              </h2>
+            {/* Vendor Information Section */}
+            <div className="mb-8">
+              <div className="flex items-center mb-4">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                <h3 className="text-lg font-semibold text-gray-900">Vendor Information</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Vendor Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="vendorName"
+                    value={formData.vendorName}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter vendor name"
+                  />
+                </div>
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="contact@vendor.com"
+                  />
+                </div>
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                {/* Mobile */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+                  <input
+                    type="tel"
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter mobile number"
+                  />
+                </div>
+                {/* Vendor Tags */}
+                <div className="relative" ref={tagsDropdownRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Tags</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowTagsDropdown(prev => !prev)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <span className="truncate">
+                      {formData.vendorTags.length > 0 ? formData.vendorTags.join(', ') : 'Select one or more tags'}
+                    </span>
+                    <FaChevronDown className="w-4 h-4 text-gray-400" />
+                  </button>
+                  {showTagsDropdown && (
+                    <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
+                      {vendorTagOptions.map(tag => (
+                        <label key={tag} className="flex items-center w-full px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="form-checkbox h-4 w-4 text-blue-600 rounded"
+                            checked={formData.vendorTags.includes(tag)}
+                            onChange={() => handleMultiSelect('vendorTags', tag)}
+                          />
+                          <span className="ml-3 text-sm text-gray-700">{tag}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-              {/* Vendor Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Name <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="vendorName"
-                  value={formData.vendorName}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter vendor name"
-                />
+
+            {/* Address Information Section */}
+            <div>
+              <div className="flex items-center mb-4">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                <h3 className="text-lg font-semibold text-gray-900">Address Information</h3>
               </div>
-              {/* GST Treatment */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">GST Treatment</label>
-                <select
-                  name="taxTreatment"
-                  value={formData.taxTreatment || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <option value="">Select tax treatment</option>
-                  <option value="Registered">Registered</option>
-                  <option value="Unregistered">Unregistered</option>
-                  <option value="Composition">Composition</option>
-                  <option value="Consumer">Consumer</option>
-                </select>
-              </div>
-              {/* GSTIN */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">GSTIN <span className="text-gray-400 ml-1"><FaInfoCircle title="15-digit Goods and Services Tax Identification Number" /></span></label>
-                <input
-                  type="text"
-                  name="gstin"
-                  value={formData.gstin}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter GSTIN"
-                  maxLength={15}
-                />
-                <div className="text-xs text-gray-400 mt-1">15-digit Goods and Services Tax Identification Number</div>
-              </div>
-              {/* PAN */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">PAN <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="pan"
-                  value={formData.pan}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter PAN"
-                  maxLength={10}
-                />
-                <div className="text-xs text-gray-400 mt-1">10-character Permanent Account Number</div>
-              </div>
-              {/* Vendor Tags */}
-              <div className="relative" ref={tagsDropdownRef}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Tags</label>
-                <button
-                  type="button"
-                  onClick={() => setShowTagsDropdown(prev => !prev)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <span className="truncate">
-                    {formData.vendorTags.length > 0 ? formData.vendorTags.join(', ') : 'Select one or more tags'}
-                  </span>
-                  <FaChevronDown className="w-4 h-4 text-gray-400" />
-                </button>
-                {showTagsDropdown && (
-                  <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
-                    {vendorTagOptions.map(tag => (
-                      <label key={tag} className="flex items-center w-full px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="form-checkbox h-4 w-4 text-blue-600 rounded"
-                          checked={formData.vendorTags.includes(tag)}
-                          onChange={() => handleMultiSelect('vendorTags', tag)}
-                        />
-                        <span className="ml-3 text-sm text-gray-700">{tag}</span>
-                      </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Address Line 1 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Address Line 1 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="addressLine1"
+                    value={formData.addressLine1 || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Building name, street address"
+                  />
+                </div>
+                {/* Address Line 2 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Address Line 2
+                  </label>
+                  <input
+                    type="text"
+                    name="addressLine2"
+                    value={formData.addressLine2 || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Apartment, suite, unit, building, floor, etc."
+                  />
+                </div>
+                {/* City */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    City <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter city"
+                  />
+                </div>
+                {/* State */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    State/Province <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="state"
+                    value={formData.state || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Select state</option>
+                    {indianStates.map(state => (
+                      <option key={state} value={state}>{state}</option>
                     ))}
-                  </div>
-                )}
+                  </select>
+                </div>
+                {/* PIN Code */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PIN/ZIP Code <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="pinCode"
+                    value={formData.pinCode || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter PIN or ZIP code"
+                    maxLength={6}
+                  />
+                </div>
+                {/* Country */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    name="country"
+                    value={formData.country || "India"}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter country"
+                  />
+                </div>
               </div>
             </div>
           </>
@@ -400,273 +492,209 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
       case 2:
         return (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Contact Information (Left Column) */}
-              <div>
-                <div className="flex items-center mb-4">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                  <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
-                </div>
-                <div className="space-y-6">
-                  {/* Contact Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Contact Name <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="contactName"
-                      value={formData.contactName || ''}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Enter full name"
-                    />
-                  </div>
-                  {/* Email Address */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address <span className="text-red-500">*</span></label>
-                    <input
-                      type="email"
-                      name="contactEmail"
-                      value={formData.contactEmail || ''}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="contact@vendor.com"
-                    />
-                  </div>
-                  {/* Phone Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number <span className="text-red-500">*</span></label>
-                    <div className="flex">
-                      <select className="border border-gray-300 rounded-l-lg px-3 py-2 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" disabled>
-                        <option>+91</option>
-                      </select>
-                      <input
-                        type="tel"
-                        name="contactPhone"
-                        value={formData.contactPhone || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-base border-t border-b border-r border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        placeholder="Enter phone number"
-                      />
-                    </div>
-                  </div>
-                  {/* Alternate Phone Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Alternate Phone Number</label>
-                    <div className="flex">
-                      <select className="border border-gray-300 rounded-l-lg px-3 py-2 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent" disabled>
-                        <option>+91</option>
-                      </select>
-                      <input
-                        type="tel"
-                        name="alternatePhone"
-                        value={formData.alternatePhone || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-base border-t border-b border-r border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        placeholder="Enter alternate phone number"
-                      />
-                    </div>
-                  </div>
-                </div>
+            {/* Compliance Section */}
+            <div className="mb-8">
+              <div className="flex items-center mb-4">
+                <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
+                <h3 className="text-lg font-semibold text-gray-900">Compliance</h3>
               </div>
-              {/* Address Information (Right Column) */}
-              <div>
-                <div className="flex items-center mb-4">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
-                  <h3 className="text-lg font-semibold text-gray-900">Address Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* GST Treatment */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">GST Treatment</label>
+                  <select
+                    name="taxTreatment"
+                    value={formData.taxTreatment || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Select tax treatment</option>
+                    <option value="Registered">Registered</option>
+                    <option value="Unregistered">Unregistered</option>
+                    <option value="Composition">Composition</option>
+                    <option value="Consumer">Consumer</option>
+                  </select>
                 </div>
-                <div className="space-y-6">
-                  {/* Address Line 1 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address Line 1 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="addressLine1"
-                      value={formData.addressLine1 || ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Building name, street address"
-                    />
-                  </div>
-                  {/* Address Line 2 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address Line 2
-                    </label>
-                    <input
-                      type="text"
-                      name="addressLine2"
-                      value={formData.addressLine2 || ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Apartment, suite, unit, building, floor, etc."
-                    />
-                  </div>
-                  {/* City & State/Province */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        City <span className="text-red-500">*</span>
-                      </label>
+                {/* GSTIN */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">GSTIN <span className="text-gray-400 ml-1"><FaInfoCircle title="15-digit Goods and Services Tax Identification Number" /></span></label>
+                  <input
+                    type="text"
+                    name="gstin"
+                    value={formData.gstin}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter GSTIN"
+                    maxLength={15}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">15-digit Goods and Services Tax Identification Number</div>
+                </div>
+                {/* PAN */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">PAN <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="pan"
+                    value={formData.pan}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter PAN"
+                    maxLength={10}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">10-character Permanent Account Number</div>
+                </div>
+                {/* TDS Applies */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">TDS Applies</label>
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center">
                       <input
-                        type="text"
-                        name="city"
-                        value={formData.city || ""}
+                        type="checkbox"
+                        name="tdsApplies"
+                        checked={formData.tdsApplies || false}
                         onChange={handleChange}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        placeholder="Enter city"
+                        className="form-checkbox h-4 w-4 text-blue-600 rounded"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        State/Province <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="state"
-                        value={formData.state || ""}
-                        onChange={handleChange}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        placeholder="Enter state or province"
-                      />
-                    </div>
-                  </div>
-                  {/* PIN/ZIP Code */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      PIN/ZIP Code <span className="text-red-500">*</span>
+                      <span className="ml-2 text-sm text-gray-700">Yes, TDS applies</span>
                     </label>
-                    <input
-                      type="text"
-                      name="pinCode"
-                      value={formData.pinCode || ""}
-                      onChange={handleChange}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Enter PIN or ZIP code"
-                    />
                   </div>
                 </div>
+                {/* TDS Percentage */}
+                {formData.tdsApplies && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">TDS Percentage (%)</label>
+                    <input
+                      type="number"
+                      name="tdsPercentage"
+                      value={formData.tdsPercentage || ''}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Enter TDS percentage"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                    />
+                  </div>
+                )}
               </div>
             </div>
-          </>
-        );
-      case 3:
-        return (
-          <>
-            <div className="flex items-center mb-2 mt-0">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
-              <h3 className="text-lg font-semibold text-gray-900">Bank Account Information</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 space-y-0">
-              {/* Account Holder Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder Name <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="accountHolderName"
-                  value={formData.accountHolderName || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter account holder name"
-                />
+
+            {/* Banking Information Section */}
+            <div>
+              <div className="flex items-center mb-4">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
+                <h3 className="text-lg font-semibold text-gray-900">Banking Information</h3>
               </div>
-              {/* Branch Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Branch Name</label>
-                <input
-                  type="text"
-                  name="branchName"
-                  value={formData.branchName || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter branch name"
-                />
-              </div>
-              {/* Bank Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name <span className="text-red-500">*</span></label>
-                <select
-                  name="bankName"
-                  value={formData.bankName || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <option value="">Select bank</option>
-                  <option value="SBI">State Bank of India</option>
-                  <option value="HDFC">HDFC Bank</option>
-                  <option value="ICICI">ICICI Bank</option>
-                  <option value="Axis">Axis Bank</option>
-                  <option value="PNB">Punjab National Bank</option>
-                  {/* Add more banks as needed */}
-                </select>
-              </div>
-              {/* Account Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Account Type <span className="text-red-500">*</span></label>
-                <select
-                  name="accountType"
-                  value={formData.accountType || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <option value="">Select account type</option>
-                  <option value="Savings">Savings</option>
-                  <option value="Current">Current</option>
-                  <option value="OD">Overdraft</option>
-                  {/* Add more types as needed */}
-                </select>
-              </div>
-              {/* Account Number */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Account Number <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="accountNumber"
-                  value={formData.accountNumber || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter account number"
-                />
-              </div>
-              {/* Confirm Account Number */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Account Number <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="confirmAccountNumber"
-                  value={formData.confirmAccountNumber || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Re-enter account number"
-                />
-              </div>
-              {/* IFSC Code */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">IFSC Code <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="ifscCode"
-                  value={formData.ifscCode || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="ENTER IFSC CODE"
-                  maxLength={11}
-                />
-                <div className="text-xs text-gray-400 mt-1">11-character alphanumeric code</div>
-              </div>
-              {/* UPI ID */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">UPI ID <span className="text-xs text-gray-400 font-normal ml-1">(Optional)</span></label>
-                <input
-                  type="text"
-                  name="upiId"
-                  value={formData.upiId || ''}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="example@paytm or example@upi"
-                />
-                <div className="text-xs text-gray-400 mt-1">For quick digital payments</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Account Holder Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="accountHolderName"
+                    value={formData.accountHolderName || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter account holder name"
+                  />
+                </div>
+                {/* Bank Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name <span className="text-red-500">*</span></label>
+                  <select
+                    name="bankName"
+                    value={formData.bankName || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Select bank</option>
+                    <option value="SBI">State Bank of India</option>
+                    <option value="HDFC">HDFC Bank</option>
+                    <option value="ICICI">ICICI Bank</option>
+                    <option value="Axis">Axis Bank</option>
+                    <option value="PNB">Punjab National Bank</option>
+                    {/* Add more banks as needed */}
+                  </select>
+                </div>
+                {/* Account Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Type <span className="text-red-500">*</span></label>
+                  <select
+                    name="accountType"
+                    value={formData.accountType || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Select account type</option>
+                    <option value="Savings">Savings</option>
+                    <option value="Current">Current</option>
+                    <option value="OD">Overdraft</option>
+                    {/* Add more types as needed */}
+                  </select>
+                </div>
+                {/* Account Number */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Number <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="accountNumber"
+                    value={formData.accountNumber || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter account number"
+                  />
+                </div>
+                {/* Confirm Account Number */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Account Number <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="confirmAccountNumber"
+                    value={formData.confirmAccountNumber || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Re-enter account number"
+                  />
+                </div>
+                {/* IFSC Code */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">IFSC Code <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="ifscCode"
+                    value={formData.ifscCode || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="ENTER IFSC CODE"
+                    maxLength={11}
+                  />
+                  <div className="text-xs text-gray-400 mt-1">11-character alphanumeric code</div>
+                </div>
+                {/* Branch Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Branch Name</label>
+                  <input
+                    type="text"
+                    name="branchName"
+                    value={formData.branchName || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter branch name"
+                  />
+                </div>
+                {/* UPI ID */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">UPI ID <span className="text-xs text-gray-400 font-normal ml-1">(Optional)</span></label>
+                  <input
+                    type="text"
+                    name="upiId"
+                    value={formData.upiId || ''}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="example@paytm or example@upi"
+                  />
+                  <div className="text-xs text-gray-400 mt-1">For quick digital payments</div>
+                </div>
               </div>
             </div>
           </>
@@ -741,54 +769,71 @@ const AddVendorForm = ({ onSubmit, onCancel }) => {
   console.log(step)
 
   return (
-    <form ref={formRef} className="w-full bg-white border border-gray-200 shadow-lg p-0 flex flex-col relative pb-6">
-      {/* Progress Bar */}
-      <div className="w-full px-8 pt-2">
-        {renderProgressBar()}
-      </div>
-      {/* Step Content */}
-      <div className="w-full px-8 pb-8 pt-2 flex-1">
-        {renderStepContent()}
-      </div>
-      {/* Sentinel for IntersectionObserver */}
-      <div ref={sentinelRef} style={{ height: 1 }} />
-      {/* Sticky Action Bar (full width, flush with form edges) */}
-      <div className="sticky bottom-0 z-20 w-full bg-white px-8 py-2 flex justify-between items-center">
-        <button
-          type="button"
-          onClick={() => setStep((s) => Math.max(1, s - 1))}
-          className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-          disabled={step === 1}
-        >
-          Back
-        </button>
-        <div className="flex gap-3">
+    <>
+      <form ref={formRef} className="w-full bg-white border border-gray-200 shadow-lg p-0 flex flex-col relative pb-6">
+        {/* Progress Bar */}
+        <div className="w-full px-8 pt-2">
+          {renderProgressBar()}
+        </div>
+        {/* Step Content */}
+        <div className="w-full px-8 pb-8 pt-2 flex-1">
+          {renderStepContent()}
+        </div>
+        {/* Sentinel for IntersectionObserver */}
+        <div ref={sentinelRef} style={{ height: 1 }} />
+        {/* Sticky Action Bar (full width, flush with form edges) */}
+        <div className="sticky bottom-0 z-20 w-full bg-white px-8 py-2 flex justify-between items-center">
           <button
             type="button"
-            className="px-6 py-2 border border-blue-300 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+            onClick={() => setStep((s) => Math.max(1, s - 1))}
+            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            disabled={step === 1}
           >
-            Save Draft
+            Back
           </button>
-          {step < steps.length ? (
+          <div className="flex gap-3">
+            {step === steps.length && (
+                <button
+                    type="button"
+                    onClick={() => setShowPreview(true)}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                >
+                    Preview
+                </button>
+            )}
             <button
               type="button"
-              onClick={() => setStep((s) => Math.min(steps.length, s + 1))}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="px-6 py-2 border border-blue-300 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
             >
-              Next
+              Save Draft
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              Submit
-            </button>
-          )}
+            {step < steps.length ? (
+              <button
+                type="button"
+                onClick={() => setStep((s) => Math.min(steps.length, s + 1))}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Submit
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
+      {showPreview && (
+        <VendorPreview 
+          vendorData={formData}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
+    </>
   );
 };
 

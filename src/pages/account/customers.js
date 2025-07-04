@@ -283,7 +283,6 @@ const Customers = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount Received</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount Remaining</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Receipt Generated</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -305,11 +304,6 @@ const Customers = () => {
                         'bg-red-100 text-red-800'
                       }`}>
                         {invoice.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-center">
-                      <span className={`font-medium ${invoice.receiptGenerated === 'Yes' ? 'text-green-600' : 'text-gray-500'}`}>
-                        {invoice.receiptGenerated}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -336,8 +330,6 @@ const Customers = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount Received</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Method</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment trans. Id</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Invoice Generated</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -351,20 +343,6 @@ const Customers = () => {
                   <td className="px-6 py-4 text-sm font-semibold">${r.amount.toFixed(2)}</td>
                   <td className="px-6 py-4 text-sm">{r.method}</td>
                   <td className="px-6 py-4 text-sm font-mono">{r.paymentTransId}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      r.status === 'Received' ? 'bg-green-100 text-green-800' :
-                      r.status === 'Partial received' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-center">
-                    <span className={`font-medium ${r.invoiceGenerated === 'Yes' ? 'text-green-600' : 'text-gray-500'}`}>
-                      {r.invoiceGenerated}
-                    </span>
-                  </td>
                   <td className="px-6 py-4 text-center">
                     <button onClick={() => setSelectedReceiptForPreview(r)} className="text-gray-500 hover:text-blue-600">
                       <FaEye />

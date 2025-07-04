@@ -145,6 +145,12 @@ export const menuItems = [
 
   // Add Account Admin items
   {
+    label: "Dashboard",
+    icon: <ChartColumnIncreasing />,
+    link: "/account/dashboard",
+    roles: ["ACCOUNTANT"],
+  },
+  {
     label: "Customers",
     icon: <FaUsers />,
     link: "/account/customers",

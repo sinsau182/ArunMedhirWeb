@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaSave, FaTimes, FaReceipt, FaChevronDown, FaChevronRight, FaInfoCircle, FaUpload, FaLink } from 'react-icons/fa';
+import { FaSave, FaTimes, FaReceipt, FaChevronDown, FaChevronRight, FaInfoCircle, FaUpload, FaLink, FaWallet } from 'react-icons/fa';
 
 const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
@@ -15,6 +15,7 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
     upiTransactionId: '',
     attachment: null,
     linkedInvoices: [],
+    advancePayment: 0,
   });
 
   const [errors, setErrors] = useState({});
@@ -23,6 +24,7 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
   const [isInvoiceLinkModalOpen, setIsInvoiceLinkModalOpen] = useState(false);
   const [invoicesToLink, setInvoicesToLink] = useState([]);
   const [activeTab, setActiveTab] = useState('linking');
+  const [committedAdvance, setCommittedAdvance] = useState(0);
 
   // Static data - in real app, these would come from APIs
   const customers = [
@@ -77,6 +79,18 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
     
     setInvoicesToLink(invoicesWithPayments);
   }, [formData.customerName, initialData]);
+
+  // Calculate advance payment automatically
+  useEffect(() => {
+    const receiptAmount = parseFloat(formData.amount) || 0;
+    const totalAllocated = invoicesToLink.reduce((sum, inv) => sum + (inv.payment || 0), 0);
+    const advanceAmount = Math.max(0, receiptAmount - totalAllocated);
+    
+    setFormData(prev => ({
+      ...prev,
+      advancePayment: advanceAmount
+    }));
+  }, [formData.amount, invoicesToLink]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -164,7 +178,12 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
         .filter(inv => inv.payment > 0)
         .map(inv => ({ id: inv.id, number: inv.number, payment: inv.payment }));
         
-      onSubmit({ ...formData, amount: parseFloat(formData.amount), linkedInvoices: finalLinkedInvoices });
+      onSubmit({ 
+        ...formData, 
+        amount: parseFloat(formData.amount), 
+        linkedInvoices: finalLinkedInvoices,
+        advancePayment: formData.advancePayment
+      });
     }
   };
 
@@ -172,6 +191,20 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
 
   const totalAllocatedInModal = invoicesToLink.reduce((sum, inv) => sum + (inv.payment || 0), 0);
   const receiptAmount = parseFloat(formData.amount) || 0;
+  const advanceAmount = Math.max(0, receiptAmount - totalAllocatedInModal);
+  const unallocatedAmount = Math.max(0, receiptAmount - totalAllocatedInModal - committedAdvance);
+
+  const allInvoicesFullyPaid = invoicesToLink.every(inv => {
+    const remainingAfterPreviousPayments = inv.totalAmount - inv.amountReceived;
+    return (inv.payment || 0) >= remainingAfterPreviousPayments;
+  });
+
+  // Simulated advances for the selected customer (in real app, fetch from API)
+  const [customerAdvances, setCustomerAdvances] = useState([
+    // Example: { date: '2024-07-30', amount: 5000, reference: 'Advance for project X' }
+  ]);
+  const [showAddAdvanceForm, setShowAddAdvanceForm] = useState(false);
+  const [newAdvance, setNewAdvance] = useState({ amount: '', reference: '' });
 
   return (
     <>
@@ -261,6 +294,9 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
                 <button type="button" onClick={() => setActiveTab('linking')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'linking' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                   Invoice Linking
                 </button>
+                <button type="button" onClick={() => setActiveTab('advance')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'advance' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  Advance Payment
+                </button>
                 <button type="button" onClick={() => setActiveTab('attachment')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'attachment' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                   Attachment
                 </button>
@@ -269,10 +305,39 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
             <div className="p-6">
               {activeTab === 'linking' && (
                 <div>
-                  <div className="grid grid-cols-2 gap-4 mb-6 text-center">
-                      <div className="bg-blue-50 p-3 rounded-lg"><div className="text-sm text-gray-600">Total Receipt Amount</div><div className="text-lg font-bold">{formatCurrency(receiptAmount)}</div></div>
-                      <div className="bg-green-50 p-3 rounded-lg"><div className="text-sm text-gray-600">Unallocated Amount</div><div className="text-lg font-bold text-green-700">{formatCurrency(receiptAmount - totalAllocatedInModal)}</div></div>
+                  <div className="grid grid-cols-3 gap-4 mb-6 text-center">
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="text-sm text-gray-600">Total Receipt Amount</div>
+                        <div className="text-lg font-bold">{formatCurrency(receiptAmount)}</div>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <div className="text-sm text-gray-600">Allocated to Invoices</div>
+                        <div className="text-lg font-bold text-green-700">{formatCurrency(totalAllocatedInModal)}</div>
+                      </div>
+                      <div className="bg-purple-50 p-3 rounded-lg">
+                        <div className="text-sm text-gray-600">Unallocated Amount</div>
+                        <div className="text-lg font-bold text-purple-700">{formatCurrency(unallocatedAmount)}</div>
+                      </div>
                   </div>
+                  {unallocatedAmount > 0 && allInvoicesFullyPaid && (
+                    <div className="flex justify-end mb-4">
+                      <button
+                        type="button"
+                        className="bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 shadow"
+                        onClick={() => {
+                          // Add the unallocated amount to the permanent customer advances list
+                          setCustomerAdvances(prev => [
+                            { date: new Date().toISOString().split('T')[0], amount: unallocatedAmount, reference: `From receipt #${formData.receiptNumber || 'N/A'}` },
+                            ...prev
+                          ]);
+                          // Commit this amount to prevent it from being double-counted
+                          setCommittedAdvance(prev => prev + unallocatedAmount);
+                        }}
+                      >
+                        Add Unallocated Amount to Advance Payment
+                      </button>
+                    </div>
+                  )}
                   {invoicesToLink.length > 0 ? (
                     <table className="w-full text-sm">
                       <thead>
@@ -310,6 +375,111 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
                       <p className="mt-4 text-gray-500">Select a customer to see their outstanding invoices.</p>
                     </div>
                   )}
+                </div>
+              )}
+              {activeTab === 'advance' && (
+                <div>
+                  <div className="bg-purple-50 rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <FaWallet className="text-2xl text-purple-600 mr-3" />
+                        <h3 className="text-lg font-semibold text-gray-900">Customer Advance Payment</h3>
+                      </div>
+                      <button
+                        type="button"
+                        className="bg-purple-600 text-white px-4 py-1.5 rounded hover:bg-purple-700 font-semibold text-sm shadow"
+                        onClick={() => setShowAddAdvanceForm(f => !f)}
+                      >
+                        {showAddAdvanceForm ? 'Cancel' : 'Add Advance Payment'}
+                      </button>
+                    </div>
+
+                    {showAddAdvanceForm && (
+                      <form
+                        className="bg-white p-4 rounded-lg border mb-6 flex flex-col md:flex-row gap-4 items-end"
+                        onSubmit={e => {
+                          e.preventDefault();
+                          if (!newAdvance.amount || isNaN(newAdvance.amount) || Number(newAdvance.amount) <= 0) return;
+                          setCustomerAdvances(prev => [
+                            { date: new Date().toISOString().split('T')[0], amount: Number(newAdvance.amount), reference: newAdvance.reference },
+                            ...prev
+                          ]);
+                          setNewAdvance({ amount: '', reference: '' });
+                          setShowAddAdvanceForm(false);
+                        }}
+                      >
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Amount <span className="text-red-500">*</span></label>
+                          <input
+                            type="number"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            placeholder="Enter amount"
+                            value={newAdvance.amount}
+                            onChange={e => setNewAdvance(a => ({ ...a, amount: e.target.value }))}
+                            min="0"
+                            step="0.01"
+                            required
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
+                          <input
+                            type="text"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            placeholder="Optional reference"
+                            value={newAdvance.reference}
+                            onChange={e => setNewAdvance(a => ({ ...a, reference: e.target.value }))}
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700"
+                        >
+                          Save
+                        </button>
+                      </form>
+                    )}
+
+                    {/* List of previous advances */}
+                    <div className="bg-white p-4 rounded-lg border mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-gray-800">Available Advance Payment</h4>
+                        <span className="text-xl font-bold text-purple-700">{formatCurrency(customerAdvances.reduce((sum, adv) => sum + adv.amount, 0))}</span>
+                      </div>
+                      {customerAdvances.length === 0 ? (
+                        <div className="text-gray-500 text-sm">No advance payments added yet.</div>
+                      ) : (
+                        <table className="w-full text-sm mt-2">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-2">Date</th>
+                              <th className="text-right py-2">Amount</th>
+                              <th className="text-left py-2">Reference</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {customerAdvances.map((adv, idx) => (
+                              <tr key={idx} className="border-b">
+                                <td className="py-2">{adv.date}</td>
+                                <td className="py-2 text-right text-purple-700 font-semibold">{formatCurrency(adv.amount)}</td>
+                                <td className="py-2">{adv.reference || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg border">
+                      <p className="text-sm text-gray-600 mb-2">Advance Payment Details:</p>
+                      <ul className="text-sm text-gray-700 space-y-1">
+                        <li>• This amount will be credited to the customer's advance account</li>
+                        <li>• Can be used to offset future invoices</li>
+                        <li>• Will be automatically applied when new invoices are created</li>
+                        <li>• Customer can request refund if needed</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               )}
               {activeTab === 'attachment' && (
@@ -363,10 +533,30 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl">
             <div className="p-4 border-b flex justify-between items-center"><h2 className="text-xl font-bold">Link Invoices and Allocate Payment</h2><button onClick={() => setIsInvoiceLinkModalOpen(false)}><FaTimes /></button></div>
             <div className="p-6 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4 mb-4 text-center">
+                <div className="grid grid-cols-3 gap-4 mb-4 text-center">
                     <div className="bg-blue-50 p-3 rounded-lg"><div className="text-sm text-gray-600">Total Receipt Amount</div><div className="text-lg font-bold">{formatCurrency(receiptAmount)}</div></div>
-                    <div className="bg-green-50 p-3 rounded-lg"><div className="text-sm text-gray-600">Unallocated Amount</div><div className="text-lg font-bold">{formatCurrency(receiptAmount - totalAllocatedInModal)}</div></div>
+                    <div className="bg-green-50 p-3 rounded-lg"><div className="text-sm text-gray-600">Allocated to Invoices</div><div className="text-lg font-bold text-green-700">{formatCurrency(totalAllocatedInModal)}</div></div>
+                    <div className="bg-purple-50 p-3 rounded-lg"><div className="text-sm text-gray-600">Unallocated Amount</div><div className="text-lg font-bold text-purple-700">{formatCurrency(unallocatedAmount)}</div></div>
                 </div>
+                {unallocatedAmount > 0 && allInvoicesFullyPaid && (
+                  <div className="flex justify-end mb-4">
+                    <button
+                      type="button"
+                      className="bg-purple-600 text-white px-4 py-2 rounded font-semibold hover:bg-purple-700 shadow"
+                      onClick={() => {
+                        // Add the unallocated amount to the permanent customer advances list
+                        setCustomerAdvances(prev => [
+                          { date: new Date().toISOString().split('T')[0], amount: unallocatedAmount, reference: `From receipt #${formData.receiptNumber || 'N/A'}` },
+                          ...prev
+                        ]);
+                        // Commit this amount to prevent it from being double-counted
+                        setCommittedAdvance(prev => prev + unallocatedAmount);
+                      }}
+                    >
+                      Add Unallocated Amount to Advance Payment
+                    </button>
+                  </div>
+                )}
                 <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
@@ -396,7 +586,7 @@ const AddReceiptForm = ({ onSubmit, onCancel, initialData }) => {
                 </table>
             </div>
             <div className="p-4 border-t flex justify-between items-center">
-                <div><strong>Total Allocated:</strong> {formatCurrency(totalAllocatedInModal)}</div>
+                <div><strong>Total Allocated:</strong> {formatCurrency(totalAllocatedInModal)} | <strong>Advance Payment:</strong> {formatCurrency(unallocatedAmount)}</div>
                 <div className="space-x-3"><button type="button" onClick={() => setIsInvoiceLinkModalOpen(false)} className="px-5 py-2 border rounded-lg">Cancel</button><button type="button" onClick={handleSaveInvoiceLinks} className="px-5 py-2 bg-blue-600 text-white rounded-lg">Save Links</button></div>
             </div>
           </div>

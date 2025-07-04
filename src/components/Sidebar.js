@@ -60,6 +60,7 @@ const Sidebar = ({ onHoverChange }) => {
     // Group 1: CORE - Dashboard & Lead Management
     const coreItems = filtered.filter(item => 
       item.label === "Dashboard" || 
+      item.label === "Accountant Dashboard" ||
       item.label === "Lead Management" ||
       item.label === "Team" ||
       item.label === "Manager"

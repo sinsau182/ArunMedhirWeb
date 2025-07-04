@@ -73,7 +73,7 @@ const DashboardCard = ({ title, children, icon }) => (
 
 const Modal = ({ children, title, onClose }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-        <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-full overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-full overflow-y-auto">
             <div className="flex justify-between items-center p-4 border-b">
                 <h3 className="text-xl font-semibold">{title}</h3>
                 <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
@@ -127,43 +127,6 @@ const AccountsPayableCard = () => (
     </DashboardCard>
 );
 
-const PayrollCard = () => (
-    <DashboardCard title="Payroll Overview" icon={<FaUsers />}>
-        <ul className="space-y-3 text-gray-700">
-            <li className="flex justify-between"><span>Next Payroll Date:</span> <strong>01/08/2024</strong></li>
-            <li className="flex justify-between"><span>Last Payroll Amount:</span> <strong>₹75,000</strong></li>
-            <li className="flex justify-between"><span>Employees to be Paid:</span> <strong>12</strong></li>
-        </ul>
-        <div className="text-right mt-4">
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-semibold">Manage Payroll</button>
-        </div>
-    </DashboardCard>
-);
-
-const CashFlowCard = () => (
-     <DashboardCard title="Cash Flow & Forecast" icon={<FaChartLine />}>
-        <ul className="space-y-3 text-gray-700">
-            <li className="flex justify-between"><span>Current Month Inflow:</span> <strong className="text-green-600">₹1,50,000</strong></li>
-            <li className="flex justify-between"><span>Current Month Outflow:</span> <strong className="text-red-600">₹85,000</strong></li>
-            <li className="flex justify-between"><span>Projected Cash (30 days):</span> <strong>₹2,10,000</strong></li>
-        </ul>
-         <div className="text-right mt-4">
-            <button className="text-blue-500 hover:underline text-sm font-semibold">View Cash Flow Details →</button>
-        </div>
-    </DashboardCard>
-);
-
-const AlertsCard = () => (
-    <DashboardCard title="Alerts & Reminders" icon={<FaExclamationTriangle className="text-yellow-500"/>}>
-        <ul className="space-y-2 text-sm text-gray-800 list-disc list-inside">
-            <li>Low cash balance in account #1234</li>
-            <li>2 invoices overdue by more than 60 days</li>
-            <li>Payroll due in 3 days</li>
-            <li>Vendor bill #VB-987 payment due tomorrow</li>
-        </ul>
-    </DashboardCard>
-);
-
 const ActivityFeedCard = () => (
      <DashboardCard title="Recent Activity Feed" icon={<FaHistory />}>
         <ul className="space-y-2 text-sm text-gray-800">
@@ -201,21 +164,14 @@ const AccountantDashboard = () => {
                             value="₹12,000"
                             color="border-red-500"
                         />
-                         <StatCard
-                            icon={<FaClock className="text-yellow-500"/>}
-                            title="Upcoming Payments"
-                            value="₹4,000"
-                            color="border-yellow-500"
-                        />
                     </div>
 
                     {/* Second Row: Quick Actions */}
-                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <QuickActionButton text="Create Invoice" icon={<FaFileInvoiceDollar />} onClick={() => setActiveModal('create-invoice')} />
                         <QuickActionButton text="Add Vendor Bill" icon={<FaReceipt />} onClick={() => setActiveModal('add-bill')} />
                         <QuickActionButton text="Record Customer Receipt" icon={<FaPlusCircle />} onClick={() => setActiveModal('record-receipt')} />
                         <QuickActionButton text="Record Vendor Payment" icon={<FaMoneyBillWave />} onClick={() => setActiveModal('record-payment')} />
-                        <QuickActionButton text="Add Note" icon={<FaStickyNote />} onClick={() => setActiveModal('add-note')} />
                     </div>
 
                     {/* Third Row: AR and AP */}
@@ -224,17 +180,8 @@ const AccountantDashboard = () => {
                         <AccountsPayableCard />
                     </div>
 
-                    {/* Fourth Row: Payroll */}
-                    <PayrollCard />
-
-                     {/* Fifth Row: Cash Flow */}
-                    <CashFlowCard />
-                    
-                    {/* Sixth & Seventh Row: Alerts and Activity */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <AlertsCard />
-                        <ActivityFeedCard />
-                    </div>
+                    {/* Activity Feed */}
+                    <ActivityFeedCard />
                 </div>
             </div>
             

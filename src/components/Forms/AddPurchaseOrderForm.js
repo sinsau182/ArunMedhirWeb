@@ -294,41 +294,38 @@ const AddPurchaseOrderForm = ({ onSubmit, onCancel }) => {
         <div className="min-h-[300px]">
           {activeTab === 'poItems' && (
             <div className="border rounded-lg overflow-hidden">
-              <div className="bg-gray-50 p-4 flex justify-between items-center">
+              <div className="bg-gray-50 p-4">
                 <h3 className="text-lg font-semibold">Items</h3>
-                <button type="button" onClick={addItem} className="flex items-center gap-2 text-sm bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700">
-                  <FaPlus size={12} /> Add New Item
-                </button>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-fixed">
                   <thead className="bg-gray-100">
                     <tr className="text-left text-gray-600 font-medium">
-                      <th className="p-3 w-1/4">Item</th>
-                      <th className="p-3 w-1/3">Description</th>
-                      <th className="p-3">HSN</th>
-                      <th className="p-3">Qty</th>
-                      <th className="p-3">Unit</th>
-                      <th className="p-3">Rate</th>
-                      <th className="p-3">GST%</th>
-                      <th className="p-3"></th>
+                      <th className="p-3 w-[25%]">Item</th>
+                      <th className="p-3 w-[30%]">Description</th>
+                      <th className="p-3 w-[10%]">HSN</th>
+                      <th className="p-3 w-[8%]">Qty</th>
+                      <th className="p-3 w-[8%]">Unit</th>
+                      <th className="p-3 w-[8%]">Rate</th>
+                      <th className="p-3 w-[8%]">GST%</th>
+                      <th className="p-3 w-[3%]"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {formData.items.map((item, index) => (
                         <tr key={item.id} className="border-t">
-                          <td className="p-2"><input type="text" placeholder="Item Name" value={item.itemName} onChange={e => handleItemChange(item.id, 'itemName', e.target.value)} className={`w-full border rounded-md p-2 ${errors[`itemName_${index}`] ? 'border-red-400' : 'border-gray-200'}`} /></td>
-                          <td className="p-2"><input type="text" placeholder="Description" value={item.description} onChange={e => handleItemChange(item.id, 'description', e.target.value)} className="w-full border-gray-200 rounded-md p-2" /></td>
-                          <td className="p-2"><input type="text" placeholder="HSN" value={item.hsnCode} onChange={e => handleItemChange(item.id, 'hsnCode', e.target.value)} className="w-full border-gray-200 rounded-md p-2" /></td>
-                          <td className="p-2"><input type="number" placeholder="1" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)} className={`w-20 border rounded-md p-2 ${errors[`quantity_${index}`] ? 'border-red-400' : 'border-gray-200'}`} /></td>
+                          <td className="p-2"><textarea placeholder="Item Name" value={item.itemName} onChange={e => handleItemChange(item.id, 'itemName', e.target.value)} className={`w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`itemName_${index}`] ? 'ring-red-400' : 'focus:ring-blue-500'}`} rows="1" /></td>
+                          <td className="p-2"><textarea placeholder="Description" value={item.description} onChange={e => handleItemChange(item.id, 'description', e.target.value)} className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500" rows="1" /></td>
+                          <td className="p-2"><input type="text" placeholder="HSN" value={item.hsnCode} onChange={e => handleItemChange(item.id, 'hsnCode', e.target.value)} className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500" /></td>
+                          <td className="p-2"><input type="number" placeholder="1" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)} className={`w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`quantity_${index}`] ? 'ring-red-400' : 'focus:ring-blue-500'}`} /></td>
                           <td className="p-2">
-                            <select value={item.unit} onChange={e => handleItemChange(item.id, 'unit', e.target.value)} className="w-full border-gray-200 rounded-md p-2">
+                            <select value={item.unit} onChange={e => handleItemChange(item.id, 'unit', e.target.value)} className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500">
                               {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
                           </td>
-                          <td className="p-2"><input type="number" placeholder="0.00" value={item.rate} onChange={e => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)} className={`w-24 border rounded-md p-2 ${errors[`rate_${index}`] ? 'border-red-400' : 'border-gray-200'}`} /></td>
+                          <td className="p-2"><input type="number" placeholder="0.00" value={item.rate} onChange={e => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)} className={`w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`rate_${index}`] ? 'ring-red-400' : 'focus:ring-blue-500'}`} /></td>
                           <td className="p-2">
-                            <select value={item.gstRate} onChange={e => handleItemChange(item.id, 'gstRate', parseFloat(e.target.value))} className="w-full border-gray-200 rounded-md p-2">
+                            <select value={item.gstRate} onChange={e => handleItemChange(item.id, 'gstRate', parseFloat(e.target.value))} className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500">
                               {gstRates.map(r => <option key={r} value={r}>{r}%</option>)}
                             </select>
                           </td>
@@ -336,6 +333,19 @@ const AddPurchaseOrderForm = ({ onSubmit, onCancel }) => {
                         </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan="8" className="p-3">
+                        <button 
+                          type="button" 
+                          onClick={addItem}
+                          className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          <FaPlus /> Add line item
+                        </button>
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
               <div className="bg-gray-50 p-4 flex justify-end">

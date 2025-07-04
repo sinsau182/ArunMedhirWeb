@@ -32,7 +32,6 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [attachments, setAttachments] = useState([]);
   const [availableCredit, setAvailableCredit] = useState(0);
-  const [appliedCredit, setAppliedCredit] = useState(0);
 
   // Sample data
   const vendors = [
@@ -82,7 +81,6 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
       setSelectedBills([]);
       setFormData(prev => ({ ...prev, gstin: '', tdsApplied: false }));
       setAvailableCredit(0);
-      setAppliedCredit(0);
     }
   }, [formData.vendor]);
 
@@ -127,18 +125,11 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
     }
   };
 
-  const handleCreditChange = (e) => {
-    let amount = parseFloat(e.target.value) || 0;
-    const maxApplicable = Math.min(availableCredit, totalAmountDueSelected);
-    if (amount < 0) amount = 0;
-    if (amount > maxApplicable) amount = maxApplicable;
-    setAppliedCredit(amount);
-  };
-
   const totalSelectedSubtotal = selectedBills.reduce((sum, bill) => sum + (bill.subtotal || 0), 0);
   const totalSelectedGst = selectedBills.reduce((sum, bill) => sum + (bill.gst || 0), 0);
   const totalSelectedTds = selectedBills.reduce((sum, bill) => sum + (bill.tdsDeducted || 0), 0);
   const totalAmountDueSelected = totalSelectedSubtotal + totalSelectedGst - totalSelectedTds;
+  const appliedCredit = Math.min(availableCredit, totalAmountDueSelected);
   const finalPaymentAmount = totalAmountDueSelected - appliedCredit;
 
   const validateForm = () => {
@@ -459,34 +450,6 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
 
                     {errors.bills && <div className="text-red-500 text-sm mt-4">{errors.bills}</div>}
 
-                    {availableCredit > 0 && formData.vendor && (
-                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <h3 className="text-md font-semibold text-yellow-800 mb-2">Vendor Credit Available</h3>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-gray-700">You have <span className="font-bold">{formatCurrency(availableCredit)}</span> in credit.</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <input 
-                                        type="number" 
-                                        value={appliedCredit} 
-                                        onChange={handleCreditChange}
-                                        className="w-32 px-2 py-1 border border-gray-300 rounded-lg text-right"
-                                        max={Math.min(availableCredit, totalAmountDueSelected)}
-                                        min="0"
-                                    />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setAppliedCredit(Math.min(availableCredit, totalAmountDueSelected))}
-                                        className="px-3 py-1 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-lg hover:bg-yellow-500"
-                                    >
-                                        Apply Max
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     <div className="flex justify-end items-center mt-6 pt-4 border-t border-gray-200">
                       <div className="w-96 space-y-2">
                         <p className="text-sm text-gray-500 text-left mb-2">{selectedBills.length} bills selected</p>
@@ -511,7 +474,7 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
                         </div>
                         {appliedCredit > 0 && (
                           <div className="flex justify-between items-center text-green-600">
-                            <span className="font-medium">Credit Applied</span>
+                            <span className="font-medium">Vendor Credit Adjusted</span>
                             <span className="font-medium">- {formatCurrency(appliedCredit)}</span>
                           </div>
                         )}
@@ -519,7 +482,7 @@ const BulkPaymentForm = ({ onSubmit, onCancel }) => {
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-lg">Final Payment</span>
                           <span className="font-bold text-lg">{formatCurrency(finalPaymentAmount)}</span>
-                      </div>
+                        </div>
                       </div>
                     </div>
                   </>

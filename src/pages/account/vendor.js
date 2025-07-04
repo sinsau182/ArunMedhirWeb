@@ -1,6 +1,6 @@
 // Vendor page implementation based on PRD
 import { useState, useEffect } from 'react';
-import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch, FaArrowLeft, FaClipboardList } from 'react-icons/fa';
+import { FaFileInvoice, FaUndoAlt, FaCreditCard, FaBuilding, FaPlus, FaSearch, FaArrowLeft, FaClipboardList, FaPaperclip } from 'react-icons/fa';
 import Modal from '../../components/Modal';
 import { AddBillForm, BulkPaymentForm, AddVendorForm, AddRefundForm, AddPurchaseOrderForm } from '../../components/Forms';
 import { useDispatch, useSelector } from 'react-redux';
@@ -351,7 +351,6 @@ const Vendor = () => {
           { id: 'deliveryDate', label: 'Delivery Date', accessor: 'deliveryDate' },
           { id: 'status', label: 'Status', accessor: 'status' },
           { id: 'grandTotal', label: 'Total Amount', accessor: 'grandTotal' },
-          { id: 'currency', label: 'Currency', accessor: 'currency' }
         ];
         break;
       case 'payments':
@@ -363,7 +362,7 @@ const Vendor = () => {
           { id: 'paymentMethod', label: 'Payment Method', accessor: 'paymentMethod' },
           { id: 'amount', label: 'Amount', accessor: 'amount' },
           { id: 'paymentReference', label: 'Payment Reference', accessor: 'paymentReference' },
-          { id: 'attachments', label: 'Payment Proof', accessor: 'attachments' }
+          { id: 'attachments', label: 'Payment Proof', accessor: 'attachments' },
         ];
         break;
       case 'vendors':
@@ -376,7 +375,6 @@ const Vendor = () => {
           { id: 'email', label: 'Email', accessor: 'email' },
           { id: 'city', label: 'City', accessor: 'city' },
           { id: 'state', label: 'State', accessor: 'state' },
-          { id: 'purchaseOrder', label: 'Purchase Order', accessor: 'purchaseOrder' }
         ];
         break;
       default:
@@ -401,7 +399,15 @@ const Vendor = () => {
                 <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                   {columns.map((column) => (
                     <td key={column.id} className="px-4 py-4 whitespace-nowrap">
-                      {column.accessor ? (
+                      {column.id === 'attachments' && activeTab === 'payments' ? (
+                        item.attachments === 'Yes' ? (
+                          <button onClick={() => alert('Viewing attachment...')} className="text-blue-600 hover:text-blue-800">
+                            <FaPaperclip size={18} />
+                          </button>
+                        ) : (
+                          <span className="text-sm text-gray-500">No</span>
+                        )
+                      ) : column.accessor ? (
                         <span className="text-sm font-medium text-gray-900">
                           {column.id === 'grandTotal' || column.id === 'totalAmount' || column.id === 'amount' 
                             ? `₹${item[column.accessor].toLocaleString()}`

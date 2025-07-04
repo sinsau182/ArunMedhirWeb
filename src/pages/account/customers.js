@@ -229,7 +229,7 @@ const Customers = () => {
   const tabs = [
     { id: 'invoice', label: 'Invoice', icon: FaFileInvoiceDollar },
     { id: 'receipts', label: 'Receipts', icon: FaReceipt },
-    { id: 'clients', label: 'Clients', icon: FaUsers },
+    { id: 'clients', label: 'Customer', icon: FaUsers },
   ];
   
   const getAddButtonLabel = () => {

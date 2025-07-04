@@ -1,6 +1,26 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FaBuilding, FaUser, FaPlus, FaTrash, FaPaperclip, FaFilePdf, FaFileImage, FaTimes } from "react-icons/fa";
 
+const AutoGrowTextarea = ({ className, ...props }) => {
+    const textareaRef = useRef(null);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [props.value]);
+
+    return (
+        <textarea
+            ref={textareaRef}
+            rows="1"
+            className={`${className} resize-none overflow-hidden`}
+            {...props}
+        />
+    );
+};
+
 // Mock data for vendors and companies
 const mockVendors = [
   {
@@ -72,12 +92,14 @@ const BillForm = () => {
   const [tdsApplied, setTdsApplied] = useState(false);
   const [tdsRate, setTdsRate] = useState(2);
   const TDS_RATES = [1, 2, 5, 10];
+  const [vendorCredits, setVendorCredits] = useState([]);
 
   // Calculate totals
   const subtotal = billLines.reduce((sum, l) => sum + l.qty * l.rate, 0);
   const totalGST = billLines.reduce((sum, l) => sum + l.qty * l.rate * (l.gst / 100), 0);
+  const totalVendorCredit = vendorCredits.reduce((sum, vc) => sum + Number(vc.amount || 0), 0);
   const tdsAmount = tdsApplied ? subtotal * (tdsRate / 100) : 0;
-  const total = subtotal + totalGST - tdsAmount;
+  const total = subtotal + totalGST - tdsAmount - totalVendorCredit;
 
   // Validation helpers
   const validate = () => {
@@ -135,6 +157,20 @@ const BillForm = () => {
   };
   const handlePreviewAttachment = (file) => {
     setPreviewFile(file);
+  };
+
+  const handleAddVendorCredit = () => {
+    setVendorCredits(prev => [...prev, { id: Date.now(), amount: '', description: '' }]);
+  };
+
+  const handleVendorCreditChange = (id, field, value) => {
+    setVendorCredits(prev => prev.map(vc =>
+      vc.id === id ? { ...vc, [field]: value } : vc
+    ));
+  };
+
+  const handleRemoveVendorCredit = (id) => {
+    setVendorCredits(prev => prev.filter(vc => vc.id !== id));
   };
 
   // Render
@@ -307,6 +343,17 @@ const BillForm = () => {
             >
               Attachments
             </button>
+            <button
+              type="button"
+              className={`px-6 py-3 border-b-2 font-semibold transition-colors ${
+                activeTab === 'vendorCredit'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setActiveTab('vendorCredit')}
+            >
+              Vendor Credit
+            </button>
           </div>
         </div>
 
@@ -314,31 +361,23 @@ const BillForm = () => {
         <div className="min-h-[400px]">
           {activeTab === 'billLines' && (
             <div className="space-y-6">
-              <button 
-                type="button" 
-                className="flex items-center gap-2 border border-blue-300 bg-blue-50 text-blue-600 rounded-lg px-4 py-2 font-medium hover:bg-gray-50 transition-colors" 
-                onClick={handleAddLine}
-              >
-                <FaPlus className="text-sm text-blue-600" /> Add Line Item
-              </button>
-              
               {errors.billLines && <div className="text-xs text-red-500">{errors.billLines}</div>}
               
               <div className="overflow-x-auto">
-                <table className="min-w-full">
+                <table className="min-w-full table-fixed">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">HSN</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">UoM</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">GST %</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">GST Amount</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+                      <th className="w-[15%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
+                      <th className="w-[20%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                      <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">HSN</th>
+                      <th className="w-[5%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
+                      <th className="w-[5%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">UoM</th>
+                      <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate</th>
+                      <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">GST %</th>
+                      <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">GST Amount</th>
+                      <th className="w-[10%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
+                      <th className="w-[5%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -352,8 +391,8 @@ const BillForm = () => {
                       return (
                         <tr key={idx} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3">
-                            <input 
-                              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                            <AutoGrowTextarea 
+                              className={`w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`item${idx}`] ? 'ring-red-500' : 'focus:ring-blue-500'}`} 
                               value={line.item} 
                               onChange={e => handleLineChange(idx, 'item', e.target.value)} 
                               placeholder="Enter item"
@@ -361,8 +400,8 @@ const BillForm = () => {
                             {errors[`item${idx}`] && <div className="text-xs text-red-500 mt-1">{errors[`item${idx}`]}</div>}
                           </td>
                           <td className="px-4 py-3">
-                            <input 
-                              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                            <AutoGrowTextarea 
+                              className={`w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500`}
                               value={line.description} 
                               onChange={e => handleLineChange(idx, 'description', e.target.value)} 
                               placeholder="Description"
@@ -370,7 +409,7 @@ const BillForm = () => {
                           </td>
                           <td className="px-4 py-3">
                             <input
-                              className="w-24 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={`w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500`}
                               value={line.hsn}
                               onChange={e => handleLineChange(idx, 'hsn', e.target.value)}
                               placeholder="HSN Code"
@@ -380,7 +419,7 @@ const BillForm = () => {
                             <input 
                               type="number" 
                               min="1" 
-                              className="w-20 border border-gray-300 rounded px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                              className={`w-full text-right bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`qty${idx}`] ? 'ring-red-500' : 'focus:ring-blue-500'}`} 
                               value={line.qty} 
                               onChange={e => handleLineChange(idx, 'qty', e.target.value)} 
                             />
@@ -388,7 +427,7 @@ const BillForm = () => {
                           </td>
                           <td className="px-4 py-3">
                             <input
-                              className="w-20 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className={`w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500`}
                               value={line.uom}
                               onChange={e => handleLineChange(idx, 'uom', e.target.value)}
                               placeholder="e.g., PCS"
@@ -400,7 +439,7 @@ const BillForm = () => {
                               <input 
                                 type="number" 
                                 min="0" 
-                                className="w-24 border border-gray-300 rounded px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                className={`w-full text-right bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`rate${idx}`] ? 'ring-red-500' : 'focus:ring-blue-500'}`}
                                 value={line.rate} 
                                 onChange={e => handleLineChange(idx, 'rate', e.target.value)} 
                               />
@@ -416,7 +455,7 @@ const BillForm = () => {
                                 type="number" 
                                 min="0" 
                                 max="100" 
-                                className="w-16 border border-gray-300 rounded px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                className={`w-full text-right bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`gst${idx}`] ? 'ring-red-500' : 'focus:ring-blue-500'}`}
                                 value={line.gst} 
                                 onChange={e => handleLineChange(idx, 'gst', e.target.value)} 
                               />
@@ -443,6 +482,19 @@ const BillForm = () => {
                       );
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan="11" className="pt-4">
+                        <button 
+                          type="button" 
+                          onClick={handleAddLine}
+                          className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          <FaPlus /> Add line item
+                        </button>
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
 
@@ -456,6 +508,12 @@ const BillForm = () => {
                   <span className="text-gray-700">Total GST:</span>
                   <span className="text-gray-900 font-medium">₹{totalGST.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
+                {totalVendorCredit > 0 && (
+                    <div className="flex justify-between items-center mb-1 text-green-600">
+                        <span className="font-medium">Vendor Credit:</span>
+                        <span className="font-medium">- ₹{totalVendorCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                )}
                 {tdsApplied && (
                   <div className="flex justify-between items-center mb-1 text-red-600">
                     <span className="font-medium">TDS/TCS Deducted ({tdsRate}%):</span>
@@ -543,6 +601,72 @@ const BillForm = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+          {activeTab === 'vendorCredit' && (
+            <div className="space-y-6">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full table-fixed">
+                        <thead>
+                            <tr className="border-b border-gray-200">
+                                <th className="w-1/4 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th className="w-2/4 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                                <th className="w-1/4 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {vendorCredits.map((credit) => (
+                                <tr key={credit.id}>
+                                    <td className="px-4 py-3">
+                                        <input
+                                            type="number"
+                                            placeholder="0.00"
+                                            value={credit.amount}
+                                            onChange={(e) => handleVendorCreditChange(credit.id, 'amount', e.target.value)}
+                                            className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500"
+                                        />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Credit description"
+                                            value={credit.description}
+                                            onChange={(e) => handleVendorCreditChange(credit.id, 'description', e.target.value)}
+                                            className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500"
+                                        />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveVendorCredit(credit.id)}
+                                            className="text-red-500 hover:text-red-700"
+                                        >
+                                            <FaTrash />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                              <td colSpan="3" className="pt-4">
+                                <button
+                                  type="button"
+                                  onClick={handleAddVendorCredit}
+                                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                  <FaPlus /> Add Vendor Credit
+                                </button>
+                              </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {vendorCredits.length === 0 && (
+                    <div className="text-center py-16 text-gray-500">
+                        <p>No vendor credits have been added yet.</p>
+                    </div>
+                )}
             </div>
           )}
         </div>

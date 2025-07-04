@@ -1,5 +1,25 @@
-import { useState } from 'react';
-import { FaSave, FaTimes, FaPlus, FaTrash, FaFileInvoiceDollar, FaChevronDown, FaChevronRight, FaInfoCircle } from 'react-icons/fa';
+import { useState, useRef, useEffect } from 'react';
+import { FaSave, FaTimes, FaPlus, FaTrash, FaFileInvoiceDollar, FaChevronDown, FaChevronRight, FaInfoCircle, FaEye } from 'react-icons/fa';
+
+const AutoGrowTextarea = ({ className, ...props }) => {
+    const textareaRef = useRef(null);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [props.value]);
+
+    return (
+        <textarea
+            ref={textareaRef}
+            rows="1"
+            className={`${className} resize-none overflow-hidden`}
+            {...props}
+        />
+    );
+};
 
 const AddInvoiceForm = ({ onSubmit, onCancel }) => {
     const [formData, setFormData] = useState({
@@ -10,9 +30,8 @@ const AddInvoiceForm = ({ onSubmit, onCancel }) => {
         invoiceDate: new Date().toISOString().split('T')[0],
         dueDate: '',
         invoiceLines: [
-            { id: 1, item: '', hsn: '', quantity: 1, uom: 'NOS', rate: 0, gst: 18 }
+            { id: 1, item: '', description: '', hsn: '', quantity: 1, uom: 'NOS', rate: 0, gst: 18 }
         ],
-        discount: 0,
     });
 
     const [errors, setErrors] = useState({});
@@ -62,7 +81,7 @@ const AddInvoiceForm = ({ onSubmit, onCancel }) => {
         setFormData(prev => ({
             ...prev,
             invoiceLines: [...prev.invoiceLines, {
-                id: Date.now(), item: '', hsn: '', quantity: 1, uom: 'NOS', rate: 0, gst: 18
+                id: Date.now(), item: '', description: '', hsn: '', quantity: 1, uom: 'NOS', rate: 0, gst: 18
             }]
         }));
     };
@@ -79,7 +98,7 @@ const AddInvoiceForm = ({ onSubmit, onCancel }) => {
     const calculateLineTotal = (line) => (line.quantity * line.rate) * (1 + line.gst / 100);
     const calculateSubtotal = () => formData.invoiceLines.reduce((sum, line) => sum + (line.quantity * line.rate), 0);
     const calculateTotalGST = () => formData.invoiceLines.reduce((sum, line) => sum + (line.quantity * line.rate * line.gst / 100), 0);
-    const calculateTotal = () => calculateSubtotal() + calculateTotalGST() - formData.discount;
+    const calculateTotal = () => calculateSubtotal() + calculateTotalGST();
 
     const validateForm = () => {
         const newErrors = {};
@@ -111,6 +130,17 @@ const AddInvoiceForm = ({ onSubmit, onCancel }) => {
 
     const toggleAccountingSection = () => {
         setIsAccountingCollapsed(!isAccountingCollapsed);
+    };
+
+    const handlePreview = () => {
+        // In a real app, this would open a modal with the invoice preview.
+        console.log("Previewing Invoice Data:", {
+            ...formData,
+            subtotal: calculateSubtotal(),
+            totalGST: calculateTotalGST(),
+            totalAmount: calculateTotal(),
+        });
+        alert("Check the console for a preview of the invoice data. This would normally open a preview modal.");
     };
 
     return (
@@ -168,62 +198,82 @@ const AddInvoiceForm = ({ onSubmit, onCancel }) => {
                             Invoice Items
                             <span className="ml-2 text-red-500">*</span>
                         </h3>
-                        <button type="button" onClick={addInvoiceLine} className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            <FaPlus className="w-4 h-4" />
-                            <span>Add Item</span>
-                        </button>
                     </div>
-                    <div className="space-y-4">
-                        {formData.invoiceLines.map((line, index) => (
-                            <div key={line.id} className="border border-gray-200 rounded-lg p-4">
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 items-start">
-                                    <div className="md:col-span-3">
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">Item <span className="text-red-500">*</span></label>
-                                        <input type="text" value={line.item} onChange={(e) => handleLineChange(index, 'item', e.target.value)} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors[`item_${index}`] ? 'border-red-500' : 'border-gray-300'}`} placeholder="Product/Service" />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">HSN</label>
-                                        <input type="text" value={line.hsn} onChange={(e) => handleLineChange(index, 'hsn', e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg border-gray-300" placeholder="HSN/SAC" />
-                                    </div>
-                                    <div className="md:col-span-1">
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">Qty <span className="text-red-500">*</span></label>
-                                        <input type="number" value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', parseFloat(e.target.value) || 1)} min="1" step="1" className={`w-full px-3 py-2 text-sm border rounded-lg ${errors[`quantity_${index}`] ? 'border-red-500' : 'border-gray-300'}`} />
-                                    </div>
-                                    <div className="md:col-span-1">
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">UOM</label>
-                                        <select value={line.uom} onChange={(e) => handleLineChange(index, 'uom', e.target.value)} className="w-full px-3 py-2 text-sm border rounded-lg border-gray-300">
-                                            {uomOptions.map(o => (<option key={o} value={o}>{o}</option>))}
-                                        </select>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">Rate (₹) <span className="text-red-500">*</span></label>
-                                        <input type="number" value={line.rate} onChange={(e) => handleLineChange(index, 'rate', parseFloat(e.target.value) || 0)} min="0" step="0.01" className={`w-full px-3 py-2 text-sm border rounded-lg ${errors[`rate_${index}`] ? 'border-red-500' : 'border-gray-300'}`} />
-                                    </div>
-                                    <div className="md:col-span-1">
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">GST %</label>
-                                        <select value={line.gst} onChange={(e) => handleLineChange(index, 'gst', parseFloat(e.target.value))} className="w-full px-3 py-2 text-sm border rounded-lg border-gray-300">
-                                            {gstOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
-                                        </select>
-                                    </div>
-                                    <div className="md:col-span-2 flex items-end justify-between">
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Total</label>
-                                            <div className="text-sm font-semibold text-gray-900 pt-2">{formatCurrency(calculateLineTotal(line))}</div>
-                                        </div>
-                                        {formData.invoiceLines.length > 1 && (
-                                            <button type="button" onClick={() => removeInvoiceLine(index)} className="text-red-600 hover:text-red-800 p-1 self-center mb-1"><FaTrash className="w-4 h-4" /></button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full table-fixed">
+                            <thead>
+                                <tr className="border-b border-gray-200">
+                                    <th className="w-[15%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
+                                    <th className="w-[20%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">HSN</th>
+                                    <th className="w-[5%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
+                                    <th className="w-[5%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">UOM</th>
+                                    <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate</th>
+                                    <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">GST %</th>
+                                    <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">GST Amount</th>
+                                    <th className="w-[10%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
+                                    <th className="w-[5%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {formData.invoiceLines.map((line, index) => {
+                                    const amount = (line.quantity || 0) * (line.rate || 0);
+                                    const gstAmount = amount * (line.gst || 0) / 100;
+                                    const total = amount + gstAmount;
+                                    return (
+                                        <tr key={line.id} className="hover:bg-gray-50">
+                                            <td className="px-4 py-2">
+                                                <AutoGrowTextarea value={line.item} onChange={(e) => handleLineChange(index, 'item', e.target.value)} className={`w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`item_${index}`] ? 'ring-red-400' : 'focus:ring-blue-500'}`} placeholder="Product/Service" />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <AutoGrowTextarea value={line.description} onChange={(e) => handleLineChange(index, 'description', e.target.value)} className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500" placeholder="Item description" />
+                                            </td>
+                                            <td className="px-4 py-2"><input type="text" value={line.hsn} onChange={(e) => handleLineChange(index, 'hsn', e.target.value)} className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500" placeholder="HSN/SAC" /></td>
+                                            <td className="px-4 py-2"><input type="number" value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', parseFloat(e.target.value) || 1)} min="1" step="1" className={`w-full text-right bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`quantity_${index}`] ? 'ring-red-400' : 'focus:ring-blue-500'}`} /></td>
+                                            <td className="px-4 py-2">
+                                                <select value={line.uom} onChange={(e) => handleLineChange(index, 'uom', e.target.value)} className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500">
+                                                    {uomOptions.map(o => (<option key={o} value={o}>{o}</option>))}
+                                                </select>
+                                            </td>
+                                            <td className="px-4 py-2"><input type="number" value={line.rate} onChange={(e) => handleLineChange(index, 'rate', parseFloat(e.target.value) || 0)} min="0" step="0.01" className={`w-full text-right bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 ${errors[`rate_${index}`] ? 'ring-red-400' : 'focus:ring-blue-500'}`} /></td>
+                                            <td className="px-4 py-2 text-right">{formatCurrency(amount)}</td>
+                                            <td className="px-4 py-2">
+                                                <select value={line.gst} onChange={(e) => handleLineChange(index, 'gst', parseFloat(e.target.value))} className="w-full bg-transparent p-2 rounded-md focus:bg-white focus:ring-1 focus:ring-blue-500">
+                                                    {gstOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                                                </select>
+                                            </td>
+                                            <td className="px-4 py-2 text-right">{formatCurrency(gstAmount)}</td>
+                                            <td className="px-4 py-2 text-right font-semibold">{formatCurrency(total)}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                {formData.invoiceLines.length > 1 && (
+                                                    <button type="button" onClick={() => removeInvoiceLine(index)} className="text-red-600 hover:text-red-800"><FaTrash /></button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                             <tfoot>
+                                <tr>
+                                    <td colSpan="11" className="pt-4 px-4">
+                                      <button 
+                                        type="button" 
+                                        onClick={addInvoiceLine}
+                                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                      >
+                                        <FaPlus /> Add line item
+                                      </button>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                     <div className="mt-6 bg-gray-50 rounded-lg p-4">
                         <div className="flex justify-end">
                             <div className="w-80 space-y-2">
                                 <div className="flex justify-between text-sm"><span className="text-gray-600">Subtotal:</span><span className="font-medium">{formatCurrency(calculateSubtotal())}</span></div>
                                 <div className="flex justify-between text-sm"><span className="text-gray-600">Total GST:</span><span className="font-medium">{formatCurrency(calculateTotalGST())}</span></div>
-                                <div className="flex justify-between text-sm items-center"><span className="text-gray-600">Discount:</span><input type="number" name="discount" value={formData.discount} onChange={handleChange} className="w-28 px-2 py-1 text-base text-right border rounded-lg border-gray-300" placeholder="0.00" /></div>
                                 <div className="border-t border-gray-300 pt-2 flex justify-between font-semibold"><span>Total Amount:</span><span className="text-lg">{formatCurrency(calculateTotal())}</span></div>
                             </div>
                         </div>
@@ -234,6 +284,10 @@ const AddInvoiceForm = ({ onSubmit, onCancel }) => {
             <div className="sticky bottom-0 -mx-6 -mb-6">
                 <div className="bg-white/90 backdrop-blur-sm border-t border-gray-200 px-6 py-4">
                     <div className="flex items-center justify-end space-x-4">
+                        <button type="button" onClick={handlePreview} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+                            <FaEye className="w-4 h-4" />
+                            <span>Preview</span>
+                        </button>
                         <button type="button" onClick={onCancel} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                             <span>Cancel</span>
                         </button>

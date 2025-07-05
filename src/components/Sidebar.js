@@ -122,19 +122,19 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       label: "Dashboard",
       icon: <ChartColumnIncreasing />,
       link: "/manager/dashboard",
-      roles: ["MANAGER"],
+      roles: ["MANAGER", "SALESMANAGER"],
     },
     {
       label: "Team",
       icon: <Briefcase />,
       link: "/manager/team",
-      roles: ["MANAGER"],
+      roles: ["MANAGER", "SALESMANAGER"],
     },
     {
       label: "Attendance",
       icon: <Clock />,
       link: "/manager/attendance",
-      roles: ["MANAGER"],
+      roles: ["MANAGER", "SALESMANAGER"],
     },
     {
       label: "Lead Management",
@@ -199,9 +199,15 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       roles: ["SALES"],
     },
     {
-      label: "Manager Lead Management",
+      label: "Lead Management",
       icon: <FaUsers />,
       link: "/SalesManager/Manager",
+      roles: ["SALESMANAGER"],
+    },
+    {
+      label: "Settings",
+      icon: <FaCog />,
+      link: "/SalesManager/Manager?view=settings",
       roles: ["SALESMANAGER"],
     },
     

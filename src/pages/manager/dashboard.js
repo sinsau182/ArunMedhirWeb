@@ -1,6 +1,5 @@
 /* eslint-disable react/jsx-key */
 import React, { useCallback, useState, useEffect } from "react";
-
 import {
   BarChart,
   Bar,
@@ -14,14 +13,10 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
-
-import { FaUser, FaCalendar, FaUsers } from "react-icons/fa";
-
+import { FaUsers, FaMoneyBillWave, FaChartLine, FaPlus, FaExternalLinkAlt, FaBell, FaUserClock, FaRegCommentDots, FaPhoneSlash, FaExclamationTriangle, FaTimes } from "react-icons/fa";
 import RequestDetails from "@/components/RequestDetails";
-
 import Sidebar from "@/components/Sidebar";
 import HradminNavbar from "@/components/HradminNavbar";
-
 import { useSelector, useDispatch } from "react-redux";
 // import { fetchEmployees } from "@/redux/slices/employeeSlice";
 import withAuth from "@/components/withAuth";
@@ -33,531 +28,290 @@ import {
   fetchExpenseRequests,
   fetchIncomeRequests,
 } from "@/redux/slices/requestDetailsSlice";
+import Link from "next/link";
 
-const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#A28BFE",
-  "#82CA9D",
+
+// MOCK DATA FOR SALES DASHBOARD - Replace with actual data fetching
+const MOCK_LEADS_DATA = [
+  { status: 'New', count: 12 },
+  { status: 'Contacted', count: 8 },
+  { status: 'Qualified', count: 5 },
+  { status: 'Quoted', count: 3 },
+  { status: 'Converted', count: 2 },
 ];
 
-const Overview = () => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [showCharts, setShowCharts] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(null);
-  // const [requestToggle, setRequestToggle] = useState(false);
-  const [showRequestDetails, setShowRequestDetails] = useState(false); // New state
-  const [activeTab, setActiveTab] = useState("leaveRequests");
+const MOCK_TEAM_PERFORMANCE = [
+  { name: 'Alice', converted: 12, revenue: 150000 },
+  { name: 'Bob', converted: 9, revenue: 120000 },
+  { name: 'Charlie', converted: 7, revenue: 95000 },
+  { name: 'Dana', converted: 5, revenue: 75000 },
+];
 
-  const [profileUpdates, setProfileUpdates] = useState([]);
+const MOCK_ACTIVITIES = [
+    { type: 'missed_call', text: 'Alice missed a scheduled call with "Innovate Inc."', time: '1 hour ago' },
+    { type: 'stale_lead', text: 'Bob has no updates on "Global Corp" for 4 days.', time: '3 hours ago' },
+    { type: 'deal_won', text: 'Alice closed the deal with "Innovate Inc."', time: '2 hours ago' },
+    { type: 'new_lead', text: 'A new lead "Tech Solutions" was assigned to Bob.', time: '5 hours ago' },
+    { type: 'stage_change', text: 'Charlie moved "Global Corp" to the "Quoted" stage.', time: '1 day ago' },
+    { type: 'note_added', text: 'You added a note to "Innovate Inc.".', time: '2 days ago' },
+];
+
+const MOCK_UNASSIGNED_LEADS = [
+    { id: 'LEAD201', name: 'Lead A', projectType: 'Residential', submittedBy: 'emp123' },
+    { id: 'LEAD202', name: 'Lead B', projectType: 'Commercial', submittedBy: 'emp124' },
+    { id: 'LEAD203', name: 'Lead C', projectType: 'Residential', submittedBy: 'emp125' },
+];
+
+const salesPersons = [
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+  { id: 3, name: 'Charlie' },
+  { id: 4, name: 'Dana' },
+];
+
+const SalesKPI = ({ icon, label, value, currency = false, onClick }) => (
+  <div 
+    className={`bg-white p-6 rounded-lg shadow-md flex items-center gap-4 border border-gray-200 ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+    onClick={onClick}
+  >
+    <div className="bg-blue-100 text-blue-600 p-3 rounded-full">
+      {icon}
+    </div>
+    <div>
+      <p className="text-gray-500 text-sm font-medium">{label}</p>
+      <p className="text-2xl font-bold text-gray-800">
+        {currency && '₹'}{typeof value === 'number' ? value.toLocaleString() : value}
+      </p>
+    </div>
+  </div>
+);
+
+const ActivityIcon = ({ type }) => {
+    const iconStyle = "w-5 h-5";
+    switch (type) {
+        case 'missed_call':
+            return <FaPhoneSlash className={`${iconStyle} text-yellow-600`} />;
+        case 'stale_lead':
+            return <FaExclamationTriangle className={`${iconStyle} text-red-600`} />;
+        case 'deal_won':
+            return <FaMoneyBillWave className={`${iconStyle} text-green-600`} />;
+        case 'new_lead':
+            return <FaUserClock className={`${iconStyle} text-blue-600`} />;
+        default:
+            return <FaRegCommentDots className={`${iconStyle} text-gray-500`} />;
+    }
+};
+
+const SalesDashboard = () => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showRequestDetails, setShowRequestDetails] = useState(false);
   const [pendingLeaves, setPendingLeaves] = useState([]);
   const [pendingCompOffs, setPendingCompOffs] = useState([]);
-  const [employeeCount, setEmployeeCount] = useState(0);
-
-  const dispatch = useDispatch();
-  const { employees, loading } = useSelector((state) => state.employees);
-  // const {
-  //   expensesRequests,
-  //   incomeRequests,
-  // } = useSelector((state) => state.requestDetails);
-
-  useEffect(() => {
-    // dispatch(fetchExpenseRequests());
-    // dispatch(fetchIncomeRequests());
-  }, [dispatch]);
+  const [profileUpdates, setProfileUpdates] = useState([]);
+  const [unassignedLeads, setUnassignedLeads] = useState(MOCK_UNASSIGNED_LEADS);
+  const [selectedSalesRep, setSelectedSalesRep] = useState({});
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
-
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-  };
-
+  
   const handleOpenRequestsClick = () => {
-    setShowRequestDetails((prevShowRequestDetails) => !prevShowRequestDetails); // Toggle Request Details
-
-    setShowCharts(false); // Ensure Charts are hidden
+    setShowRequestDetails(prev => !prev);
   };
 
+  // --- Start of logic from old dashboard ---
   const publicRuntimeConfig = getConfig().publicRuntimeConfig;
 
   const fetchProfileUpdates = useCallback(async () => {
-    try {
-      const token = getItemFromSessionStorage("token", null);
-      const employeeId = sessionStorage.getItem("employeeId");
-      const headers = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      };
-      const response = await fetch(
-        `${publicRuntimeConfig.apiURL}/manager/${employeeId}/members/update-requests`,
-        { headers }
-      );
-      if (!response.ok) {
-        throw new Error(
-          `HTTP error! status: ${response.status} ${response.statusText}`
-        );
-      }
-      const data = await response.json();
-      setProfileUpdates(data);
-    } catch (error) {
-      toast.error("Error fetching profile updates:", error);
-      setProfileUpdates([]);
-    }
-  }, [publicRuntimeConfig.apiURL]);
-
+    // Mocking this for now as it's not the core sales focus
+    setProfileUpdates([]);
+  }, []);
+  
   const fetchPendingRequests = useCallback(async () => {
-    try {
-      const token = getItemFromSessionStorage("token", null);
-      const employeeId = sessionStorage.getItem("employeeId");
-      const response = await axios.get(
-        `${publicRuntimeConfig.apiURL}/manager/leave/status/Pending/${employeeId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.data && Array.isArray(response.data.leaves)) {
-        const regularLeaves = response.data.leaves.filter(
-          (leave) => leave.leaveName !== "Comp-Off"
-        );
-        const compOffLeaves = response.data.leaves.filter(
-          (leave) => leave.leaveName === "Comp-Off"
-        );
-
-        setPendingLeaves(regularLeaves);
-        setPendingCompOffs(compOffLeaves);
-      } else {
-        setPendingLeaves([]);
-        setPendingCompOffs([]);
-      }
-    } catch (error) {
-      setPendingLeaves([]);
-      setPendingCompOffs([]);
-    }
-  }, [publicRuntimeConfig.apiURL]);
+    // Mocking this for now
+    setPendingLeaves([]);
+    setPendingCompOffs([]);
+  }, []);
 
   useEffect(() => {
     fetchPendingRequests();
     fetchProfileUpdates();
   }, [fetchPendingRequests, fetchProfileUpdates]);
-
-  const data = [
-    { name: "Mon", present: 80, absent: 10, leave: 5 },
-
-    { name: "Tue", present: 85, absent: 8, leave: 4 },
-
-    { name: "Wed", present: 82, absent: 12, leave: 3 },
-
-    { name: "Thu", present: 84, absent: 9, leave: 5 },
-
-    { name: "Fri", present: 78, absent: 15, leave: 6 },
-  ];
-
-  const departmentData = [
-    { name: "Engineering", value: 25 },
-
-    { name: "Sales", value: 18 },
-
-    { name: "Marketing", value: 12 },
-
-    { name: "HR", value: 8 },
-
-    { name: "Finance", value: 10 },
-
-    { name: "Product", value: 15 },
-  ];
-
-  useEffect(() => {
-    const fetchEmployeeCount = async () => {
-      try {
-        const token = getItemFromSessionStorage("token", null); // Retrieve the token from sessionStorage
-        const employeeId = sessionStorage.getItem("employeeId");
-        if (!token) {
-          throw new Error("Authentication token is missing");
-        }
-
-        const response = await axios.get(
-          `${publicRuntimeConfig.apiURL}/employees/manager/${employeeId}`, // Replace with your actual API endpoint
-          {
-            headers: {
-              Authorization: `Bearer ${token}`, // Include the token in the Authorization header
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.data && Array.isArray(response.data)) {
-          setEmployeeCount(response.data.length); // Set the total number of employees
-        } else {
-          setEmployeeCount(0);
-        }
-      } catch (error) {
-        toast.error("Error fetching employee count:", error);
-        setEmployeeCount(0);
-      }
-    };
-
-    fetchEmployeeCount();
-  }, [publicRuntimeConfig.apiURL]);
-
-  const overviewData = [
-    {
-      icon: <FaUser className="h-6 w-6 text-blue-500" />,
-      label: "Team Members",
-      count: employeeCount,
-    },
-
-    {
-      icon: <FaCalendar className="h-6 w-6 text-green-500" />,
-      label: "Open Requests",
-      count:
-        pendingLeaves.length + pendingCompOffs.length + profileUpdates.length,
-    },
-  ];
-
+  
   const refreshRequests = useCallback(async () => {
     await fetchPendingRequests();
     await fetchProfileUpdates();
   }, [fetchPendingRequests, fetchProfileUpdates]);
+  // --- End of logic from old dashboard ---
+
+  const handleAssignLead = (leadId) => {
+    const repName = selectedSalesRep[leadId];
+    if (!repName) {
+        toast.error("Please select a Sales Rep to assign.");
+        return;
+    }
+    setUnassignedLeads(prev => prev.filter(lead => lead.id !== leadId));
+    toast.success(`Lead ${leadId} assigned to ${repName}.`);
+    // In a real app, an API call would be made here.
+  };
+
+  // These would be calculated from your actual leads data
+  const totalLeads = 65;
+  const newLeadsThisMonth = 22;
+  const conversionRate = "18%";
+  const totalRevenue = 485000;
+  const openRequestsCount = pendingLeaves.length + pendingCompOffs.length + profileUpdates.length;
+
+  if (showRequestDetails) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">Administrative Requests</h2>
+                    <button onClick={() => setShowRequestDetails(false)} className="text-gray-400 hover:text-gray-600">
+                        <FaTimes />
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto">
+                    <RequestDetails refreshRequests={refreshRequests} />
+                </div>
+                 <div className="bg-gray-50 px-6 py-3 flex justify-end items-center rounded-b-lg">
+                    <button onClick={() => setShowRequestDetails(false)} className="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
-      {/* Sidebar */}
-
+    <div className="min-h-screen flex bg-gray-50">
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         toggleSidebar={toggleSidebar}
-        currentRole={"manager"}
       />
-
-      {/* Main Content */}
 
       <div
         className={`flex-1 ${
           isSidebarCollapsed ? "ml-16" : "ml-56"
         } transition-all duration-300`}
       >
-        {/* Navbar */}
-
         <HradminNavbar />
 
-        {/* Page Content */}
-
-        <div className="pt-24 px-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800 text-left">
-              Manager Dashboard
-            </h1>
-          </div>
-
-          {/* Overview Cards */}
-
-          <div className="flex justify-center">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-6">
-              {overviewData
-
-                .filter((item) => item.label !== "Payroll Status")
-
-                .map((item, index) =>
-                  item.label === "Team Members" ? (
-                    <div
-                      key={index}
-                      className="p-8 bg-white shadow-lg rounded-xl flex flex-col justify-between items-start hover:shadow-2xl hover:scale-105 transform transition-all duration-300 cursor-pointer border border-gray-100"
-                      style={{ height: "250px", width: "350px" }}
-                      onClick={() => (window.location.href = "/manager/team")}
-                    >
-                      <div className="flex justify-between items-center w-full mb-8">
-                        <p className="text-xl font-semibold text-gray-800">
-                          {item.label}
-                        </p>
-                        <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-full">
-                          <FaUsers className="text-blue-600 text-2xl" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-5xl font-bold text-gray-900">
-                          {item.count}
-                        </p>
-                        <div className="flex items-center text-gray-600">
-                          <p className="text-sm">People in your department</p>
-                          <div className="ml-2 px-2 py-1 bg-blue-50 rounded-full">
-                            <span className="text-xs text-blue-600 font-medium">
-                              Active
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : item.label === "Open Requests" ? (
-                    <div
-                      key={index}
-                      className="p-8 bg-white shadow-lg rounded-xl flex flex-col justify-between items-start hover:shadow-2xl hover:scale-105 transform transition-all duration-300 cursor-pointer border border-gray-100"
-                      style={{ height: "250px", width: "350px" }}
-                      onClick={handleOpenRequestsClick}
-                    >
-                      <div className="flex justify-between items-center w-full mb-8">
-                        <p className="text-xl font-semibold text-gray-800">
-                          {item.label}
-                        </p>
-                        <div className="p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-full">
-                          <FaCalendar className="text-green-600 text-2xl" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-5xl font-bold text-gray-900">
-                          {item.count}
-                        </p>
-                        <div className="flex items-center text-gray-600">
-                          <p className="text-sm">Pending requests</p>
-                          <div className="ml-2 px-2 py-1 bg-green-50 rounded-full">
-                            <span className="text-xs text-green-600 font-medium">
-                              Last 7 days
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      key={index}
-                      className="p-6 bg-white shadow-md rounded-lg flex flex-col justify-between items-center hover:shadow-xl hover:scale-105 transition-transform duration-300"
-                      style={{ height: "250px", width: "400px" }}
-                    >
-                      <div className="flex flex-col justify-center items-center">
-                        <p className="text-gray-600 text-lg">{item.label}</p>
-
-                        <p className="text-3xl font-bold text-gray-800">
-                          {item.count}
-                        </p>
-                      </div>
-
-                      <div
-                        className="p-4 rounded-full shadow-lg"
-                        style={{
-                          backgroundColor: item.icon.props.className.includes(
-                            "text-blue-500"
-                          )
-                            ? "#0088FE33"
-                            : item.icon.props.className.includes(
-                                "text-green-500"
-                              )
-                            ? "#00C49F33"
-                            : item.icon.props.className.includes(
-                                "text-yellow-500"
-                              )
-                            ? "#FFBB2833"
-                            : "#A28BFE33",
-                        }}
-                      >
-                        <div className="text-4xl">{item.icon}</div>
-                      </div>
-                    </div>
-                  )
-                )}
+        <div className="p-6">
+            <header className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold text-gray-800">Sales Dashboard</h1>
+                <div className="flex gap-4">
+                    <Link href="/SalesManager/Manager" className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2">
+                        <FaExternalLinkAlt /> View All Leads
+                    </Link>
+                    <Link href="/SalesManager/Manager" className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
+                        <FaPlus /> Add New Lead
+                    </Link>
+                </div>
+            </header>
+            
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <SalesKPI icon={<FaUsers size={24}/>} label="Total Leads in Pipeline" value={totalLeads} />
+                <SalesKPI icon={<FaChartLine size={24}/>} label="New Leads This Month" value={newLeadsThisMonth} />
+                <SalesKPI icon={<FaMoneyBillWave size={24}/>} label="Total Revenue Won" value={totalRevenue} currency={true} />
+                <SalesKPI icon={<FaBell size={24}/>} label="Open Admin Requests" value={openRequestsCount} onClick={handleOpenRequestsClick} />
             </div>
-          </div>
 
-          {showCharts && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white p-6 shadow-md rounded-lg hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)] transition-shadow duration-300">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                  Weekly Attendance
-                </h2>
+            {/* Main Content Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Column */}
+                <div className="space-y-8">
+                    {/* Pipeline Stages Chart */}
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 className="font-bold text-lg text-gray-800 mb-4">Pipeline Stages</h3>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={MOCK_LEADS_DATA} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="status" tick={{fontSize: 12}} />
+                                <YAxis allowDecimals={false} />
+                                <Tooltip cursor={{fill: 'rgba(239, 246, 255, 0.5)'}} />
+                                <Bar dataKey="count" fill="#3B82F6" name="Leads" barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
 
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data}>
-                    <XAxis
-                      dataKey="name"
-                      stroke="#6b7280"
-                      tick={{
-                        fontSize: 14,
-                        fill: "#374151",
-                        fontWeight: "bold",
-                      }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-
-                    <YAxis
-                      stroke="#d1d5db"
-                      tick={{
-                        fontSize: 14,
-                        fill: "#374151",
-                        fontWeight: "bold",
-                      }}
-                      tickFormatter={(value) => `${value}%`}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      horizontal={true}
-                      vertical={false}
-                    />
-
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#ffffff",
-
-                        border: "1px solid #e5e7eb",
-
-                        borderRadius: "8px",
-
-                        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-
-                        width: "200px",
-
-                        padding: "10px",
-                      }}
-                      labelStyle={{
-                        color: "#000000",
-
-                        fontSize: "14px",
-
-                        fontWeight: "bold",
-
-                        marginBottom: "8px",
-                      }}
-                      itemStyle={{
-                        color: "#374151",
-
-                        fontSize: "12px",
-
-                        display: "flex",
-
-                        alignItems: "center",
-
-                        gap: "8px",
-                      }}
-                      formatter={(value, name) => {
-                        if (value !== undefined) {
-                          return [
-                            <span className="flex items-center gap-2">
-                              <span
-                                className="w-3 h-3 rounded-full"
-                                style={{
-                                  backgroundColor:
-                                    name === "present"
-                                      ? "rgb(74, 222, 128)"
-                                      : name === "absent"
-                                      ? "rgb(248, 113, 113)"
-                                      : "#FFBB28",
-                                }}
-                              ></span>
-
-                              <span className="text-gray-600">
-                                {name.charAt(0).toUpperCase() + name.slice(1)}
-                              </span>
-                            </span>,
-
-                            <span className="font-bold">{value}%</span>,
-                          ];
-                        }
-
-                        return null;
-                      }}
-                    />
-
-                    <Bar
-                      dataKey="present"
-                      fill="rgb(74, 222, 128)"
-                      barSize={40}
-                      radius={[4, 4, 0, 0]}
-                    />
-
-                    <Bar
-                      dataKey="absent"
-                      fill="rgb(248, 113, 113)"
-                      barSize={40}
-                      radius={[4, 4, 0, 0]}
-                    />
-
-                    <Bar
-                      dataKey="leave"
-                      fill="#FFBB28"
-                      barSize={40}
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="bg-white p-6 shadow-md rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                  Department Distribution
-                </h2>
-
-                <ResponsiveContainer width="100%" height={350}>
-                  <PieChart>
-                    <Pie
-                      data={departmentData}
-                      cx="35%"
-                      cy="50%"
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                      // onMouseEnter={(data, index) => setActiveIndex(index)}
-
-                      onMouseLeave={() => setActiveIndex(null)}
-                    >
-                      {departmentData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                          stroke="none"
-                        />
-                      ))}
-                    </Pie>
-
-                    <Legend
-                      layout="vertical"
-                      align="right"
-                      verticalAlign="middle"
-                      wrapperStyle={{ paddingLeft: "20px" }}
-                      content={() => (
-                        <div>
-                          {departmentData.map((entry, index) => (
-                            <div key={index} className="flex items-center mb-3">
-                              <span
-                                className="w-3 h-3 rounded-full mr-2"
-                                style={{
-                                  backgroundColor:
-                                    COLORS[index % COLORS.length],
-                                }}
-                              ></span>
-                            </div>
-                          ))}
+                    {/* Unassigned Leads */}
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 className="font-bold text-lg text-gray-800 mb-4">Unassigned Leads</h3>
+                        <div className="space-y-4">
+                            {unassignedLeads.length > 0 ? unassignedLeads.map((lead) => (
+                                <div key={lead.id} className="flex flex-wrap items-center justify-between gap-4 p-3 bg-gray-50 rounded-md border">
+                                    <div>
+                                        <p className="font-semibold text-gray-800">{lead.name}</p>
+                                        <p className="text-sm text-gray-500">{lead.projectType}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            onChange={(e) => setSelectedSalesRep(prev => ({...prev, [lead.id]: e.target.value}))}
+                                            className="p-2 border border-gray-300 rounded-md shadow-sm text-sm"
+                                        >
+                                            <option value="">Assign to...</option>
+                                            {salesPersons.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                                        </select>
+                                        <button 
+                                            onClick={() => handleAssignLead(lead.id)}
+                                            className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+                                        >
+                                            Assign
+                                        </button>
+                                    </div>
+                                </div>
+                            )) : (
+                                <p className="text-gray-500 text-center py-4">No unassigned leads.</p>
+                            )}
                         </div>
-                      )}
-                    />
+                    </div>
+                </div>
 
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+                {/* Right Column */}
+                <div className="space-y-8">
+                     {/* Recent Activity */}
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 className="font-bold text-lg text-gray-800 mb-4">Recent Activity / Alerts</h3>
+                        <div className="space-y-4">
+                            {MOCK_ACTIVITIES.map((activity, index) => (
+                                <div key={index} className="flex items-start gap-3">
+                                    <div className="bg-gray-100 p-2.5 rounded-full mt-1">
+                                        <ActivityIcon type={activity.type} />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-700">{activity.text}</p>
+                                        <p className="text-xs text-gray-400">{activity.time}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    {/* Team Leaderboard */}
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 className="font-bold text-lg text-gray-800 mb-4">Team Leaderboard</h3>
+                        <div className="space-y-4">
+                            {MOCK_TEAM_PERFORMANCE.map((member, index) => (
+                                <div key={member.name} className="flex items-center gap-4">
+                                    <div className="text-gray-400 font-bold w-6">{index + 1}</div>
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-gray-800">{member.name}</p>
+                                        <p className="text-sm text-gray-500">{member.converted} deals converted</p>
+                                    </div>
+                                    <div className="font-bold text-green-600">₹{member.revenue.toLocaleString()}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
-          )}
-
-          {showRequestDetails && (
-            <RequestDetails
-              activeTab={activeTab}
-              onTabChange={handleTabChange}
-              onActionComplete={refreshRequests}
-            />
-          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default withAuth(Overview);
+export default withAuth(SalesDashboard, ["MANAGER", "SALESMANAGER"]);

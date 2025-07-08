@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, Search, Filter, FileText, Edit, Trash2 } from "lucide-react";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Filter,
+  FileText,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   applyLeave,
@@ -22,85 +31,85 @@ import MainLayout from "@/components/MainLayout";
 const sampleLeaves = [
   {
     id: 1,
-    employeeId: 'EMP001',
-    startDate: '2025-01-02', // Today's date or close to today
-    endDate: '2025-01-02',
-    leaveName: 'Medical Leave',
-    reason: 'Doctor appointment in afternoon',
-    status: 'Approved',
-    shiftType: 'SECOND_HALF',
-    approver: 'Sarah Manager'
+    employeeId: "EMP001",
+    startDate: "2025-01-02", // Today's date or close to today
+    endDate: "2025-01-02",
+    leaveName: "Medical Leave",
+    reason: "Doctor appointment in afternoon",
+    status: "Approved",
+    shiftType: "SECOND_HALF",
+    approver: "Sarah Manager",
   },
   {
     id: 2,
-    employeeId: 'EMP001',
-    startDate: '2025-01-10',
-    endDate: '2025-01-10',
-    leaveName: 'Sick Leave',
-    reason: 'Medical appointment',
-    status: 'Approved',
-    shiftType: 'FIRST_HALF',
-    approver: 'John Manager'
+    employeeId: "EMP001",
+    startDate: "2025-01-10",
+    endDate: "2025-01-10",
+    leaveName: "Sick Leave",
+    reason: "Medical appointment",
+    status: "Approved",
+    shiftType: "FIRST_HALF",
+    approver: "John Manager",
   },
   {
     id: 3,
-    employeeId: 'EMP001',
-    startDate: '2025-01-20',
-    endDate: '2025-01-22',
-    leaveName: 'Annual Leave',
-    reason: 'Family vacation',
-    status: 'Pending',
-    shiftType: 'FULL_DAY',
-    approver: 'John Manager'
+    employeeId: "EMP001",
+    startDate: "2025-01-20",
+    endDate: "2025-01-22",
+    leaveName: "Annual Leave",
+    reason: "Family vacation",
+    status: "Pending",
+    shiftType: "FULL_DAY",
+    approver: "John Manager",
   },
   {
     id: 4,
-    employeeId: 'EMP001',
-    startDate: '2025-01-08',
-    endDate: '2025-01-08',
-    leaveName: 'Casual Leave',
-    reason: 'Personal work',
-    status: 'Approved',
-    shiftType: 'SECOND_HALF',
-    approver: 'John Manager'
-  }
+    employeeId: "EMP001",
+    startDate: "2025-01-08",
+    endDate: "2025-01-08",
+    leaveName: "Casual Leave",
+    reason: "Personal work",
+    status: "Approved",
+    shiftType: "SECOND_HALF",
+    approver: "John Manager",
+  },
 ];
 
 // Mock attendance data for half-day scenarios
 const sampleAttendance = [
   {
-    date: '2025-01-02', // Half-day demo date
-    checkIn: '09:00 AM',
-    checkOut: '01:00 PM',
-    status: 'PRESENT_HALF',
+    date: "2025-01-02", // Half-day demo date
+    checkIn: "09:00 AM",
+    checkOut: "01:00 PM",
+    status: "PRESENT_HALF",
     hoursWorked: 4,
-    shiftType: 'FIRST_HALF' // Present in first half, leave in second half
+    shiftType: "FIRST_HALF", // Present in first half, leave in second half
   },
   {
-    date: '2025-01-10',
-    checkIn: '01:00 PM',
-    checkOut: '06:00 PM',
-    status: 'PRESENT_HALF',
+    date: "2025-01-10",
+    checkIn: "01:00 PM",
+    checkOut: "06:00 PM",
+    status: "PRESENT_HALF",
     hoursWorked: 5,
-    shiftType: 'SECOND_HALF' // Present in second half, leave in first half
+    shiftType: "SECOND_HALF", // Present in second half, leave in first half
   },
   {
-    date: '2025-01-08',
-    checkIn: '09:00 AM',
-    checkOut: '01:00 PM',
-    status: 'PRESENT_HALF',
+    date: "2025-01-08",
+    checkIn: "09:00 AM",
+    checkOut: "01:00 PM",
+    status: "PRESENT_HALF",
     hoursWorked: 4,
-    shiftType: 'FIRST_HALF' // Present in first half, leave in second half
-  }
+    shiftType: "FIRST_HALF", // Present in first half, leave in second half
+  },
 ];
 
 // Mock holidays
 const sampleHolidays = [
   {
-    date: '2025-01-26',
-    holidayName: 'Republic Day',
-    description: 'National Holiday'
-  }
+    date: "2025-01-26",
+    holidayName: "Republic Day",
+    description: "National Holiday",
+  },
 ];
 
 // Helper function to format numbers: show two decimals only if not whole
@@ -151,9 +160,9 @@ const Leaves = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedLeave, setSelectedLeave] = useState(null);
-  const [viewMode, setViewMode] = useState('month'); // month, week
-  const [filterStatus, setFilterStatus] = useState('all'); // all, approved, pending, rejected
-  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState("month"); // month, week
+  const [filterStatus, setFilterStatus] = useState("all"); // all, approved, pending, rejected
+  const [searchTerm, setSearchTerm] = useState("");
 
   const calendarRef = useRef(null);
   const [showLOPWarning, setShowLOPWarning] = useState(false);
@@ -186,93 +195,103 @@ const Leaves = () => {
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
+
     const days = [];
     const current = new Date(startDate);
-    
-    for (let i = 0; i < 42; i++) { // 6 weeks * 7 days
+
+    for (let i = 0; i < 42; i++) {
+      // 6 weeks * 7 days
       days.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
-    
+
     return days;
   };
 
   // Helper function to get leave status for a specific date
   const getLeaveStatusForDate = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    
+    const dateStr = date.toISOString().split("T")[0];
+
     // Check if it's a holiday
-    const holiday = sampleHolidays.find(h => h.date === dateStr);
+    const holiday = sampleHolidays.find((h) => h.date === dateStr);
     if (holiday) {
-      return { type: 'holiday', data: holiday };
+      return { type: "holiday", data: holiday };
     }
-    
+
     // Check if there's a leave on this date
-    const leave = sampleLeaves.find(leave => {
+    const leave = sampleLeaves.find((leave) => {
       const startDate = new Date(leave.startDate);
       const endDate = new Date(leave.endDate);
       return date >= startDate && date <= endDate;
     });
-    
+
     // Check if there's attendance on this date
-    const attendance = sampleAttendance.find(att => att.date === dateStr);
-    
+    const attendance = sampleAttendance.find((att) => att.date === dateStr);
+
     // If both leave and attendance exist (half-day scenario)
     if (leave && attendance) {
-      return { 
-        type: 'half_day', 
-        data: { 
-          leave: leave, 
-          attendance: attendance 
-        } 
+      return {
+        type: "half_day",
+        data: {
+          leave: leave,
+          attendance: attendance,
+        },
       };
     }
-    
+
     // If only leave exists
     if (leave) {
-      return { type: 'leave', data: leave };
+      return { type: "leave", data: leave };
     }
-    
+
     // If only attendance exists (could be marked for other purposes)
-    if (attendance && attendance.status === 'PRESENT_HALF') {
-      return { type: 'attendance', data: attendance };
+    if (attendance && attendance.status === "PRESENT_HALF") {
+      return { type: "attendance", data: attendance };
     }
-    
+
     return null;
   };
 
   // Helper function to get status color
   const getStatusColor = (type, status) => {
-    if (type === 'holiday') return 'bg-orange-100 border-orange-300';
-    if (type === 'half_day') return 'bg-gradient-to-r from-green-100 to-yellow-100 border-green-300';
-    if (type === 'attendance') return 'bg-green-100 border-green-300';
-    
+    if (type === "holiday") return "bg-orange-100 border-orange-300";
+    if (type === "half_day")
+      return "bg-gradient-to-r from-green-100 to-yellow-100 border-green-300";
+    if (type === "attendance") return "bg-green-100 border-green-300";
+
     switch (status) {
-      case 'Approved': return 'bg-green-100 border-green-300';
-      case 'Pending': return 'bg-yellow-100 border-yellow-300';
-      case 'Rejected': return 'bg-red-100 border-red-300';
-      default: return 'bg-gray-100 border-gray-300';
+      case "Approved":
+        return "bg-green-100 border-green-300";
+      case "Pending":
+        return "bg-yellow-100 border-yellow-300";
+      case "Rejected":
+        return "bg-red-100 border-red-300";
+      default:
+        return "bg-gray-100 border-gray-300";
     }
   };
 
   // Helper function to get status icon
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'Approved': return '✔️';
-      case 'Pending': return '⏳';
-      case 'Rejected': return '❌';
-      default: return '📝';
+      case "Approved":
+        return "✔️";
+      case "Pending":
+        return "⏳";
+      case "Rejected":
+        return "❌";
+      default:
+        return "📝";
     }
   };
 
   // Helper function to get icon for different types
   const getTypeIcon = (type, data) => {
-    if (type === 'holiday') return '🏖️';
-    if (type === 'half_day') return '🌓'; // Half moon for half-day
-    if (type === 'attendance') return '✔️';
-    if (type === 'leave') return getStatusIcon(data.status);
-    return '📝';
+    if (type === "holiday") return "🏖️";
+    if (type === "half_day") return "🌓"; // Half moon for half-day
+    if (type === "attendance") return "✔️";
+    if (type === "leave") return getStatusIcon(data.status);
+    return "📝";
   };
 
   // Navigation functions
@@ -470,8 +489,18 @@ const Leaves = () => {
   };
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -499,19 +528,27 @@ const Leaves = () => {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               {/* View Mode Toggle */}
               <div className="flex border rounded-md overflow-hidden">
                 <button
-                  onClick={() => setViewMode('month')}
-                  className={`px-2 py-1 text-xs ${viewMode === 'month' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
+                  onClick={() => setViewMode("month")}
+                  className={`px-2 py-1 text-xs ${
+                    viewMode === "month"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700"
+                  }`}
                 >
                   Month
                 </button>
                 <button
-                  onClick={() => setViewMode('week')}
-                  className={`px-2 py-1 text-xs ${viewMode === 'week' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
+                  onClick={() => setViewMode("week")}
+                  className={`px-2 py-1 text-xs ${
+                    viewMode === "week"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700"
+                  }`}
                 >
                   Week
                 </button>
@@ -579,8 +616,11 @@ const Leaves = () => {
           <div className="border rounded-lg overflow-hidden">
             {/* Day Headers */}
             <div className="grid grid-cols-7 bg-gray-50">
-              {dayNames.map(day => (
-                <div key={day} className="p-2 text-center font-medium text-gray-700 text-xs border-r last:border-r-0">
+              {dayNames.map((day) => (
+                <div
+                  key={day}
+                  className="p-2 text-center font-medium text-gray-700 text-xs border-r last:border-r-0"
+                >
                   {day}
                 </div>
               ))}
@@ -589,42 +629,73 @@ const Leaves = () => {
             {/* Calendar Days - Much smaller cells */}
             <div className="grid grid-cols-7">
               {getCalendarData().map((date, index) => {
-                const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-                const isToday = date.toDateString() === new Date().toDateString();
-                const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                const isCurrentMonth =
+                  date.getMonth() === currentDate.getMonth();
+                const isToday =
+                  date.toDateString() === new Date().toDateString();
+                const isSelected =
+                  selectedDate &&
+                  date.toDateString() === selectedDate.toDateString();
                 const status = getLeaveStatusForDate(date);
-                
+
                 return (
                   <div
                     key={index}
                     onClick={() => handleDateSelect(date)}
-                    title={status ? 
-                      status.type === 'holiday' ? `Holiday: ${status.data.holidayName}` :
-                      status.type === 'half_day' ? `Half-Day: Present (${status.data.attendance.shiftType === 'FIRST_HALF' ? 'AM' : 'PM'}), Leave (${status.data.leave.shiftType === 'FIRST_HALF' ? 'AM' : 'PM'})` :
-                      status.type === 'leave' ? `${status.data.leaveName}: ${status.data.status}` :
-                      status.type === 'attendance' ? `Present (${status.data.shiftType === 'FIRST_HALF' ? 'AM' : 'PM'})` :
-                      ''
-                      : ''
+                    title={
+                      status
+                        ? status.type === "holiday"
+                          ? `Holiday: ${status.data.holidayName}`
+                          : status.type === "half_day"
+                          ? `Half-Day: Present (${
+                              status.data.attendance.shiftType === "FIRST_HALF"
+                                ? "AM"
+                                : "PM"
+                            }), Leave (${
+                              status.data.leave.shiftType === "FIRST_HALF"
+                                ? "AM"
+                                : "PM"
+                            })`
+                          : status.type === "leave"
+                          ? `${status.data.leaveName}: ${status.data.status}`
+                          : status.type === "attendance"
+                          ? `Present (${
+                              status.data.shiftType === "FIRST_HALF"
+                                ? "AM"
+                                : "PM"
+                            })`
+                          : ""
+                        : ""
                     }
                     className={`
                       p-1 h-12 border-r border-b last:border-r-0 cursor-pointer transition-all relative
-                      ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white text-gray-900'}
-                      ${isToday ? 'bg-blue-50 ring-1 ring-blue-200' : ''}
-                      ${isSelected ? 'bg-blue-100 ring-1 ring-blue-300' : ''}
+                      ${
+                        !isCurrentMonth
+                          ? "bg-gray-50 text-gray-400"
+                          : "bg-white text-gray-900"
+                      }
+                      ${isToday ? "bg-blue-50 ring-1 ring-blue-200" : ""}
+                      ${isSelected ? "bg-blue-100 ring-1 ring-blue-300" : ""}
                       hover:bg-gray-50
                     `}
                   >
                     <div className="flex justify-between items-start h-full">
-                      <span className={`text-xs font-medium ${isToday ? 'text-blue-600' : ''}`}>
+                      <span
+                        className={`text-xs font-medium ${
+                          isToday ? "text-blue-600" : ""
+                        }`}
+                      >
                         {date.getDate()}
                       </span>
-                      
+
                       {status && (
-                        <div className={`
+                        <div
+                          className={`
                           w-4 h-4 rounded-full flex items-center justify-center text-xs
                           ${getStatusColor(status.type, status.data.status)}
                           border
-                        `}>
+                        `}
+                        >
                           {getTypeIcon(status.type, status.data)}
                         </div>
                       )}
@@ -635,114 +706,164 @@ const Leaves = () => {
             </div>
           </div>
 
-                     {/* Legend - More compact */}
-           <div className="mt-3 p-2 bg-gray-50 rounded-lg">
-             <div className="flex justify-center space-x-4 text-xs">
-               <div className="flex items-center space-x-1">
-                 <span className="w-4 h-4 bg-green-100 border border-green-300 rounded-full flex items-center justify-center text-xs">✔️</span>
-                 <span>Approved</span>
-               </div>
-               <div className="flex items-center space-x-1">
-                 <span className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded-full flex items-center justify-center text-xs">⏳</span>
-                 <span>Pending</span>
-               </div>
-               <div className="flex items-center space-x-1">
-                 <span className="w-4 h-4 bg-red-100 border border-red-300 rounded-full flex items-center justify-center text-xs">❌</span>
-                 <span>Rejected</span>
-               </div>
-               <div className="flex items-center space-x-1">
-                 <span className="w-4 h-4 bg-gradient-to-r from-green-100 to-yellow-100 border border-green-300 rounded-full flex items-center justify-center text-xs">🌓</span>
-                 <span>Half-Day</span>
-               </div>
-               <div className="flex items-center space-x-1">
-                 <span className="w-4 h-4 bg-orange-100 border border-orange-300 rounded-full flex items-center justify-center text-xs">🏖️</span>
-                 <span>Holiday</span>
-               </div>
-             </div>
-           </div>
+          {/* Legend - More compact */}
+          <div className="mt-3 p-2 bg-gray-50 rounded-lg">
+            <div className="flex justify-center space-x-4 text-xs">
+              <div className="flex items-center space-x-1">
+                <span className="w-4 h-4 bg-green-100 border border-green-300 rounded-full flex items-center justify-center text-xs">
+                  ✔️
+                </span>
+                <span>Approved</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded-full flex items-center justify-center text-xs">
+                  ⏳
+                </span>
+                <span>Pending</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="w-4 h-4 bg-red-100 border border-red-300 rounded-full flex items-center justify-center text-xs">
+                  ❌
+                </span>
+                <span>Rejected</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="w-4 h-4 bg-gradient-to-r from-green-100 to-yellow-100 border border-green-300 rounded-full flex items-center justify-center text-xs">
+                  🌓
+                </span>
+                <span>Half-Day</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="w-4 h-4 bg-orange-100 border border-orange-300 rounded-full flex items-center justify-center text-xs">
+                  🏖️
+                </span>
+                <span>Holiday</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Selected Date Details - Only show when date is selected */}
         {selectedDate && (
           <div className="bg-white rounded-lg shadow-sm border p-4">
             <h2 className="text-lg font-semibold mb-3">
-              Selected Date: {selectedDate.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              Selected Date:{" "}
+              {selectedDate.toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}
             </h2>
-            
+
             {selectedLeave ? (
               <div className="space-y-3">
-                {selectedLeave.type === 'holiday' ? (
+                {selectedLeave.type === "holiday" ? (
                   <div className="flex items-start space-x-3">
                     <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
                       🏖️
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">{selectedLeave.data.holidayName}</h3>
-                      <p className="text-gray-600 text-sm">{selectedLeave.data.description}</p>
+                      <h3 className="font-semibold">
+                        {selectedLeave.data.holidayName}
+                      </h3>
+                      <p className="text-gray-600 text-sm">
+                        {selectedLeave.data.description}
+                      </p>
                       <span className="inline-block mt-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">
                         Public Holiday
                       </span>
                     </div>
                   </div>
-                ) : selectedLeave.type === 'half_day' ? (
+                ) : selectedLeave.type === "half_day" ? (
                   <div className="space-y-4">
                     <div className="border-l-4 border-blue-500 pl-4">
-                      <h3 className="font-semibold text-lg mb-3">Attendance Status:</h3>
-                      
+                      <h3 className="font-semibold text-lg mb-3">
+                        Attendance Status:
+                      </h3>
+
                       <div className="space-y-3 text-sm">
                         <div className="flex items-start">
-                          <span className="text-gray-700 font-medium mr-2">•</span>
+                          <span className="text-gray-700 font-medium mr-2">
+                            •
+                          </span>
                           <div>
-                            <span className="font-medium text-green-700">Present: {selectedLeave.data.attendance.shiftType === 'FIRST_HALF' ? 'First Half' : 'Second Half'}</span>
+                            <span className="font-medium text-green-700">
+                              Present:{" "}
+                              {selectedLeave.data.attendance.shiftType ===
+                              "FIRST_HALF"
+                                ? "First Half"
+                                : "Second Half"}
+                            </span>
                             <span className="text-gray-600 ml-2">
-                              (Check-in: {selectedLeave.data.attendance.checkIn}, Check-out: {selectedLeave.data.attendance.checkOut})
+                              (Check-in: {selectedLeave.data.attendance.checkIn}
+                              , Check-out:{" "}
+                              {selectedLeave.data.attendance.checkOut})
                             </span>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-start">
-                          <span className="text-gray-700 font-medium mr-2">•</span>
+                          <span className="text-gray-700 font-medium mr-2">
+                            •
+                          </span>
                           <div>
-                            <span className="font-medium text-orange-700">On Leave: {selectedLeave.data.leave.shiftType === 'FIRST_HALF' ? 'First Half' : 'Second Half'}</span>
+                            <span className="font-medium text-orange-700">
+                              On Leave:{" "}
+                              {selectedLeave.data.leave.shiftType ===
+                              "FIRST_HALF"
+                                ? "First Half"
+                                : "Second Half"}
+                            </span>
                             <span className="text-gray-600 ml-2">
-                              (Type: {selectedLeave.data.leave.leaveName}, {selectedLeave.data.leave.status})
+                              (Type: {selectedLeave.data.leave.leaveName},{" "}
+                              {selectedLeave.data.leave.status})
                             </span>
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="mt-4 space-y-2 text-sm">
                         <div>
-                          <span className="text-gray-700 font-medium">• Total Hours Worked:</span>
-                          <span className="ml-2 text-gray-900">{selectedLeave.data.attendance.hoursWorked}h 0m</span>
+                          <span className="text-gray-700 font-medium">
+                            • Total Hours Worked:
+                          </span>
+                          <span className="ml-2 text-gray-900">
+                            {selectedLeave.data.attendance.hoursWorked}h 0m
+                          </span>
                         </div>
                         <div>
-                          <span className="text-gray-700 font-medium">• Leave Deducted:</span>
+                          <span className="text-gray-700 font-medium">
+                            • Leave Deducted:
+                          </span>
                           <span className="ml-2 text-gray-900">0.5 day</span>
                         </div>
                       </div>
-                      
+
                       {selectedLeave.data.leave.reason && (
                         <div className="mt-3 text-sm">
-                          <span className="text-gray-700 font-medium">• Reason:</span>
-                          <span className="ml-2 text-gray-900">{selectedLeave.data.leave.reason}</span>
+                          <span className="text-gray-700 font-medium">
+                            • Reason:
+                          </span>
+                          <span className="ml-2 text-gray-900">
+                            {selectedLeave.data.leave.reason}
+                          </span>
                         </div>
                       )}
-                      
+
                       {selectedLeave.data.leave.approver && (
                         <div className="mt-2 text-sm">
-                          <span className="text-gray-700 font-medium">• Approver:</span>
-                          <span className="ml-2 text-gray-900">{selectedLeave.data.leave.approver}</span>
+                          <span className="text-gray-700 font-medium">
+                            • Approver:
+                          </span>
+                          <span className="ml-2 text-gray-900">
+                            {selectedLeave.data.leave.approver}
+                          </span>
                         </div>
                       )}
                     </div>
-                    
-                    {selectedLeave.data.leave.status === 'Pending' && (
+
+                    {selectedLeave.data.leave.status === "Pending" && (
                       <div className="flex space-x-2 pt-3 border-t">
                         <button className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors">
                           <Edit className="w-3 h-3" />
@@ -757,37 +878,51 @@ const Leaves = () => {
                   </div>
                 ) : (
                   <div className="flex items-start space-x-3">
-                    <div className={`
+                    <div
+                      className={`
                       w-10 h-10 rounded-full flex items-center justify-center
-                      ${getStatusColor('leave', selectedLeave.data.status)}
-                    `}>
-                      {getTypeIcon('leave', selectedLeave.data)}
+                      ${getStatusColor("leave", selectedLeave.data.status)}
+                    `}
+                    >
+                      {getTypeIcon("leave", selectedLeave.data)}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <h3 className="font-semibold">
-                          Leave Type: {selectedLeave.data.leaveName || 'Leave'}
+                          Leave Type: {selectedLeave.data.leaveName || "Leave"}
                         </h3>
-                        <span className={`
+                        <span
+                          className={`
                           px-2 py-1 rounded-full text-xs font-medium
-                          ${selectedLeave.data.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                            selectedLeave.data.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'}
-                        `}>
+                          ${
+                            selectedLeave.data.status === "Approved"
+                              ? "bg-green-100 text-green-800"
+                              : selectedLeave.data.status === "Pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }
+                        `}
+                        >
                           {selectedLeave.data.status}
                         </span>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-3 text-sm mb-2">
                         <div>
                           <span className="text-gray-600">Shift:</span>
                           <span className="ml-1 font-medium">
                             {(() => {
                               switch (selectedLeave.data.shiftType) {
-                                case "FULL_DAY": return "Full Day";
-                                case "FIRST_HALF": return "First Half";
-                                case "SECOND_HALF": return "Second Half";
-                                default: return selectedLeave.data.shiftType || "Full Day";
+                                case "FULL_DAY":
+                                  return "Full Day";
+                                case "FIRST_HALF":
+                                  return "First Half";
+                                case "SECOND_HALF":
+                                  return "Second Half";
+                                default:
+                                  return (
+                                    selectedLeave.data.shiftType || "Full Day"
+                                  );
                               }
                             })()}
                           </span>
@@ -795,17 +930,21 @@ const Leaves = () => {
                         <div>
                           <span className="text-gray-600">Balance After:</span>
                           <span className="ml-1 font-medium">
-                            {formatNumber(leaveBalance?.totalAvailableBalance || 0)}
+                            {formatNumber(
+                              leaveBalance?.totalAvailableBalance || 0
+                            )}
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="text-sm">
                         <span className="text-gray-600">Reason:</span>
-                        <p className="mt-1">{selectedLeave.data.reason || 'No reason provided'}</p>
+                        <p className="mt-1">
+                          {selectedLeave.data.reason || "No reason provided"}
+                        </p>
                       </div>
-                      
-                      {selectedLeave.data.status === 'Pending' && (
+
+                      {selectedLeave.data.status === "Pending" && (
                         <div className="flex space-x-2 mt-3">
                           <button className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors">
                             <Edit className="w-3 h-3" />
@@ -821,10 +960,13 @@ const Leaves = () => {
                           </button>
                         </div>
                       )}
-                      
+
                       {selectedLeave.data.approver && (
                         <div className="mt-2 text-xs text-gray-600">
-                          Approver: <span className="font-medium">{selectedLeave.data.approver}</span>
+                          Approver:{" "}
+                          <span className="font-medium">
+                            {selectedLeave.data.approver}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -890,13 +1032,19 @@ const Leaves = () => {
                   {showLOPWarning && (
                     <div className="mt-2 text-red-500 text-sm flex items-center">
                       <span className="mr-1">⚠️</span>
-                      Warning: {requestedDays - leaveBalance.newLeaveBalance} day(s) will be marked as Loss of Pay (LOP)
+                      Warning: {requestedDays -
+                        leaveBalance.newLeaveBalance}{" "}
+                      day(s) will be marked as Loss of Pay (LOP)
                     </div>
                   )}
                   {leaveForm.dates.length > 0 && (
                     <div className="mt-2 text-sm text-gray-600">
-                      Requested: {requestedDays % 1 === 0 ? requestedDays : requestedDays.toFixed(1)} day(s) | 
-                      Available Balance: {formatNumber(leaveBalance?.newLeaveBalance || 0)} day(s)
+                      Requested:{" "}
+                      {requestedDays % 1 === 0
+                        ? requestedDays
+                        : requestedDays.toFixed(1)}{" "}
+                      day(s) | Available Balance:{" "}
+                      {formatNumber(leaveBalance?.newLeaveBalance || 0)} day(s)
                     </div>
                   )}
                 </div>
@@ -959,7 +1107,8 @@ const Leaves = () => {
                       setCompOffForm((prev) => ({
                         ...prev,
                         dates: dates.map((d) => ({
-                          date: d.date instanceof Date ? d.date : new Date(d.date),
+                          date:
+                            d.date instanceof Date ? d.date : new Date(d.date),
                           shiftType: d.shiftType,
                           timeSlot: d.timeSlot,
                         })),

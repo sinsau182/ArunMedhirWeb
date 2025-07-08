@@ -79,7 +79,7 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric'});
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
   }
 
   function CustomTooltip({ children, text }) {
@@ -123,7 +123,7 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
       <div className="flex items-center gap-2 mb-2 text-sm text-gray-700">
         <span className="flex items-center gap-1 font-semibold">
           <FaRupeeSign className="text-blue-500" />
-          {lead.expectedBudget ? Number(lead.expectedBudget).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '₹0'}
+          {lead.budget ? Number(lead.budget).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : '0'}
         </span>
         <span className="text-gray-300 text-lg mx-1">•</span>
         <span className="flex items-center gap-1">

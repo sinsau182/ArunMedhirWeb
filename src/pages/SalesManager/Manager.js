@@ -24,7 +24,7 @@ import {
   updateLead,
   createLead,
 } from "@/redux/slices/leadsSlice";
-import { addStage, removeStage } from "@/redux/slices/pipelineSlice";
+import { addStage, removeStage, fetchPipelines } from "@/redux/slices/pipelineSlice";
 import MainLayout from "@/components/MainLayout";
 import { toast } from "sonner";
 import {
@@ -180,128 +180,18 @@ const DeletePipelineModal = ({ isOpen, onClose, stages, onDeleteStages }) => {
   );
 };
 
-// MOCK DATA: Replace with your own if needed
-const MOCK_LEADS = [
-  {
-    leadId: 'LEAD101',
-    name: 'John Doe',
-    contactNumber: '1234567890',
-    email: 'john@example.com',
-    projectType: 'Residential',
-    propertyType: 'Apartment',
-    address: '123 Main St',
-    area: '1200',
-    budget: '1500000',
-    designStyle: 'Modern',
-    leadSource: 'Website',
-    preferredContact: 'Phone',
-    notes: 'Interested in 2BHK',
-    status: 'New',
-    rating: 2,
-    salesRep: 'Alice',
-    designer: 'Bob',
-    callDescription: null,
-    callHistory: [],
-    nextCall: null,
-    quotedAmount: null,
-    finalQuotation: null,
-    signupAmount: null,
-    paymentDate: null,
-    paymentMode: null,
-    panNumber: null,
-    discount: null,
-    reasonForLost: null,
-    reasonForJunk: null,
-    submittedBy: 'MANAGER',
-    paymentDetailsFileName: null,
-    bookingFormFileName: null,
-  },
-  {
-    leadId: 'LEAD102',
-    name: 'Jane Smith',
-    contactNumber: '9876543210',
-    email: 'jane@example.com',
-    projectType: 'Commercial',
-    propertyType: 'Office',
-    address: '456 Market St',
-    area: '2000',
-    budget: '3000000',
-    designStyle: 'Contemporary',
-    leadSource: 'Referral',
-    preferredContact: 'Email',
-    notes: 'Needs open workspace',
-    status: 'Contacted',
-    rating: 3,
-    salesRep: 'Charlie',
-    designer: 'Dana',
-    callDescription: null,
-    callHistory: [],
-    nextCall: null,
-    quotedAmount: null,
-    finalQuotation: null,
-    signupAmount: null,
-    paymentDate: null,
-    paymentMode: null,
-    panNumber: null,
-    discount: null,
-    reasonForLost: null,
-    reasonForJunk: null,
-    submittedBy: 'MANAGER',
-    paymentDetailsFileName: null,
-    bookingFormFileName: null,
-  },
-];
-
-const LeadsTable = ({ leads }) => (
-  <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Contact</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Sales Rep</TableHead>
-          <TableHead>Designer</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {leads.map((lead) => (
-          <TableRow key={lead.leadId}>
-            <TableCell className="font-medium">{lead.name}</TableCell>
-            <TableCell>{lead.contactNumber}</TableCell>
-            <TableCell>{lead.email}</TableCell>
-            <TableCell>{lead.status}</TableCell>
-            <TableCell>{lead.salesRep || <span className="text-gray-400">Unassigned</span>}</TableCell>
-            <TableCell>{lead.designer || <span className="text-gray-400">Unassigned</span>}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  </div>
-);
-
 const ManagerContent = ({ role }) => {
-  // const dispatch = useDispatch();
-  // const { leads, loading, error } = useSelector((state) => state.leads);
-  // const { stages: kanbanStatuses } = useSelector((state) => state.pipeline);
+  const dispatch = useDispatch();
+  const { leads, loading, error } = useSelector((state) => state.leads);
+  const { stages: kanbanStages = [], status: pipelineStatus = 'idle' } = useSelector((state) => state.pipeline || {});
 
-  // Use local state for leads and pipeline stages
-  const [leads, setLeads] = useState(MOCK_LEADS);
-  const [kanbanStatuses, setKanbanStatuses] = useState([
-    'New',
-    'Contacted',
-    'Qualified',
-    'Quoted',
-    'Converted',
-    'Lost',
-    'Junk',
-  ]);
+  useEffect(() => { dispatch(fetchLeads()); }, [dispatch]);
+  useEffect(() => { dispatch(fetchPipelines()); }, [dispatch]);
 
   // Deduplicate leads by leadId (keep first occurrence)
   const dedupedLeads = React.useMemo(() => {
     const seen = new Set();
-    return leads.filter(lead => {
+    return (leads || []).filter(lead => {
       if (lead && lead.leadId && !seen.has(lead.leadId)) {
         seen.add(lead.leadId);
         return true;
@@ -313,8 +203,6 @@ const ManagerContent = ({ role }) => {
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [filterText, setFilterText] = useState("");
-
-  // Modal states
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [leadToConvertId, setLeadToConvertId] = useState(null);
   const [showLostReasonModal, setShowLostReasonModal] = useState(false);
@@ -326,29 +214,17 @@ const ManagerContent = ({ role }) => {
   const [showPipelineDropdown, setShowPipelineDropdown] = useState(false);
   const [showDeletePipelineModal, setShowDeletePipelineModal] = useState(false);
   const [viewMode, setViewMode] = useState('kanban');
-
-  const [pendingConversion, setPendingConversion] = useState(null); // {lead, fromStatus}
-  const [pendingLost, setPendingLost] = useState(null); // {lead, fromStatus}
-  const [pendingJunk, setPendingJunk] = useState(null); // {lead, fromStatus}
-
+  const [pendingConversion, setPendingConversion] = useState(null);
+  const [pendingLost, setPendingLost] = useState(null);
+  const [pendingJunk, setPendingJunk] = useState(null);
   const [showScheduleActivityModal, setShowScheduleActivityModal] = useState(false);
   const [leadToScheduleActivity, setLeadToScheduleActivity] = useState(null);
 
-  // Remove backend fetch
-  // useEffect(() => {
-  //   dispatch(fetchLeads());
-  // }, [dispatch]);
-
-  // Remove backend pipeline fetch
-  // useEffect(() => {
-  //   ...
-  // }, [showPipelineDropdown]);
-
-  // All lead operations now update local state
+  // Group leads by stageId using kanbanStages
   const leadsByStatus = useMemo(() => {
     const grouped = {};
-    kanbanStatuses.forEach(status => {
-      grouped[status] = [];
+    (kanbanStages || []).forEach(stage => {
+      grouped[stage.stageId] = [];
     });
     const filteredLeads = dedupedLeads.filter(lead =>
       Object.values(lead).some(value =>
@@ -356,17 +232,12 @@ const ManagerContent = ({ role }) => {
       )
     );
     filteredLeads.forEach(lead => {
-      if (grouped[lead.status]) {
-        grouped[lead.status].push(lead);
-      } else {
-        if (!grouped[lead.status]) {
-            grouped[lead.status] = [];
-        }
-        grouped[lead.status].push(lead);
+      if (grouped[lead.stageId]) {
+        grouped[lead.stageId].push(lead);
       }
     });
     return grouped;
-  }, [dedupedLeads, filterText, kanbanStatuses]);
+  }, [dedupedLeads, filterText, kanbanStages]);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -387,9 +258,9 @@ const ManagerContent = ({ role }) => {
       setLeadToMarkJunkId(leadId);
       setShowJunkReasonModal(true);
     } else {
-      setLeads(prevLeads => prevLeads.map(l =>
-        l.leadId === leadId ? { ...l, status: newStatus } : l
-      ));
+      // This case should ideally not happen if KanbanBoard handles status updates correctly
+      // but as a fallback, we can update the lead locally if needed.
+      // For now, we rely on the backend update.
     }
   };
 
@@ -434,23 +305,18 @@ const ManagerContent = ({ role }) => {
       submittedBy: role,
     };
     if (editingLead && editingLead.leadId) {
-      setLeads(prevLeads => prevLeads.map(l =>
-        l.leadId === editingLead.leadId ? { ...l, ...leadData } : l
-      ));
+      dispatch(updateLead(leadData));
     } else {
       // Assign a new unique leadId
       const newId = `LEAD${Math.floor(Math.random() * 100000)}`;
-      setLeads(prevLeads => [
-        ...prevLeads,
-        { ...leadData, leadId: newId },
-      ]);
+      dispatch(createLead({ ...leadData, leadId: newId }));
     }
     setShowAddLeadModal(false);
   };
 
   const handleAddStage = () => {
-    if (newStageName && !kanbanStatuses.includes(newStageName)) {
-      setKanbanStatuses(prev => [...prev, newStageName]);
+    if (newStageName && !kanbanStages.some(stage => stage.name === newStageName)) {
+      dispatch(addStage({ name: newStageName, color: '#4f46e5' })); // Default color
       setNewStageName("");
       setIsAddingStage(false);
     }
@@ -477,7 +343,9 @@ const ManagerContent = ({ role }) => {
       toast.error(`Cannot delete stages with active leads. Please move ${leadsInStages.length} lead(s) to other stages first.`);
       return;
     }
-    setKanbanStatuses(prev => prev.filter(stage => !stagesToDelete.includes(stage)));
+    stagesToDelete.forEach(stageName => {
+      dispatch(removeStage(stageName));
+    });
     toast.success(`Successfully deleted ${stagesToDelete.length} stage(s)`);
   };
 
@@ -487,9 +355,7 @@ const ManagerContent = ({ role }) => {
     setPendingConversion(null);
   };
   const handleConvertSuccess = (updatedLead) => {
-    setLeads(prevLeads => prevLeads.map(l =>
-      l.leadId === updatedLead.leadId ? { ...l, ...updatedLead, status: 'Converted' } : l
-    ));
+    dispatch(updateLead({ ...updatedLead, status: 'Converted' }));
     handleConvertModalClose();
   };
   const handleLostModalClose = () => {
@@ -498,9 +364,7 @@ const ManagerContent = ({ role }) => {
     setPendingLost(null);
   };
   const handleLostSuccess = (updatedLead) => {
-    setLeads(prevLeads => prevLeads.map(l =>
-      l.leadId === updatedLead.leadId ? { ...l, ...updatedLead, status: 'Lost' } : l
-    ));
+    dispatch(updateLead({ ...updatedLead, status: 'Lost' }));
     handleLostModalClose();
   };
   const handleJunkModalClose = () => {
@@ -509,9 +373,7 @@ const ManagerContent = ({ role }) => {
     setPendingJunk(null);
   };
   const handleJunkSuccess = (updatedLead) => {
-    setLeads(prevLeads => prevLeads.map(l =>
-      l.leadId === updatedLead.leadId ? { ...l, ...updatedLead, status: 'Junk' } : l
-    ));
+    dispatch(updateLead({ ...updatedLead, status: 'Junk' }));
     handleJunkModalClose();
   };
 
@@ -521,13 +383,11 @@ const ManagerContent = ({ role }) => {
   };
 
   const handleScheduleActivitySuccess = (activity) => {
-    setLeads(prevLeads => prevLeads.map(l => {
-      if (l.leadId === leadToScheduleActivity.leadId) {
-        const activities = Array.isArray(l.activities) ? [...l.activities] : [];
-        activities.push({ ...activity, createdAt: new Date().toISOString() });
-        return { ...l, activities, updatedAt: new Date().toISOString() };
-      }
-      return l;
+    dispatch(updateLead({
+      ...leadToScheduleActivity,
+      activities: Array.isArray(leadToScheduleActivity.activities) ? [...leadToScheduleActivity.activities] : [],
+      activities: [...leadToScheduleActivity.activities, { ...activity, createdAt: new Date().toISOString() }],
+      updatedAt: new Date().toISOString()
     }));
     setShowScheduleActivityModal(false);
     setLeadToScheduleActivity(null);
@@ -608,26 +468,32 @@ const ManagerContent = ({ role }) => {
         </div>
       </div>
 
-      {/* {loading && <p className="text-center">Loading opportunities...</p>}
-      {error && <p className="text-center text-red-500">Error: {error.message || "Could not fetch opportunities."}</p>} */}
+      {loading && <p className="text-center">Loading opportunities...</p>}
+      {error && <p className="text-center text-red-500">Error: {error.message || "Could not fetch opportunities."}</p>}
 
       {viewMode === 'kanban' ? (
-        <KanbanBoard
-          leadsByStatus={leadsByStatus}
-          onDragEnd={handleDragEnd}
-          statuses={kanbanStatuses}
-          onEdit={handleEdit}
-          onConvert={handleConvert}
-          onMarkLost={handleMarkLost}
-          onMarkJunk={handleMarkJunk}
-          onAddLead={handleOpenAddLeadForm}
-          isAddingStage={isAddingStage}
-          newStageName={newStageName}
-          setNewStageName={setNewStageName}
-          onAddStage={handleAddStage}
-          onCancelAddStage={handleCancelAddStage}
-          onScheduleActivity={handleScheduleActivity}
-        />
+        pipelineStatus === 'loading' ? (
+          <div className="text-gray-400 text-center py-4">Loading pipeline stages...</div>
+        ) : !kanbanStages || kanbanStages.length === 0 ? (
+          <div className="text-gray-400 text-center py-4">No pipeline stages found.</div>
+        ) : (
+          <div className="flex space-x-4 overflow-x-auto pb-4">
+            {kanbanStages.map(stage => (
+              <KanbanColumn
+                key={stage.stageId}
+                status={stage.name}
+                stage={stage}
+                leads={leadsByStatus[stage.stageId] || []}
+                onEdit={handleEdit}
+                onConvert={handleConvert}
+                onMarkLost={handleMarkLost}
+                onMarkJunk={handleMarkJunk}
+                onAddLead={handleOpenAddLeadForm}
+                onScheduleActivity={handleScheduleActivity}
+              />
+            ))}
+          </div>
+        )
       ) : (
         <LeadsTable leads={dedupedLeads} />
       )}
@@ -667,7 +533,7 @@ const ManagerContent = ({ role }) => {
       <DeletePipelineModal
         isOpen={showDeletePipelineModal}
         onClose={() => setShowDeletePipelineModal(false)}
-        stages={kanbanStatuses}
+        stages={kanbanStages.map(s => s.name)}
         onDeleteStages={handleDeleteStages}
       />
 

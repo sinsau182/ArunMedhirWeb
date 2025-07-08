@@ -14,7 +14,7 @@ export const fetchLeads = createAsyncThunk(
   'leads/fetchLeads',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get('http://localhost:8080/leads', {
+      const res = await axios.get(`${API_BASE_URL}/leads`, {
         headers: getAuthHeaders(),
       });
       return res.data;
@@ -110,13 +110,24 @@ export const updateLead = createAsyncThunk(
 
 export const moveLeadToPipeline = createAsyncThunk(
   'leads/moveToPipeline',
-  async ({ leadId, newPipelineId }, { dispatch }) => {
-    await axios.patch(`http://localhost:8080/leads/${leadId}/pipeline?newPipelineId=${newPipelineId}`, {}, {
-      headers: getAuthHeaders(),
-    });
-    // Optionally, refetch all leads after move
-    dispatch(fetchLeads());
-    return { leadId, newPipelineId };
+  async ({ leadId, newPipelineId }, { dispatch, rejectWithValue }) => {
+    try {
+      console.log(`Moving lead ${leadId} to stage ${newPipelineId}`);
+      
+      const response = await axios.patch(`${API_BASE_URL}/leads/${leadId}/stage/${newPipelineId}`, {}, {
+        headers: getAuthHeaders(),
+      });
+      
+      console.log('Move lead response:', response.data);
+      
+      // Refetch all leads after move to get updated data
+      dispatch(fetchLeads());
+      
+      return { leadId, newPipelineId };
+    } catch (error) {
+      console.error('Error moving lead:', error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
   }
 );
 
@@ -124,6 +135,7 @@ const leadsSlice = createSlice({
     name: "leads",
     initialState: {
         leads: [],
+        lead: null,
         loading: false,
         error: null,
         status: 'idle',
@@ -173,14 +185,16 @@ const leadsSlice = createSlice({
 
             .addCase(fetchLeadById.pending, (state) => {
                 state.loading = true;
+                state.lead = null;
             })
             .addCase(fetchLeadById.fulfilled, (state, action) => {
                 state.loading = false;
-                state.leads = action.payload;
+                state.lead = action.payload;
             })
             .addCase(fetchLeadById.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error.message;
+                state.lead = null;
             })
     }
 });

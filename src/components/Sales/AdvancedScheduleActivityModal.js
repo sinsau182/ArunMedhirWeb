@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FaCheck, FaEnvelope, FaPhone, FaUsers, FaPaperclip, FaTimes } from 'react-icons/fa';
+import axios from 'axios';
+import getConfig from 'next/config';
 
-const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onSuccess }) => {
+const { publicRuntimeConfig } = getConfig();
+const API_BASE_URL = publicRuntimeConfig.apiURL;
+
+const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onSuccess, onActivityChange }) => {
   const [activeType, setActiveType] = useState('To-Do');
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueTime, setDueTime] = useState('');
@@ -17,6 +22,10 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
   const [attachment, setAttachment] = useState(null);
   const [showAttachmentPreview, setShowAttachmentPreview] = useState(false);
 
+  // Add separate state for each outcome field
+  const [meetingOutcome, setMeetingOutcome] = useState('');
+  const [emailOutcome, setEmailOutcome] = useState('');
+
   // Add a flag to determine if editing and which tab is being edited
   const isEditingActivity = !!(initialData && initialData.id);
   const editingType = initialData?.type;
@@ -30,7 +39,7 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
 
   // Reset all tab states on open/close
   useEffect(() => {
-    if (isOpen && initialData && initialData.id) {
+    if (isOpen && initialData && (initialData.id || initialData._id)) {
       setActiveType(initialData.type || 'To-Do');
       if (initialData.type === 'To-Do') setTodo({ ...todo, ...initialData });
       if (initialData.type === 'Email') setEmail({ ...email, ...initialData });
@@ -53,12 +62,14 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
       setMeetingLink(initialData.meetingLink || '');
       setAttendees(initialData.attendees || [{ id: 1, name: '' }]);
       setCallPurpose(initialData.callPurpose || '');
-      setCallOutcome(initialData.callOutcome || '');
+      setCallOutcome(initialData.type === 'Call' ? initialData.callOutcome || '' : '');
       setNextFollowUpDate(initialData.nextFollowUpDate || '');
       setNextFollowUpTime(initialData.nextFollowUpTime || '');
       setMeetingVenue(initialData.meetingVenue || 'In Office');
       setNote(initialData.note || '');
       setAttachment(initialData.attachment || null);
+      setMeetingOutcome(initialData.type === 'Meeting' ? initialData.callOutcome || '' : '');
+      setEmailOutcome(initialData.type === 'Email' ? initialData.callOutcome || '' : '');
     }
   }, [initialData, isOpen]);
 
@@ -79,29 +90,216 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
   const handleRemoveAttendee = (id) => setMeeting(m => ({ ...m, attendees: m.attendees.filter(att => att.id !== id) }));
 
   // Save: if editing, only update the selected activity; if creating, create all filled tabs
-  const handleSave = (statusOverride) => {
-    if (isEditingActivity && initialData && initialData.id) {
-      // Only update the edited activity
-      let updated = null;
-      if (editingType === 'To-Do') updated = { ...todo, type: 'To-Do', id: initialData.id, status: statusOverride || todo.status || 'pending' };
-      if (editingType === 'Email') updated = { ...email, type: 'Email', id: initialData.id, status: statusOverride || email.status || 'pending' };
-      if (editingType === 'Call') updated = { ...call, type: 'Call', id: initialData.id, status: statusOverride || call.status || 'pending' };
-      if (editingType === 'Meeting') updated = { ...meeting, type: 'Meeting', id: initialData.id, status: statusOverride || meeting.status || 'pending' };
-      if (updated && onSuccess) onSuccess(updated);
-    } else {
-      // Multi-create as before
-      const activities = [];
-      if (todo.title) activities.push({ ...todo, type: 'To-Do', status: statusOverride || 'pending' });
-      if (email.title) activities.push({ ...email, type: 'Email', status: statusOverride || 'pending' });
-      if (call.title) activities.push({ ...call, type: 'Call', status: statusOverride || 'pending' });
-      if (meeting.title) activities.push({ ...meeting, type: 'Meeting', status: statusOverride || 'pending' });
-      if (activities.length && onSuccess) activities.forEach(activity => onSuccess(activity));
+  const handleSave = async (statusOverride) => {
+    try {
+      const token = localStorage.getItem('token') || '';
+      let formData = new FormData();
+      let activities = [];
+      // If editing, only update the selected activity
+      if (isEditingActivity && initialData && initialData.id) {
+        // Build the activity object as per backend format
+        let activityToSend = null;
+        if (editingType === 'To-Do') {
+          activityToSend = {
+            type: 'To-Do',
+            title: todo.title,
+            notes: todo.note || '',
+            dueDate: todo.dueDate,
+            dueTime: todo.dueTime,
+            user: lead?.name || '',
+            status: statusOverride || 'pending',
+            meetingLink: '',
+            attendees: [],
+            callPurpose: '',
+            callOutcome: '',
+            nextFollowUpDate: '',
+            nextFollowUpTime: '',
+            meetingVenue: '',
+            note: '',
+            attachment: ''
+          };
+        } else if (editingType === 'Email') {
+          activityToSend = {
+            type: 'Email',
+            title: email.title,
+            notes: email.note || '',
+            dueDate: email.dueDate,
+            dueTime: email.dueTime,
+            user: lead?.name || '',
+            status: statusOverride || 'pending',
+            meetingLink: '',
+            attendees: [],
+            callPurpose: '',
+            callOutcome: emailOutcome || '',
+            nextFollowUpDate: '',
+            nextFollowUpTime: '',
+            meetingVenue: '',
+            note: '',
+            attachment: ''
+          };
+        } else if (editingType === 'Call') {
+          activityToSend = {
+            type: 'Call',
+            title: call.title,
+            notes: call.note || '',
+            dueDate: call.dueDate,
+            dueTime: call.dueTime,
+            user: lead?.name || '',
+            status: statusOverride || 'pending',
+            meetingLink: call.meetingLink || '',
+            attendees: [],
+            callPurpose: call.callPurpose || '',
+            callOutcome: callOutcome || '',
+            nextFollowUpDate: call.nextFollowUpDate || '',
+            nextFollowUpTime: call.nextFollowUpTime || '',
+            meetingVenue: call.meetingVenue || '',
+            note: '',
+            attachment: ''
+          };
+        } else if (editingType === 'Meeting') {
+          let attendeesArr = Array.isArray(meeting.attendees)
+            ? meeting.attendees.map(att => att.name || '').filter(Boolean)
+            : [];
+          activityToSend = {
+            type: 'Meeting',
+            title: meeting.title,
+            notes: meeting.note || '',
+            dueDate: meeting.dueDate,
+            dueTime: meeting.dueTime,
+            user: lead?.name || '',
+            status: statusOverride || 'pending',
+            meetingLink: meeting.meetingLink || '',
+            attendees: attendeesArr,
+            callPurpose: '',
+            callOutcome: meetingOutcome || '',
+            nextFollowUpDate: '',
+            nextFollowUpTime: '',
+            meetingVenue: meeting.meetingVenue || '',
+            note: '',
+            attachment: ''
+          };
+        }
+        await axios.put(
+          `${API_BASE_URL}/leads/${lead.leadId}/activities/${initialData.id}`,
+          activityToSend,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (onSuccess) onSuccess(activityToSend);
+        if (onActivityChange) onActivityChange(lead.leadId);
+        onClose();
+        return;
+      }
+      // To-Do
+      if (todo.title) {
+        activities.push({
+          type: 'To-Do',
+          title: todo.title,
+          notes: todo.note || '',
+          dueDate: todo.dueDate,
+          dueTime: todo.dueTime,
+          user: lead?.name || '',
+          status: statusOverride || 'pending',
+          meetingLink: '',
+          attendees: [],
+          callPurpose: '',
+          callOutcome: '',
+          nextFollowUpDate: '',
+          nextFollowUpTime: '',
+          meetingVenue: '',
+          note: '',
+          attachment: ''
+        });
+      }
+      // Email
+      if (email.title) {
+        activities.push({
+          type: 'Email',
+          title: email.title,
+          notes: email.note || '',
+          dueDate: email.dueDate,
+          dueTime: email.dueTime,
+          user: lead?.name || '',
+          status: statusOverride || 'pending',
+          meetingLink: '',
+          attendees: [],
+          callPurpose: '',
+          callOutcome: emailOutcome || '',
+          nextFollowUpDate: '',
+          nextFollowUpTime: '',
+          meetingVenue: '',
+          note: '',
+          attachment: ''
+        });
+      }
+      // Call
+      if (call.title) {
+        activities.push({
+          type: 'Call',
+          title: call.title,
+          notes: call.note || '',
+          dueDate: call.dueDate,
+          dueTime: call.dueTime,
+          user: lead?.name || '',
+          status: statusOverride || 'pending',
+          meetingLink: call.meetingLink || '',
+          attendees: [],
+          callPurpose: call.callPurpose || '',
+          callOutcome: callOutcome || '',
+          nextFollowUpDate: call.nextFollowUpDate || '',
+          nextFollowUpTime: call.nextFollowUpTime || '',
+          meetingVenue: call.meetingVenue || '',
+          note: '',
+          attachment: ''
+        });
+      }
+      // Meeting
+      if (meeting.title) {
+        let attendeesArr = Array.isArray(meeting.attendees)
+          ? meeting.attendees.map(att => att.name || '').filter(Boolean)
+          : [];
+        activities.push({
+          type: 'Meeting',
+          title: meeting.title,
+          notes: meeting.note || '',
+          dueDate: meeting.dueDate,
+          dueTime: meeting.dueTime,
+          user: lead?.name || '',
+          status: statusOverride || 'pending',
+          meetingLink: meeting.meetingLink || '',
+          attendees: attendeesArr,
+          callPurpose: '',
+          callOutcome: meetingOutcome || '',
+          nextFollowUpDate: '',
+          nextFollowUpTime: '',
+          meetingVenue: meeting.meetingVenue || '',
+          note: '',
+          attachment: ''
+        });
+      }
+      formData.append('activities', JSON.stringify(activities));
+      // Only one file supported per request, so send the first activity with a file
+      const firstWithFile = [todo, email, call, meeting].find(a => a.attachment instanceof File);
+      if (firstWithFile && firstWithFile.attachment) {
+        formData.append('files', firstWithFile.attachment);
+      }
+      const response = await axios.post(
+        `${API_BASE_URL}/leads/${lead.leadId}/activities/bulk-with-files`,
+        formData,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (onSuccess && response.data && response.data.length > 0) {
+        onSuccess(response.data[0]);
+      } else if (onSuccess && activities.length) {
+        onSuccess(activities[0]);
+      }
+      onClose();
+      setTodo({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null });
+      setEmail({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callOutcome: '' });
+      setCall({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callPurpose: '', callOutcome: '', nextFollowUpDate: '', nextFollowUpTime: '' });
+      setMeeting({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, meetingVenue: 'In Office', meetingLink: '', attendees: [{ id: 1, name: '' }], callOutcome: '' });
+    } catch (e) {
+      console.error('Failed to save activity:', e);
     }
-    onClose();
-    setTodo({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null });
-    setEmail({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callOutcome: '' });
-    setCall({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, callPurpose: '', callOutcome: '', nextFollowUpDate: '', nextFollowUpTime: '' });
-    setMeeting({ title: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '', note: '', attachment: null, meetingVenue: 'In Office', meetingLink: '', attendees: [{ id: 1, name: '' }], callOutcome: '' });
   };
 
   const activityTypes = [
@@ -126,8 +324,9 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
           {activityTypes.map(type => (
             <button
               key={type.name}
-              onClick={() => setActiveType(type.name)}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium ${activeType === type.name ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
+              onClick={() => !isEditingActivity || editingType === type.name ? setActiveType(type.name) : null}
+              disabled={isEditingActivity && editingType !== type.name}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium ${activeType === type.name ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:bg-gray-100'} ${isEditingActivity && editingType !== type.name ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {type.icon}
               {type.name}
@@ -176,17 +375,17 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
                   onChange={e => setCallPurpose(e.target.value)}
                 />
               </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700">Outcome of the Call</label>
+                <textarea
+                  className="w-full h-16 p-2 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300"
+                  placeholder="Add outcome of the call..."
+                  value={callOutcome}
+                  onChange={e => setCallOutcome(e.target.value)}
+                />
+              </div>
               {isEditingActivity && (
                 <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1">
-                    <label className="text-xs font-medium text-gray-700">Outcome of the Call</label>
-                    <textarea
-                      className="w-full h-16 p-2 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300"
-                      placeholder="Add outcome of the call..."
-                      value={callOutcome}
-                      onChange={e => setCallOutcome(e.target.value)}
-                    />
-                  </div>
                   <div className="flex-1">
                     <label className="text-xs font-medium text-gray-700">Next Follow Up</label>
                     <div className="flex gap-2">
@@ -218,8 +417,8 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
               <textarea
                 className="w-full h-16 p-2 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300"
                 placeholder="Add outcome of the email..."
-                value={callOutcome}
-                onChange={e => setCallOutcome(e.target.value)}
+                value={emailOutcome}
+                onChange={e => setEmailOutcome(e.target.value)}
               />
             </div>
           )}
@@ -276,17 +475,15 @@ const AdvancedScheduleActivityModal = ({ isOpen, onClose, lead, initialData, onS
                 ))}
                 <button type="button" onClick={handleAddAttendee} className="text-blue-600 text-xs mt-2">+ Add Attendee</button>
               </div>
-              {isEditingActivity && (
-                <div>
-                  <label className="text-xs font-medium text-gray-700">Outcome of the Meeting</label>
-                  <textarea
-                    className="w-full h-16 p-2 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300"
-                    placeholder="Add outcome of the meeting..."
-                    value={callOutcome}
-                    onChange={e => setCallOutcome(e.target.value)}
-                  />
-                </div>
-              )}
+              <div>
+                <label className="text-xs font-medium text-gray-700">Outcome of the Meeting</label>
+                <textarea
+                  className="w-full h-16 p-2 border rounded-md text-xs focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 border-gray-300"
+                  placeholder="Add outcome of the meeting..."
+                  value={meetingOutcome}
+                  onChange={e => setMeetingOutcome(e.target.value)}
+                />
+              </div>
             </>
           )}
 

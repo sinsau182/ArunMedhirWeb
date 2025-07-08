@@ -1,8 +1,13 @@
 // src/components/ConvertLeadModal.js (Apply these changes manually)
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { updateLead } from '@/redux/slices/leadsSlice';
+import { updateLead, moveLeadToPipeline } from '@/redux/slices/leadsSlice';
 import { FaRupeeSign, FaTimes, FaFilePdf } from 'react-icons/fa';
+import axios from 'axios';
+import getConfig from 'next/config';
+
+const { publicRuntimeConfig } = getConfig();
+const API_BASE_URL = publicRuntimeConfig.apiURL;
 
 // Receive leadData object containing id and initialQuote
 const ConvertLeadModal = ({ lead, onClose, onSuccess }) => {
@@ -61,40 +66,67 @@ const ConvertLeadModal = ({ lead, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    if (!lead) {
+      alert("No lead selected.");
+      return;
+    }
     if (!finalQuotation || !signupAmount) {
       alert("Please fill in Final Quotation and Sign-up Amount.");
       return;
     }
-    
     if (isNaN(parseFloat(finalQuotation)) || isNaN(parseFloat(signupAmount))) {
       alert("Quotation and Sign-up Amount must be valid numbers.");
       return;
     }
-
     try {
-      const updateData = {
-        leadId: lead.leadId,
-        status: 'Converted',
-        initialQuote: parseFloat(quotedAmount),
-        finalQuotation: parseFloat(finalQuotation),
-        signupAmount: parseFloat(signupAmount),
-        paymentDate,
-        paymentMode,
-        panNumber,
-        projectTimeline,
-        discount,
-        paymentDetailsFileName: paymentDetailsFile?.name || null,
-        bookingFormFileName: bookingFormFile?.name || null,
-      };
+      // Prepare FormData for file upload
+      const formData = new FormData();
+      formData.append('finalQuotation', finalQuotation);
+      formData.append('signupAmount', signupAmount);
+      formData.append('initialQuote', quotedAmount);
+      formData.append('paymentDate', paymentDate);
+      formData.append('paymentMode', paymentMode);
+      formData.append('panNumber', panNumber);
+      formData.append('projectTimeline', projectTimeline);
+      formData.append('discount', discount);
+      if (paymentDetailsFile) formData.append('paymentDetailsFile', paymentDetailsFile);
+      if (bookingFormFile) formData.append('bookingFormFile', bookingFormFile);
 
-      await dispatch(updateLead(updateData));
-      if (onSuccess) {
-        onSuccess({
-          ...lead,
-          ...updateData,
-          status: 'Converted',
+      // If conversion details already exist, use PUT to update
+      if (lead.finalQuotation || lead.signupAmount || lead.paymentDate || lead.paymentMode || lead.panNumber || lead.discount || lead.paymentDetailsFileName || lead.bookingFormFileName || lead.initialQuote || lead.projectTimeline) {
+        await axios.put(`${API_BASE_URL}/leads/${lead.leadId}`, {
+          finalQuotation,
+          signupAmount,
+          initialQuote: quotedAmount,
+          paymentDate,
+          paymentMode,
+          panNumber,
+          projectTimeline,
+          discount
+        }, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          }
         });
+        // Optionally handle file uploads separately if needed
+      } else {
+        // Call the convert-with-docs API
+        await axios.post(`${API_BASE_URL}/leads/${lead.leadId}/convert-with-docs`, formData, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          }
+        });
+      }
+
+      // Move the lead to the converted stage (update stageId)
+      if (lead.pipelineId || lead.stageId) {
+        await dispatch(moveLeadToPipeline({
+          leadId: lead.leadId,
+          newPipelineId: lead.pipelineId || lead.stageId
+        }));
+      }
+      if (onSuccess) {
+        onSuccess({ ...lead, status: 'Converted' });
       } else {
         onClose();
       }

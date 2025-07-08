@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { updateLead } from '@/redux/slices/leadsSlice';
+import { updateLead, moveLeadToPipeline } from '@/redux/slices/leadsSlice';
+import axios from 'axios';
+import getConfig from 'next/config';
+
+const { publicRuntimeConfig } = getConfig();
+const API_BASE_URL = publicRuntimeConfig.apiURL;
 
 // Define predefined reasons for losing a lead
 const lostReasons = [
@@ -16,38 +21,47 @@ const lostReasons = [
 
 const LostLeadModal = ({ lead, onClose, onSuccess }) => {
     const dispatch = useDispatch();
-    const [selectedReason, setSelectedReason] = useState('');
+    const [reason, setReason] = useState('');
 
     // Reset selection when modal opens
     useEffect(() => {
-        if (lead) {
-            setSelectedReason(lead.reasonForLost || '');
-        }
+        setReason(lead?.reasonForLost || '');
     }, [lead]);
 
     const handleChange = (e) => {
-        setSelectedReason(e.target.value);
+        setReason(e.target.value);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!selectedReason) {
-            alert('Please select a reason for loss.');
+        if (!lead) {
+            alert("No lead selected.");
+            return;
+        }
+        if (!reason.trim()) {
+            alert("Please provide a reason for marking the lead as lost.");
             return;
         }
 
         try {
-            await dispatch(updateLead({
-                leadId: lead.leadId,
+            // Update lead status and reason for lost
+            await axios.put(`${API_BASE_URL}/leads/${lead.leadId}`, {
                 status: 'Lost',
-                reasonForLost: selectedReason
-            }));
+                reasonForLost: reason.trim()
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                }
+            });
+            // Move the lead to the lost stage (update stageId)
+            if (lead.pipelineId || lead.stageId) {
+                await dispatch(moveLeadToPipeline({
+                    leadId: lead.leadId,
+                    newPipelineId: lead.pipelineId || lead.stageId
+                }));
+            }
             if (onSuccess) {
-                onSuccess({
-                    ...lead,
-                    status: 'Lost',
-                    reasonForLost: selectedReason
-                });
+                onSuccess({ ...lead, status: 'Lost', reasonForLost: reason.trim() });
             } else {
                 onClose();
             }
@@ -75,7 +89,7 @@ const LostLeadModal = ({ lead, onClose, onSuccess }) => {
                           <select
                               id="reasonForLoss"
                               name="reasonForLoss"
-                              value={selectedReason}
+                              value={reason}
                               onChange={handleChange}
                               className="block w-full appearance-none rounded-md border border-gray-300 bg-gray-50 py-3 px-4 pr-10 text-gray-800 shadow-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all text-base placeholder-gray-400"
                               required
@@ -103,7 +117,7 @@ const LostLeadModal = ({ lead, onClose, onSuccess }) => {
                         <button
                             type="submit"
                             className="px-5 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-all disabled:opacity-50"
-                            disabled={!selectedReason} // Disable if no reason selected
+                            disabled={!reason} // Disable if no reason selected
                         >
                             Mark as Lost
                         </button>

@@ -1,5 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchLeads, fetchLeadById, updateLead } from '@/redux/slices/leadsSlice';
+import { fetchPipelines } from '@/redux/slices/pipelineSlice';
 import { FaStar, FaRegStar, FaUser, FaEnvelope, FaPhone, FaBuilding, FaMapMarkerAlt,
     FaRupeeSign, FaBullseye, FaUserTie, FaTasks, FaHistory, FaPaperclip, FaUserCircle,
     FaCheck, FaUsers, FaFileAlt, FaTimes, FaPencilAlt, FaRegSmile, FaExpandAlt, FaChevronDown, FaClock,
@@ -8,6 +11,14 @@ import MainLayout from '@/components/MainLayout';
 import { toast } from 'sonner';
 import AdvancedScheduleActivityModal from '@/components/Sales/AdvancedScheduleActivityModal';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import JunkReasonModal from '@/components/Sales/JunkReasonModal';
+import LostLeadModal from '@/components/Sales/LostLeadModal';
+import axios from 'axios';
+import getConfig from 'next/config';
+import ConvertLeadModal from '@/components/Sales/ConvertLeadModal';
+
+const { publicRuntimeConfig } = getConfig();
+const API_BASE_URL = publicRuntimeConfig.apiURL;
 
 // Add these lists for dropdowns/selects
 const salesPersons = [
@@ -49,34 +60,25 @@ function formatRelativeTime(date) {
 
 // --- Sub-components for the new UI ---
 
-const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, onMarkJunk }) => {
-    const currentIndex = stages.indexOf(lead.status);
-    
+const OdooHeader = ({ lead, pipelines, onStatusChange }) => {
+    // Find the index of the current stage
+    const currentIndex = pipelines.findIndex(stage => stage.stageId === lead.stageId);
     const getPriorityLabel = (rating) => {
         if (rating >= 3) return 'High';
         if (rating === 2) return 'Medium';
         if (rating === 1) return 'Low';
-        return 'No';
+        return typeof rating === 'string' ? rating : 'No';
     };
-
-    const getNextAction = (activities) => {
-        if (!activities || activities.length === 0) return 'N/A';
-        const now = new Date();
-        const pending = activities.filter(a => a.status !== 'done' && a.dueDate && new Date(a.dueDate + 'T' + (a.dueTime || '00:00')) > now);
-        if (pending.length === 0) return 'N/A';
-        pending.sort((a, b) => new Date(a.dueDate + 'T' + (a.dueTime || '00:00')) - new Date(b.dueDate + 'T' + (b.dueTime || '00:00')));
-        const next = pending[0];
-        return next.summary || next.title || 'N/A';
-    };
-
-    const priorityLabel = getPriorityLabel(lead.rating);
+    const priorityLabel = getPriorityLabel(lead.priority);
     const priorityClass = {
         'High': 'bg-orange-100 text-orange-700',
         'Medium': 'bg-blue-100 text-blue-700',
         'Low': 'bg-gray-100 text-gray-600',
-        'No': 'bg-gray-100 text-gray-600'
+        'No': 'bg-gray-100 text-gray-600',
+        'Medium': 'bg-blue-100 text-blue-700',
+        'High': 'bg-orange-100 text-orange-700',
+        'Low': 'bg-gray-100 text-gray-600',
     }[priorityLabel];
-
     return (
         <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
             {/* Left Side */}
@@ -87,53 +89,56 @@ const OdooHeader = ({ lead, stages, onStatusChange, onMarkLost, onMarkJunk }) =>
                         <span className="text-sm text-gray-500 font-medium">Priority:</span>
                         <span className={`px-2 py-0.5 rounded text-xs font-semibold ${priorityClass}`}>{priorityLabel}</span>
             </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 font-medium">Next Action:</span>
-                        <span className="text-sm text-gray-500">{getNextAction(lead.activities)}</span>
           </div>
                 </div>
-            </div>
-
             {/* Right Side */}
             <div className="flex items-center gap-4">
                 {/* Pipeline Stepper */}
                 <div className="flex items-center gap-2">
-              {stages.map((stage, idx) => {
+                    {pipelines.map((stage, idx) => {
                         const isActive = idx === currentIndex;
                 const isCompleted = idx < currentIndex;
+                        let customCircle = '';
+                        let customLabel = '';
+                        let baseCircle = isActive ? 'bg-gray-800 text-white border-gray-800' : 'text-gray-400 border-gray-300';
+                        if (isActive && stage.formType === 'LOST') {
+                          customCircle = 'bg-red-600 border-red-600 text-white';
+                          customLabel = 'text-red-600';
+                          baseCircle = '';
+                        } else if (isActive && stage.formType === 'JUNK') {
+                          customCircle = 'bg-blue-600 border-blue-600 text-white';
+                          customLabel = 'text-blue-600';
+                          baseCircle = '';
+                        }
                 return (
-                  <React.Fragment key={stage}>
-                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => onStatusChange(stage)}>
+                            <React.Fragment key={stage.stageId}>
+                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => onStatusChange(stage.name)}>
                                     {isCompleted ? (
                                         <FaCheck className="text-green-500" />
                                     ) : (
-                                        <span className={`flex items-center justify-center rounded-full border w-5 h-5 text-xs font-bold ${isActive ? 'bg-gray-800 text-white border-gray-800' : 'text-gray-400 border-gray-300'}`}>
-                      {idx + 1}
-                                        </span>
+                                        <span className={`flex items-center justify-center rounded-full border w-5 h-5 text-xs font-bold ${baseCircle} ${customCircle}`}>{idx + 1}</span>
                     )}
-                                    <span className={`text-sm ${isActive || isCompleted ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>{stage}</span>
+                                    <span className={`text-sm ${isActive || isCompleted ? 'font-medium' : ''} ${customLabel || (isActive || isCompleted ? 'text-gray-800' : 'text-gray-400')}`}>{stage.name}</span>
                                 </div>
-                                {idx < stages.length - 1 && <span className="text-gray-300">&gt;</span>}
+                                {idx < pipelines.length - 1 && <span className="text-gray-300">&gt;</span>}
                   </React.Fragment>
                 );
               })}
-            </div>
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                    <button onClick={onMarkJunk} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Mark as Junk</button>
-                    <button onClick={onMarkLost} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"><FaTimes className="text-red-500" /> Mark as Lost</button>
             </div>
           </div>
         </div>
     );
 };
 
-const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onScheduleActivity, activities, onEditActivity, onDeleteActivity, onMarkDone, notes, onAddNote, conversionData, timelineEvents, deletedActivityIds, currentRole }) => {
+const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onScheduleActivity, activities, onEditActivity, onDeleteActivity, onMarkDone, notes: _notes, onAddNote, conversionData, timelineEvents, deletedActivityIds, currentRole, setEditingActivity, setIsActivityModalOpen, activityLogs }) => {
+    const dispatch = useDispatch();
     const [activeTab, setActiveTab] = useState('activity');
     const [isEditingContact, setIsEditingContact] = useState(false);
     const [noteContent, setNoteContent] = useState('');
     const [expandedActivities, setExpandedActivities] = useState({});
     const [showAllHistory, setShowAllHistory] = useState(false);
+    const [notes, setNotes] = useState([]);
+    const [fileModal, setFileModal] = useState({ open: false, url: null });
 
     const [contactFields, setContactFields] = useState({
       name: lead.name || '',
@@ -169,22 +174,63 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
       setContactFields(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSaveContact = () => {
+    const handleSaveContact = async () => {
+      try {
+        await axios.put(`${API_BASE_URL}/leads/${lead.leadId}`, {
+          name: contactFields.name,
+          contactNumber: contactFields.contactNumber,
+          email: contactFields.email,
+        }, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        });
       onFieldChange('name', contactFields.name);
       onFieldChange('contactNumber', contactFields.contactNumber);
       onFieldChange('email', contactFields.email);
       setIsEditingContact(false);
+        await dispatch(fetchLeadById(lead.leadId));
+        toast.success('Contact details updated!');
+      } catch (e) {
+        console.error('Failed to update contact details:', e);
+        toast.error('Failed to update contact details');
+      }
     };
 
     const handleProjectFieldChange = (field, value) => {
       setProjectFields(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSaveProject = () => {
+    const handleSaveProject = async () => {
+      try {
+        await axios.put(`${API_BASE_URL}/leads/${lead.leadId}`, projectFields, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        });
       Object.entries(projectFields).forEach(([field, value]) => {
         onFieldChange(field, value);
       });
       setIsEditing(false);
+        await dispatch(fetchLeadById(lead.leadId));
+        toast.success('Project details updated!');
+      } catch (e) {
+        console.error('Failed to update project details:', e);
+        toast.error('Failed to update project details');
+      }
+    };
+
+    const handleSaveTeam = async () => {
+      try {
+        await axios.put(`${API_BASE_URL}/leads/${lead.leadId}`, {
+          salesRep: assignedSalesRep,
+          designer: assignedDesigner,
+        }, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        });
+        setIsEditingTeam(false);
+        await dispatch(fetchLeadById(lead.leadId));
+        toast.success('Assigned team updated!');
+      } catch (e) {
+        console.error('Failed to update assigned team:', e);
+        toast.error('Failed to update assigned team');
+      }
     };
 
     const combinedLog = [
@@ -212,6 +258,88 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
         return dateB.getTime() - dateA.getTime(); // Most recent first
     });
 
+    const [editingNoteIdx, setEditingNoteIdx] = useState(null);
+    const [editingNoteId, setEditingNoteId] = useState(null);
+    const [notesLoading, setNotesLoading] = useState(false);
+
+    useEffect(() => {
+      // Combine notes string and notesList array into a single array for display
+      let combinedNotes = [];
+      if (lead.notes) {
+        combinedNotes.push({
+          user: lead.name || 'User',
+          content: lead.notes,
+          time: lead.dateOfCreation || new Date(),
+        });
+      }
+      if (Array.isArray(lead.notesList)) {
+        combinedNotes = [
+          ...combinedNotes,
+          ...lead.notesList.map(n => ({
+            user: n.user || lead.name || 'User',
+            content: n.content,
+            time: n.time || n.createdAt || new Date(),
+            noteId: n.noteId || n.id,
+          })),
+        ];
+      }
+      setNotes(combinedNotes);
+    }, [lead]);
+
+    const handleEditNoteClick = (note, idx) => {
+      setNoteContent(note.content);
+      setEditingNoteIdx(idx);
+      setEditingNoteId(note.noteId || note.id);
+    };
+
+    const handleAddOrEditNote = async () => {
+      console.log('Save Note button pressed. Attempting to post note:', noteContent);
+      setNotesLoading(true);
+      try {
+        let newNote;
+        if (editingNoteId) {
+          // Edit note
+          await axios.put(`${API_BASE_URL}/leads/${lead.leadId}/notes/${editingNoteId}`, { content: noteContent }, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+          });
+          // Update note in local state
+          setNotes(prev =>
+            prev.map(n =>
+              n.noteId === editingNoteId
+                ? { ...n, content: noteContent }
+                : n
+            )
+          );
+        } else {
+          // Add note
+          const res = await axios.post(`${API_BASE_URL}/leads/${lead.leadId}/notes`, { content: noteContent }, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+          });
+          // Add new note to local state
+          newNote = {
+            user: lead.name || 'User',
+            content: noteContent,
+            time: new Date(),
+            noteId: res.data?.noteId || undefined,
+          };
+          setNotes(prev => [newNote, ...prev]);
+        }
+        setNoteContent('');
+        setEditingNoteIdx(null);
+        setEditingNoteId(null);
+      } catch (e) {
+        console.error('Failed to save note:', e);
+      }
+      setNotesLoading(false);
+    };
+
+    const completionLogs = [...(activityLogs || [])]
+  .filter(log => log.activityType === "ACTIVITY_COMPLETION")
+  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+const allLogs = [...(activityLogs || [])]
+  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
     return (
         <div className="flex-grow bg-gray-50 p-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -230,8 +358,9 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-semibold shadow-sm hover:bg-gray-50"><FaPencilAlt className="w-3 h-3" /> Edit</button>
                                 )}
                     </div>
+                        {/* Single border below heading */}
+                        <div className="border-b border-gray-200 mb-4"></div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-8">
-                            {/* Fields */}
                             {[
                                 {label: 'Project Type', field: 'projectType', type: 'select', options: projectTypes},
                                 {label: 'Address', field: 'address', type: 'text'},
@@ -242,11 +371,14 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                 {label: 'Lead Source', field: 'leadSource', type: 'text', required: true},
                                 {label: 'Design Style', field: 'designStyle', type: 'text'},
                             ].map(({label, field, type, options, required, optional}) => (
-                                <div key={field}>
-                                    <div className="text-sm text-gray-500">{label}{required && <span className="text-red-500">*</span>}{optional && <span className="text-gray-400 font-normal ml-1">(optional)</span>}</div>
+                                <div key={field} className="relative group flex flex-col">
+                                    {/* Floating label */}
+                                    <span className="text-xs font-semibold text-gray-500 mb-1 group-hover:text-blue-600 transition-all">
+                                        {label}{required && <span className="text-red-500">*</span>}{optional && <span className="text-gray-400 font-normal ml-1">(optional)</span>}
+                                    </span>
                                 {isEditing ? (
                                         type === 'select' ? (
-                                            <select value={projectFields[field] || ''} onChange={e => handleProjectFieldChange(field, e.target.value)} className="w-full p-1 mt-1 border-b text-gray-900 focus:outline-none focus:border-blue-500">
+                                            <select value={projectFields[field] || ''} onChange={e => handleProjectFieldChange(field, e.target.value)} className="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-base">
                                                 {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                     </select>
                                 ) : (
@@ -254,11 +386,15 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                                 type={type} 
                                                 value={projectFields[field] || ''} 
                                                 onChange={e => handleProjectFieldChange(field, e.target.value)} 
-                                                className="w-full p-1 mt-1 border-b text-gray-900 focus:outline-none focus:border-blue-500"
+                                                className="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-base"
                                             />
                                         )
                                     ) : (
-                                        <div className="text-base text-gray-900 font-medium mt-1">
+                                        <div
+                                            className={`w-full text-base font-semibold text-gray-900 truncate ${field === 'address' ? 'max-w-[220px] md:max-w-[260px]' : ''}`}
+                                            title={field === 'address' && lead.address && lead.address.length > 30 ? lead.address : undefined}
+                                            style={field === 'address' ? {overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'} : {}}
+                                        >
                                             {field === 'budget' && lead.budget ? <FaRupeeSign className="inline text-gray-400 text-sm mr-1" /> : null}
                                             {field === 'budget' && lead.budget ? Number(lead.budget).toLocaleString('en-IN') : field === 'area' ? (lead.area ? `${lead.area} sq. ft.` : 'N/A') : lead[field] || 'N/A'}
                     </div>
@@ -274,149 +410,304 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                             <nav className="flex space-x-6" aria-label="Tabs">
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'notes' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('notes')}>Notes</button>
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'activity' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('activity')}>Activity Log</button>
-                                <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'conversion' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('conversion')}>Conversion Details</button>
+                                <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'status' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('status')}>Status Details</button>
                                 <button className={`pb-3 text-sm font-medium border-b-2 ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-blue-600'}`} onClick={() => setActiveTab('history')}>Activity History</button>
                             </nav>
             </div>
                         <div className="pt-4">
                         {activeTab === 'notes' && (
                                 <div>
-                                    <textarea value={noteContent} onChange={e => setNoteContent(e.target.value)} className="w-full p-2 border rounded-md" placeholder="Add a note..."></textarea>
-                                    <div className="text-right mt-2">
-                                        <button onClick={() => { onAddNote({ user: 'You', time: new Date(), content: noteContent }); setNoteContent(''); }} className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm font-semibold">Save Note</button>
+                                    <textarea value={noteContent} onChange={e => setNoteContent(e.target.value)} className="w-full p-2 border rounded-md" placeholder="Add a note..." />
+                                    <div className="text-right mt-2 flex gap-2 justify-end items-center">
+                                        <button
+                                            onClick={handleAddOrEditNote}
+                                            className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm font-semibold"
+                                            disabled={notesLoading || !noteContent.trim()}
+                                        >
+                                            {editingNoteId ? 'Edit Note' : 'Save Note'}
+                                        </button>
+                                        {editingNoteId && (
+                                            <button
+                                                onClick={() => { setNoteContent(''); setEditingNoteIdx(null); setEditingNoteId(null); }}
+                                                className="px-4 py-1.5 bg-gray-200 text-gray-700 rounded-md text-sm font-semibold"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
                         </div>
                                     <div className="mt-4 space-y-4">
                                     {notes.map((note, idx) => (
-                                            <div key={idx}><p className="font-semibold text-sm">{note.user} <span className="text-xs text-gray-400 ml-2">{formatRelativeTime(note.time)}</span></p><p className="text-sm">{note.content}</p></div>
+                                            <div key={note.noteId || note.id || idx} className="cursor-pointer group" onClick={() => handleEditNoteClick(note, idx)}>
+                                                <p className="font-semibold text-sm group-hover:text-blue-600">{note.user} <span className="text-xs text-gray-400 ml-2">{formatRelativeTime(note.time)}</span></p>
+                                                <p className="text-sm group-hover:text-blue-600">{note.content}</p>
+                                            </div>
                                     ))}
                     </div>
                 </div>
             )}
                         {activeTab === 'activity' && (
-                                <div className="relative">
-                                    {combinedLog.filter(item => item.status === 'done').length > 0 && <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />}
-                                    <ul className="space-y-4">
-                                        {combinedLog.filter(item => item.status === 'done').map((item, index) => {
-                                            const isEvent = item.type === 'event';
-                                        const isDone = item.status === 'done';
-                                            const isDeleted = isEvent && item.action === 'Activity Deleted';
-                                            const iconBg = isDeleted ? 'bg-red-100' : (isEvent || isDone ? 'bg-green-100' : 'bg-blue-100');
-                                            const iconColor = isDeleted ? 'text-red-600' : (isEvent || isDone ? 'text-green-600' : 'text-blue-600');
-                                            const icon = isDeleted ? <FaTimes /> : (isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />));
-                                        return (
-                                                <li key={`done-${item.type}-${item.id}-${index}`} className="relative pl-12">
-                                                    <div className="absolute left-0 top-1 flex items-center justify-center">
-                                                        <span className={`w-8 h-8 flex items-center justify-center rounded-full border-4 border-gray-50 ${iconBg}`}>
-                                                            <span className={iconColor}>{icon}</span>
-                                            </span>
-                                              </div>
-                                                    
-                                                    {/* The content */}
-                                                    <div className={`flex items-center justify-between p-3 rounded-md ${isDeleted ? 'bg-red-50' : ''}`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isDeleted ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                {isEvent ? item.action : item.type}
-                                                            </span>
-                                                            <span className={`font-medium ${isDeleted ? 'text-red-700' : 'text-gray-800'}`}>{isEvent ? item.details : item.title || item.summary}</span>
-                                                </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <span className="text-sm text-gray-500">{formatDateTime(item.date)}</span>
-                                                            <button onClick={() => setExpandedActivities(prev => ({...prev, [item.id]: !prev[item.id]}))} className="text-gray-400 hover:text-gray-600">
-                                                                <FaChevronDown size={12} className={`transition-transform ${expandedActivities[item.id] ? 'rotate-180' : ''}`}/>
-                                                            </button>
-                                            </div>
-                                                    </div>
-                                                    {/* Expanded details for notes, attachment, outcome */}
-                                                    {(!isEvent && (item.note || item.attachment || (['Email','Call','Meeting'].includes(item.type) && item.callOutcome))) && (
-                                                        <div className="ml-12 mt-1 mb-2 bg-gray-50 rounded p-3 border border-gray-100 text-xs text-gray-700 flex flex-col gap-1">
-                                                            {item.note && <div><span className="font-semibold">Note:</span> {item.note}</div>}
-                                                            {item.attachment && <div className="flex items-center gap-2"><FaPaperclip className="text-blue-500" /><span className="font-semibold">Attachment:</span> {typeof item.attachment === 'string' ? <a href={item.attachment} target="_blank" rel="noopener noreferrer" className="underline">View</a> : (item.attachment.name || 'Attached')}</div>}
-                                                            {['Email','Call','Meeting'].includes(item.type) && item.callOutcome && <div><span className="font-semibold">Outcome:</span> {item.callOutcome}</div>}
-                                                        </div>
-                                                    )}
-                                          </li>
-                                        );
-                                        })}
-                                        </ul>
-                            </div>
+  <div className="relative">
+    <ul className="space-y-6">
+      {activities.length === 0 && (
+        <li className="text-center text-gray-400 py-4">No completed activities yet.</li>
+      )}
+      {activities
+        .filter(a => a.status === 'done')
+        .sort((a, b) => new Date(b.dueDate || b.updatedAt || b.createdAt) - new Date(a.dueDate || a.updatedAt || a.createdAt))
+        .map((activity, idx, arr) => {
+          // Timeline dot and icon
+          const dotClass = 'border-green-200 bg-green-50';
+          const icon = (
+            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+          );
+          return (
+            <li key={activity.id} className="relative pl-14">
+              {/* Vertical line (except last item) */}
+              {idx < arr.length - 1 && (
+                <span className="absolute left-4 top-9 w-1 h-[calc(100%_-_2.25rem)] bg-gray-200 z-0" style={{borderRadius: '1px'}}></span>
+              )}
+              {/* Timeline dot and line */}
+              <span className={`absolute left-0 top-2 w-9 h-9 flex items-center justify-center rounded-full border-4 ${dotClass} z-10`}>
+                {icon}
+              </span>
+              {/* Main content */}
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-700 capitalize">
+                    {activity.type || 'Activity'}
+                  </span>
+                  <span className="font-semibold text-gray-900">{activity.title}</span>
+                  <span className="flex items-center gap-1 ml-2 text-green-600 text-xs font-semibold">
+                    <svg className="inline w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Done
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mb-2">
+                  {activity.dueDate ? new Date(activity.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                </div>
+                {activity.notes && (
+                  <div className="text-sm"><span className="font-semibold">Notes:</span> {activity.notes}</div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+    </ul>
+  </div>
+)}
+                        {activeTab === 'status' && (
+                          <>
+                            {/* Show only the current stage's details */}
+                            {lead.stageName && lead.stageName.toLowerCase() === 'converted' && (
+                              (lead.finalQuotation || lead.signupAmount || lead.paymentDate || lead.paymentMode || lead.panNumber || lead.discount || lead.paymentDetailsFileName || lead.bookingFormFileName || lead.initialQuote || lead.projectTimeline) ? (
+                                <>
+                                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Status Details</h3>
+                                  <div className="border-b border-gray-200 mb-6"></div>
+                                  {/* ...Conversion Details... */}
+                                </>
+                              ) : (
+                                <p className="text-center text-gray-400 py-4">No status details available.</p>
+                              )
+                            )}
+                            {lead.stageName && lead.stageName.toLowerCase() === 'junk' && lead.reasonForJunk && (
+                              <>
+                                <h3 className="text-base font-semibold text-gray-500 uppercase tracking-wide mb-1">JUNK REASON</h3>
+                                <div className="text-lg font-bold text-gray-900">{lead.reasonForJunk}</div>
+                              </>
+                            )}
+                            {lead.stageName && lead.stageName.toLowerCase() === 'lost' && lead.reasonForLost && (
+                              <>
+                                <h3 className="text-base font-semibold text-gray-500 uppercase tracking-wide mb-1">LOST REASON</h3>
+                                <div className="text-lg font-bold text-gray-900">{lead.reasonForLost}</div>
+                              </>
+                            )}
+                            {(!lead.stageName || (lead.stageName.toLowerCase() === 'converted' && !(lead.finalQuotation || lead.signupAmount || lead.paymentDate || lead.paymentMode || lead.panNumber || lead.discount || lead.paymentDetailsFileName || lead.bookingFormFileName || lead.initialQuote || lead.projectTimeline)) || (lead.stageName.toLowerCase() === 'junk' && !lead.reasonForJunk) || (lead.stageName.toLowerCase() === 'lost' && !lead.reasonForLost)) && (
+                              <p className="text-center text-gray-400 py-4">No status details available.</p>
+                            )}
+                          </>
                         )}
-                        {activeTab === 'conversion' && (
-                            <div>
-                                    {lead.status === 'Converted' && conversionData ? (
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                            <p><span className="text-gray-500">Final Quotation:</span><span className="font-medium ml-2">₹{conversionData.finalQuotation}</span></p>
-                                            <p><span className="text-gray-500">Sign-up Amount:</span><span className="font-medium ml-2">₹{conversionData.signupAmount}</span></p>
-                                            {/* Add more fields here */}
-                                            </div>
-                                    ) : <p className="text-center text-gray-400 py-4">Lead not converted yet.</p>}
-                            </div>
-                                )}
-                            {activeTab === 'history' && (
-                                <div className="relative">
-                                    {combinedLog.length > 0 && <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />}
-                                    <ul className="space-y-4">
-                                        {(showAllHistory ? combinedLog : combinedLog.slice(0, 5)).map((item, index) => {
-                                            const isEvent = item.type === 'event';
-                                            const isDone = item.status === 'done';
-                                            const isDeleted = isEvent && item.action === 'Activity Deleted';
-                                            const iconBg = isDeleted ? 'bg-red-100' : (isEvent || isDone ? 'bg-green-100' : 'bg-blue-100');
-                                            const iconColor = isDeleted ? 'text-red-600' : (isEvent || isDone ? 'text-green-600' : 'text-blue-600');
-                                            const icon = isDeleted ? <FaTimes /> : (isEvent ? <FaHistory /> : (isDone ? <FaCheck /> : <FaRegClock />));
-                                            return (
-                                                <li key={`history-${item.type}-${item.id}-${index}`} className="relative pl-12">
-                                                    <div className="absolute left-0 top-1 flex items-center justify-center">
-                                                        <span className={`w-8 h-8 flex items-center justify-center rounded-full border-4 border-gray-50 ${iconBg}`}>
-                                                            <span className={iconColor}>{icon}</span>
-                                                        </span>
-                                                    </div>
-                                                    <div className={`flex items-center justify-between p-3 rounded-md ${isDeleted ? 'bg-red-50' : ''}`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isDeleted ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                {isEvent ? item.action : item.type}
-                                                            </span>
-                                                            <span className={`font-medium ${isDeleted ? 'text-red-700' : 'text-gray-800'}`}>{isEvent ? item.details : item.title || item.summary}</span>
-                                                            {isDone && !isEvent && (
-                                                                <span className="flex items-center gap-1 ml-2 text-green-600 text-xs font-semibold"><FaCheck className="inline" /> Done</span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <span className="text-sm text-gray-500">{formatDateTime(item.date)}</span>
-                                                            <button onClick={() => setExpandedActivities(prev => ({...prev, [item.id]: !prev[item.id]}))} className="text-gray-400 hover:text-gray-600">
-                                                                <FaChevronDown size={12} className={`transition-transform ${expandedActivities[item.id] ? 'rotate-180' : ''}`}/>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    {(!isEvent && (item.note || item.attachment || (['Email','Call','Meeting'].includes(item.type) && item.callOutcome))) && (
-                                                        <div className="ml-12 mt-1 mb-2 bg-gray-50 rounded p-3 border border-gray-100 text-xs text-gray-700 flex flex-col gap-1">
-                                                            {item.note && <div><span className="font-semibold">Note:</span> {item.note}</div>}
-                                                            {item.attachment && <div className="flex items-center gap-2"><FaPaperclip className="text-blue-500" /><span className="font-semibold">Attachment:</span> {typeof item.attachment === 'string' ? <a href={item.attachment} target="_blank" rel="noopener noreferrer" className="underline">View</a> : (item.attachment.name || 'Attached')}</div>}
-                                                            {['Email','Call','Meeting'].includes(item.type) && item.callOutcome && <div><span className="font-semibold">Outcome:</span> {item.callOutcome}</div>}
-                                                        </div>
-                                                    )}
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                    {!showAllHistory && combinedLog.length > 5 && (
-                                        <div className="flex justify-center mt-8">
-                                            <button className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-all font-semibold" onClick={() => setShowAllHistory(true)}>
-                                                View More
-                                            </button>
-                                        </div>
-                                    )}
-                            </div>
-                                )}
+                        {activeTab === 'history' && (
+  <div className="relative">
+    <ul className="space-y-6 relative">
+      {/* Single vertical line for the whole timeline */}
+      <span className="absolute left-8 top-0 w-1 h-full bg-gray-200 z-0" style={{borderRadius: '1px'}}></span>
+      {(() => {
+        // Group activity logs by activity id, but keep stage/pipeline changes and deletions as separate
+        const activityMap = new Map();
+        const specialEvents = [];
+        activityLogs
+          .slice()
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+          .forEach(log => {
+            const action = (log.action || '').toLowerCase();
+            if (
+              action === 'stage changed' ||
+              action === 'pipeline changed' ||
+              action === 'activity deleted'
+            ) {
+              specialEvents.push(log);
+            } else if (log.activityId) {
+              // Only keep the most recent event for each activityId
+              if (!activityMap.has(log.activityId)) {
+                activityMap.set(log.activityId, log);
+              } else {
+                // If already present, prefer 'Activity completed' over 'Activity created'
+                const existing = activityMap.get(log.activityId);
+                if (existing.action !== 'Activity completed' && log.action === 'Activity completed') {
+                  activityMap.set(log.activityId, log);
+                }
+              }
+            } else {
+              // If no activityId, treat as special event
+              specialEvents.push(log);
+            }
+          });
+        // Merge and sort all events
+        const merged = [
+          ...specialEvents,
+          ...Array.from(activityMap.values())
+        ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return merged.map((log, idx, arr) => {
+          // Determine style and icon
+          let dotClass = '';
+          let icon = null;
+          let statusLabel = '';
+          let statusColor = '';
+          const action = (log.action || '').toLowerCase();
+          if (action === 'activity completed') {
+            dotClass = 'border-green-200 bg-green-50';
+            icon = (
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+            );
+            statusLabel = 'Done';
+            statusColor = 'text-green-600';
+          } else if (action === 'activity deleted') {
+            dotClass = 'border-red-200 bg-red-50';
+            icon = (
+              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            );
+            statusLabel = 'Deleted';
+            statusColor = 'text-red-500';
+          } else if (action === 'stage changed') {
+            dotClass = 'border-orange-200 bg-orange-50';
+            icon = (
+              <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+              </svg>
+            );
+            statusLabel = 'Status Change';
+            statusColor = 'text-orange-500';
+          } else if (action === 'pipeline changed') {
+            dotClass = 'border-purple-200 bg-purple-50';
+            icon = (
+              <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+              </svg>
+            );
+            statusLabel = 'Pipeline Change';
+            statusColor = 'text-purple-500';
+          } else {
+            dotClass = 'border-blue-200 bg-blue-50';
+            icon = (
+              <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+              </svg>
+            );
+            statusLabel = 'Activity Created';
+            statusColor = 'text-blue-500';
+          }
+          return (
+            <li key={log.id} className="relative pl-14">
+              {/* Timeline dot and line (no per-li vertical line) */}
+              <span className={`absolute left-0 top-2 w-9 h-9 flex items-center justify-center rounded-full border-4 ${dotClass} z-10`}>
+                {icon}
+              </span>
+              {/* Main content */}
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  {statusLabel && (
+                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${statusColor} bg-gray-100 uppercase tracking-wide`}>
+                      {statusLabel}
+                    </span>
+                  )}
+                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-700 capitalize">
+                    {log.metadata?.activityType || log.activityType || log.action || "Activity"}
+                  </span>
+                  <span className="font-semibold text-gray-900">{log.metadata?.activityTitle || log.details || ""}</span>
+                  {log.action === 'Activity completed' && (
+                    <span className="flex items-center gap-1 ml-2 text-green-600 text-xs font-semibold">
+                      <svg className="inline w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Done
+                    </span>
+                  )}
+                  {log.action === 'Activity deleted' && (
+                    <span className="flex items-center gap-1 ml-2 text-red-500 text-xs font-semibold">
+                      <svg className="inline w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                      Deleted
+                    </span>
+                  )}
+                  {log.action === 'Stage changed' && (
+                    <span className="flex items-center gap-1 ml-2 text-orange-500 text-xs font-semibold">
+                      <svg className="inline w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                      </svg>
+                      Stage Changed
+                    </span>
+                  )}
+                  {log.action === 'Pipeline changed' && (
+                    <span className="flex items-center gap-1 ml-2 text-purple-500 text-xs font-semibold">
+                      <svg className="inline w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                      </svg>
+                      Pipeline Changed
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 mb-2">
+                  {new Date(log.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} {log.timestamp && new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+                {log.metadata?.callPurpose && (
+                  <div className="text-sm"><span className="font-semibold">Purpose:</span> {log.metadata.callPurpose}</div>
+                )}
+                {log.metadata?.callOutcome && (
+                  <div className="text-sm"><span className="font-semibold">Outcome:</span> {log.metadata.callOutcome}</div>
+                )}
+                {log.metadata?.notes && (
+                  <div className="text-sm"><span className="font-semibold">Notes:</span> {log.metadata.notes}</div>
+                )}
+              </div>
+            </li>
+          );
+        });
+      })()}
+    </ul>
+  </div>
+)}
                             </div>
                         </div>
                 </div>
 
                 {/* Right Column */}
                 <div className="flex flex-col gap-6">
+                    {/* Contact Details */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-base font-semibold text-gray-800">Contact Details</h3>
                             <button onClick={() => setIsEditingContact(!isEditingContact)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-semibold hover:bg-gray-50"><FaPencilAlt className="w-3 h-3" /> {isEditingContact ? 'Cancel' : 'Edit'}</button>
                         </div>
+                        <div className="border-b border-gray-200 mb-4"></div>
                                 {isEditingContact ? (
                             <div className="space-y-3">
                                 <input value={contactFields.name} onChange={e => handleContactFieldChange('name', e.target.value)} className="w-full p-1 border-b" />
@@ -426,15 +717,14 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                <div className="flex items-center gap-3"><FaUser className="text-gray-400" /><span className="font-medium text-gray-900">{lead.name || 'N/A'}</span></div>
-                                <div className="flex items-center gap-3"><FaPhone className="text-gray-400" /><a href={`tel:+91${lead.contactNumber}`} className="text-blue-600 hover:underline">{`+91 ${lead.contactNumber}`}</a></div>
-                                <div className="flex items-center gap-3"><FaEnvelope className="text-gray-400" /><a href={`mailto:${lead.email}`} className="text-blue-600 hover:underline">{lead.email}</a></div>
+                                <div className="flex items-center gap-3 text-gray-900 font-semibold"><FaUser className="text-gray-400" /><span>{lead.name || 'N/A'}</span></div>
+                                <div className="flex items-center gap-3"><FaPhone className="text-gray-400" /><span className="text-gray-900 font-medium">{lead.contactNumber ? `+91 ${lead.contactNumber}` : 'N/A'}</span></div>
+                                <div className="flex items-center gap-3"><FaEnvelope className="text-gray-400" /><span className="text-gray-900 font-medium">{lead.email || 'N/A'}</span></div>
                             </div>
                                 )}
                         </div>
 
-                    {/* --- Assigned Team Section --- */}
-                    {(currentRole === 'MANAGER' || currentRole === 'SALESMANAGER') && (
+                    {/* Assigned Team (always show, minimal style) */}
                       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-base font-semibold text-gray-800">Assigned Team</h3>
@@ -447,11 +737,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                                   Cancel
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    onFieldChange('salesRep', assignedSalesRep);
-                                    onFieldChange('designer', assignedDesigner);
-                                    setIsEditingTeam(false);
-                                  }}
+                                        onClick={handleSaveTeam}
                                   className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-semibold shadow-sm hover:bg-blue-700"
                                 >
                                   Save
@@ -466,6 +752,7 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                               </button>
                             )}
                         </div>
+                        <div className="border-b border-gray-200 mb-4"></div>
                         {isEditingTeam ? (
                           <div className="space-y-4">
                             <div>
@@ -505,46 +792,45 @@ const OdooDetailBody = ({ lead, isEditing, setIsEditing, onFieldChange, onSchedu
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            <div>
-                              <span className="text-gray-500 text-sm">Sales Person: </span>
-                              <span className="font-medium text-gray-800">{lead.salesRep || <span className="text-gray-400">Unassigned</span>}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-500 text-sm">Sales Person:</span>
+                                    <span className={lead.salesRep ? 'font-semibold text-gray-900' : 'text-gray-400 font-medium'}>{lead.salesRep || 'Unassigned'}</span>
                             </div>
-                            <div>
-                              <span className="text-gray-500 text-sm">Designer: </span>
-                              <span className="font-medium text-gray-800">{lead.designer || <span className="text-gray-400">Unassigned</span>}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-500 text-sm">Designer:</span>
+                                    <span className={lead.designer ? 'font-semibold text-gray-900' : 'text-gray-400 font-medium'}>{lead.designer || 'Unassigned'}</span>
                             </div>
                           </div>
                         )}
                     </div>
-                    )}
-                    {/* --- End Assigned Team Section --- */}
 
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-base font-semibold text-gray-800">Activity</h3>
-                            <button onClick={onScheduleActivity} className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 transition" title="Add Activity">+</button>
+                            <button onClick={() => { setEditingActivity(null); setIsActivityModalOpen(true); }} className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 transition" title="Add Activity">+</button>
                         </div>
                         <div className="space-y-3">
-                            {(activities || []).filter(a => a.status !== 'done' && !deletedActivityIds.has(a.id)).map(activity => (
-                                <div key={activity.id} className="bg-gray-50 rounded-lg border border-gray-200 p-3">
-                                    <div className="flex items-center justify-between text-xs mb-1">
-                                        <span className="px-2 py-0.5 rounded font-semibold bg-gray-200 text-gray-700">{activity.type}</span>
-                                        <span className="text-blue-600 font-medium">{activity.status}</span>
-                </div>
-                                    <p className="font-semibold text-gray-800 text-sm my-1">{activity.title || activity.summary}</p>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm text-gray-500">{activity.dueDate}</span>
-                                        <div className="flex items-center gap-2.5">
-                                            <button onClick={() => onEditActivity(activity)} title="Edit" className="text-blue-600 hover:text-blue-800"><FaPencilAlt size={14} /></button>
-                                            <button onClick={() => onMarkDone(activity.id)} title="Mark as Done" className="text-green-600 hover:text-green-800"><FaCheck size={14} /></button>
-                                            <button onClick={() => onDeleteActivity(activity.id)} title="Delete" className="text-red-500 hover:text-red-700"><FaTimes size={14} /></button>
+                            {(activities && activities.length > 0) ? (
+                              activities.filter(a => a.status !== 'done' && a.id && !deletedActivityIds.has(a.id)).map((activity, index) => (
+                                <div key={activity.id || `temp-${index}`} className="bg-gray-50 rounded-lg border border-gray-200 p-3 flex items-center justify-between">
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-700 capitalize">{activity.type}</span>
+                                      <span className="text-blue-600 text-xs font-medium ml-2">{activity.status}</span>
+                                    </div>
+                                    <span className="font-semibold text-gray-800 text-sm">{activity.title}</span>
+                                    <span className="text-sm text-gray-500">{activity.dueDate}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 ml-4">
+                                    <button onClick={() => activity.id && onMarkDone(activity.id)} title="Mark as Done" className="text-green-600 hover:text-green-800"><FaCheck size={18} /></button>
+                                    <button onClick={() => onEditActivity(activity)} title="Edit" className="text-blue-600 hover:text-blue-800"><FaPencilAlt size={18} /></button>
+                                    <button onClick={() => activity.id && onDeleteActivity(activity.id)} title="Delete" className="text-red-500 hover:text-red-700"><FaTimes size={18} /></button>
+                                  </div>
                                 </div>
-                                </div>
-                            </div>
-                            ))}
-                            {(activities || []).filter(a => a.status !== 'done' && !deletedActivityIds.has(a.id)).length === 0 && (
-                                <div className="text-center text-sm text-gray-400 py-4">No pending activities.</div>
-                          )}
+                              ))
+                            ) : (
+                              <div className="text-center text-sm text-gray-400 py-4">No pending activities.</div>
+                            )}
                         </div>
                     </div>
         </div>
@@ -656,61 +942,140 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
 
           // --- Main View Component ---
           const LeadDetailContent = () => {
+              // All hooks must be called before any return!
               const router = useRouter();
               const { id } = router.query;
+              const dispatch = useDispatch();
+              const { lead, loading, error } = useSelector((state) => state.leads);
+              const { pipelines, status: pipelinesStatus } = useSelector((state) => state.pipelines);
 
-              const [leads, setLeads] = useState([
-                  {
-            leadId: 'LEAD101', name: 'John Doe', contactNumber: '1234567890', email: 'john@example.com',
-            projectType: 'Residential', propertyType: 'Apartment', address: '123 Main St', budget: '1500000',
-            leadSource: 'Website', designStyle: 'Modern', status: 'Qualified', rating: 2,
-            activities: [
-                { 
-                    id: 1, 
-                    type: 'To-Do', 
-                    title: 'Follow up with client', 
-                    dueDate: '2025-06-24', 
-                    status: 'done', 
-                    date: new Date('2025-06-24'),
-                    createdAt: '2025-06-20T09:00:00.000Z',
-                    completedAt: '2025-06-24T14:30:00.000Z'
-                },
-                { 
-                    id: 2, 
-                    type: 'Call', 
-                    title: 'Initial consultation', 
-                    dueDate: '2025-06-28', 
-                    status: 'pending', 
-                    date: new Date('2025-06-28'),
-                    createdAt: '2025-06-25T10:15:00.000Z'
-                },
-            ],
-            notes: [ {user: 'Alice', time: new Date(), content: 'Client is interested in minimalist designs.'} ]
-                  },
-              ]);
-              const stages = ['New', 'Contacted', 'Qualified', 'Quoted', 'Converted'];
-              const lead = leads.find(l => l.leadId === id);
-
-    // All state hooks
+              // All state hooks - MUST be called before any conditional returns
               const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
               const [isLostReasonModalOpen, setIsLostReasonModalOpen] = useState(false);
-    const [isJunkReasonModalOpen, setIsJunkReasonModalOpen] = useState(false);
+              const [isJunkReasonModalOpen, setIsJunkReasonModalOpen] = useState(false);
               const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
+              const [isEditing, setIsEditing] = useState(false);
               const [editingActivity, setEditingActivity] = useState(null);
-    const [activities, setActivities] = useState(lead?.activities || []);
-    const [notes, setNotes] = useState(lead?.notes || []);
+              const [activities, setActivities] = useState([]);
               const [timelineEvents, setTimelineEvents] = useState([]);
-    const [deletedActivityIds, setDeletedActivityIds] = useState(new Set());
-    const [conversionData, setConversionData] = useState(lead?.status === 'Converted' ? lead : null);
-    
-    // Get currentRole from sessionStorage
-    const [currentRole, setCurrentRole] = useState(null);
-    useEffect(() => {
-      if (typeof window !== 'undefined') {
-        setCurrentRole(sessionStorage.getItem('currentRole'));
-      }
-    }, []);
+              const [deletedActivityIds, setDeletedActivityIds] = useState(new Set());
+              const [conversionData, setConversionData] = useState(null);
+              const [currentRole, setCurrentRole] = useState(null);
+              const [showJunkModal, setShowJunkModal] = useState(false);
+              const [showLostModal, setShowLostModal] = useState(false);
+              const [showConvertModal, setShowConvertModal] = useState(false);
+              const [notes, setNotes] = useState([]);
+              const [fileModal, setFileModal] = useState({ open: false, url: null });
+              const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+              const [activityToDelete, setActivityToDelete] = useState(null);
+
+              // Fetch pipelines on mount if not loaded
+              useEffect(() => {
+                if (!pipelines || pipelines.length === 0) {
+                  dispatch(fetchPipelines());
+                }
+              }, [dispatch, pipelines]);
+
+              // Fetch only the current lead by ID
+              useEffect(() => {
+                if (id) {
+                  dispatch(fetchLeadById(id));
+                }
+              }, [dispatch, id]);
+
+              // Set currentRole from sessionStorage
+              useEffect(() => {
+                if (typeof window !== 'undefined') {
+                  setCurrentRole(sessionStorage.getItem('currentRole'));
+                }
+              }, []);
+
+              // Use dynamic stages from Redux
+              const stages = pipelines.map(p => p.name);
+
+              // Initialize activities and notes when lead is available
+              useEffect(() => {
+                if (lead && lead.leadId) {
+                  const fetchActivities = async () => {
+                    try {
+                      const token = localStorage.getItem('token') || '';
+                      const response = await axios.get(`${API_BASE_URL}/leads/${lead.leadId}/activities`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      });
+                      setActivities(response.data);
+                    } catch (err) {
+                      console.error('Failed to fetch activities:', err);
+                      setActivities([]);
+                    }
+                  };
+                  fetchActivities();
+                  setConversionData(lead.stageName === 'Converted' ? lead : null);
+                }
+              }, [lead]);
+
+                // Add state for activity logs
+  const [activityLogs, setActivityLogs] = useState([]);
+
+  // Add fetchActivityLogs function
+  const fetchActivityLogs = async (leadId) => {
+    try {
+      const token = localStorage.getItem('token') || '';
+      const response = await axios.get(`${API_BASE_URL}/leads/${leadId}/activity-logs`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setActivityLogs(response.data);
+    } catch (err) {
+      console.error('Failed to fetch activity logs:', err);
+    }
+  };
+
+              useEffect(() => {
+                if (lead && lead.leadId) {
+                  fetchActivityLogs(lead.leadId);
+                }
+              }, [lead]);
+
+              // Only after all hooks, do conditional returns
+              if (loading) {
+                return (
+                  <div className="flex items-center justify-center min-h-screen">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-gray-600">Loading lead...</span>
+                  </div>
+                );
+              }
+
+              if (error) {
+                // Extract error message from object if needed
+                const errorMessage = typeof error === 'string' ? error : 
+                  error?.message || error?.error || 'An unknown error occurred';
+                
+                return (
+                  <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center">
+                      <div className="text-red-500 mb-2">
+                        <FaTimes className="h-8 w-8 mx-auto" />
+                      </div>
+                      <p className="text-gray-600">Failed to load lead</p>
+                      <p className="text-sm text-gray-500 mt-1">{errorMessage}</p>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (!lead) {
+                return (
+                  <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center">
+                      <div className="text-gray-400 mb-2">
+                        <FaUser className="h-8 w-8 mx-auto" />
+                      </div>
+                      <p className="text-gray-600">Lead not found</p>
+                      <p className="text-sm text-gray-500 mt-1">The lead you're looking for doesn't exist.</p>
+                    </div>
+                  </div>
+                );
+              }
     
     // Handlers
     const addTimelineEvent = ({ action, details, user = 'You', date = null }) => {
@@ -725,33 +1090,57 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
         }, ...prev]);
     };
     
-              const handleStatusChange = (newStatus) => {
-        if (newStatus === 'Converted') return setIsConversionModalOpen(true);
-                  if (lead && newStatus !== lead.status) {
-            // Use current timestamp for stage changes as they happen now
-            addTimelineEvent({ 
-                action: 'Stage Changed', 
-                details: `${lead.status} → ${newStatus}`,
-                date: new Date() // This is correct - stage changes happen now
-            });
-            setLeads(prev => prev.map(l => l.leadId === lead.leadId ? { ...l, status: newStatus } : l));
-                      toast.success(`Lead moved to ${newStatus}`);
-                  }
-              };
+              const handleStatusChange = async (stageName) => {
+        if (!lead) return;
+        const stage = pipelines.find(p => p.name === stageName);
+        if (!stage) return;
+        if (stage.formType === 'LOST') {
+          setShowLostModal(true);
+          return;
+        }
+        if (stage.formType === 'JUNK') {
+          setShowJunkModal(true);
+          return;
+        }
+        if (stage.formType === 'CONVERTED') {
+          setShowConvertModal(true);
+          return;
+        }
+        // For all other stages, update stageId directly
+        try {
+          await axios.patch(`${API_BASE_URL}/leads/${lead.leadId}/stage/${stage.stageId}`, {}, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+          });
+          await dispatch(fetchLeadById(lead.leadId));
+          toast.success(`Lead moved to ${stage.name}`);
+        } catch (error) {
+          toast.error('Failed to update lead stage');
+        }
+    };
 
-    const handleConfirmConversion = (formData) => {
+    const handleConfirmConversion = async (formData) => {
         addTimelineEvent({ 
             action: 'Converted to Project',
             date: new Date() // Conversion happens now
         });
-        const updatedLead = { ...lead, status: 'Converted', ...formData };
-        setLeads(prev => prev.map(l => l.leadId === lead.leadId ? updatedLead : l));
-        setConversionData(updatedLead);
+        
+        try {
+          const updatedLeadData = { ...lead, stageName: 'Converted', ...formData };
+          await dispatch(updateLead({
+            leadId: lead.leadId,
+            ...updatedLeadData
+          }));
+          setConversionData(updatedLeadData);
         setIsConversionModalOpen(false);
         toast.success('Lead marked as Converted!');
+          // Refetch leads to get updated stageId
+          await dispatch(fetchLeads());
+        } catch (error) {
+          toast.error('Failed to convert lead');
+        }
     };
     
-    const handleMarkLost = () => setIsLostReasonModalOpen(true);
+    const handleMarkLost = () => setShowLostModal(true);
               const handleLostReasonSubmit = (reason) => {
         addTimelineEvent({ 
             action: 'Marked as Lost', 
@@ -762,7 +1151,7 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
                       setIsLostReasonModalOpen(false);
     };
     
-    const handleMarkJunk = () => setIsJunkReasonModalOpen(true);
+    const handleMarkJunk = () => setShowJunkModal(true);
     const handleJunkReasonSubmit = (reason) => {
         addTimelineEvent({ 
             action: 'Marked as Junk', 
@@ -773,93 +1162,195 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
         setIsJunkReasonModalOpen(false);
               };
 
-              const handleFieldChange = (field, value) => {
-        setLeads(prev => prev.map(l => l.leadId === lead.leadId ? { ...l, [field]: value } : l));
+              const handleFieldChange = async (field, value) => {
+        try {
+          await dispatch(updateLead({
+            leadId: lead.leadId,
+            [field]: value
+          }));
+        } catch (error) {
+          toast.error('Failed to update lead field');
+        }
+              };
+
+              const fetchActivities = async (leadId) => {
+                try {
+                  const token = localStorage.getItem('token') || '';
+                  const response = await axios.get(`${API_BASE_URL}/leads/${leadId}/activities`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  });
+                  setActivities(response.data);
+                } catch (err) {
+                  console.error('Failed to fetch activities:', err);
+                  setActivities([]);
+                }
               };
 
               const handleAddOrEditActivity = (activity) => {
-        const now = new Date().toISOString();
-        const activityWithTimestamp = {
-            ...activity,
-            createdAt: activity.createdAt || now,
-            updatedAt: now
-        };
-        setActivities(prev => activity.id ? 
-            prev.map(a => a.id === activity.id ? activityWithTimestamp : a) : 
-            [...prev, { ...activityWithTimestamp, id: Date.now() }]
-        );
-    };
+                const now = new Date().toISOString();
+                const activityWithTimestamp = {
+                    ...activity,
+                    createdAt: activity.createdAt || now,
+                    updatedAt: now
+                };
+                
+                // If it's an existing activity (has id), update it
+                if (activity.id) {
+                    setActivities(prev => 
+                        prev.map(a => a.id === activity.id ? activityWithTimestamp : a)
+                    );
+                } else {
+                    // For new activities, replace the temporary activity with the real one from backend
+                    // The backend response includes the real id
+                    setActivities(prev => {
+                        // Remove any temporary activities (those without id or with temporary id)
+                        const filtered = prev.filter(a => a.id && !a.id.startsWith('ACT-'));
+                        return [...filtered, activityWithTimestamp];
+                    });
+                }
+                // Refresh activities from backend
+                if (lead && lead.leadId) {
+                    fetchActivities(lead.leadId);
+                }
+            };
 
-              const handleDeleteActivity = (id) => {
-        const toDelete = activities.find(a => a.id === id);
-        if (toDelete) {
-          // Mark the activity as deleted (don't remove it from activities array)
-          setDeletedActivityIds(prev => new Set([...prev, id]));
-          
-          // Add a separate timeline event for deletion happening now
-          const deletionDate = new Date();
-          setTimelineEvents(prevEvents => [{
-            id: `deleted-${id}-${Date.now()}`, // Unique ID for deletion event
-            type: 'event',
-            action: 'Activity Deleted',
-            details: `${toDelete.type}: ${toDelete.title || toDelete.summary || ''}`,
-            user: 'You',
-            date: deletionDate // Deletion happens now
-          }, ...prevEvents]);
-        }
-    };
+              const handleDeleteActivity = async (id) => {
+                if (!id) {
+                  console.warn('handleDeleteActivity called with undefined id');
+                  return;
+                }
+                const activity = activities.find(a => a.id === id);
+                if (!activity) {
+                  console.warn(`Activity not found with id: ${id}`);
+                  return;
+                }
+                setActivityToDelete(activity);
+                setShowDeleteConfirm(true);
+              };
 
-    const handleMarkDone = (id) => {
-        const completedAt = new Date().toISOString();
-        const completionDate = new Date();
-        setActivities(prev => prev.map(a => a.id === id ? { 
-            ...a, 
-            status: 'done', 
-            completedAt: completedAt,
-            updatedAt: completedAt 
-        } : a));
-        
-        // Add a timeline event for completion using the completion date
-        const activity = activities.find(a => a.id === id);
-        if (activity) {
-            addTimelineEvent({
-                action: 'Activity Completed',
-                details: `${activity.type}: ${activity.title || activity.summary || ''}`,
-                date: completionDate
-            });
-        }
-    };
-    const handleAddNote = (note) => setNotes(prev => [note, ...prev]);
+              const confirmDeleteActivity = async () => {
+                if (!activityToDelete) return;
+                try {
+                  await axios.delete(`${API_BASE_URL}/leads/${lead.leadId}/activities/${activityToDelete.id}`);
+                  await fetchActivities(lead.leadId); // Refresh activities
+                  await fetchActivityLogs(lead.leadId); // Refresh activity logs
+                  toast.success('Activity deleted');
+                } catch (error) {
+                  toast.error('Failed to delete activity');
+                }
+                setShowDeleteConfirm(false);
+                setActivityToDelete(null);
+              };
+
+              const cancelDeleteActivity = () => {
+                setShowDeleteConfirm(false);
+                setActivityToDelete(null);
+              };
+
+              const handleMarkDone = async (id) => {
+                if (!id) {
+                  console.warn('handleMarkDone called with undefined id');
+                  return;
+                }
+                const activity = activities.find(a => a.id === id);
+                if (!activity) {
+                  console.warn(`Activity not found with id: ${id}`);
+                  return;
+                }
+                try {
+                  await axios.patch(`${API_BASE_URL}/leads/${lead.leadId}/activities/${activity.id}/status`, "done", {
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                  });
+                  await fetchActivities(lead.leadId); // Refresh activities
+                  await fetchActivityLogs(lead.leadId); // Refresh activity logs
+                  toast.success('Activity marked as done');
+                } catch (error) {
+                  toast.error('Failed to mark activity as done');
+                }
+              };
+              const handleAddNote = (note) => setNotes(prev => [note, ...prev]);
 
               if (!lead) return <div className="p-6 text-center">Lead not found.</div>;
 
     const updatedLead = { ...lead, activities, notes };
 
+              const handleJunkSuccess = async (updatedLead) => {
+                setShowJunkModal(false);
+                const junkStage = pipelines.find(p => p.formType === 'JUNK');
+                if (junkStage) {
+                  await axios.patch(`${API_BASE_URL}/leads/${lead.leadId}/stage/${junkStage.stageId}`, {}, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                  });
+                }
+                await dispatch(fetchLeadById(lead.leadId));
+                toast.success('Lead marked as Junk!');
+              };
+              const handleLostSuccess = async (updatedLead) => {
+                setShowLostModal(false);
+                console.log('All pipelines:', pipelines);
+                const lostStage = pipelines.find(p => p.formType === 'LOST');
+                console.log('Lost stage:', lostStage);
+                if (lostStage) {
+                  console.log('PATCH URL:', `${API_BASE_URL}/leads/${lead.leadId}/stage/${lostStage.stageId}`);
+                  await axios.patch(`${API_BASE_URL}/leads/${lead.leadId}/stage/${lostStage.stageId}`, {}, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                  });
+                } else {
+                  console.error('Lost stage not found in pipelines!');
+                }
+                await dispatch(fetchLeadById(lead.leadId));
+                toast.success('Lead marked as Lost!');
+              };
+              const handleConvertSuccess = async (updatedLead) => {
+                setShowConvertModal(false);
+                const convertedStage = pipelines.find(p => p.formType === 'CONVERTED');
+                if (convertedStage) {
+                  await axios.patch(`${API_BASE_URL}/leads/${lead.leadId}/stage/${convertedStage.stageId}`, {}, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                  });
+                }
+                await dispatch(fetchLeadById(lead.leadId));
+                toast.success('Lead marked as Converted!');
+              };
+
+              // Add the edit handler
+              const handleEditActivity = (activity) => {
+                setEditingActivity(activity);
+                setIsActivityModalOpen(true);
+              };
+
               return (
         <div className="bg-gray-50 min-h-screen flex flex-col">
+                      {/* Progress bar fallback */}
+                      {pipelinesStatus === 'loading' ? (
+                        <div className="text-gray-400 text-center py-4">Loading pipeline stages...</div>
+                      ) : !pipelines || pipelines.length === 0 ? (
+                        <div className="text-gray-400 text-center py-4">No pipeline stages found.</div>
+                      ) : (
                       <OdooHeader
                 lead={updatedLead}
-                          stages={stages}
+                          pipelines={pipelines}
                           onStatusChange={handleStatusChange}
-                          onMarkLost={handleMarkLost}
-                          onMarkJunk={handleMarkJunk}
                       />
+                      )}
                       <OdooDetailBody
                 lead={updatedLead}
                           isEditing={isEditing}
                           setIsEditing={setIsEditing}
                           onFieldChange={handleFieldChange}
+                          onScheduleActivity={() => setIsActivityModalOpen(true)}
                           activities={activities}
-                onScheduleActivity={() => { setEditingActivity(null); setIsActivityModalOpen(true); }}
-                onEditActivity={(activity) => { setEditingActivity(activity); setIsActivityModalOpen(true); }}
-                          onDeleteActivity={handleDeleteActivity}
-                          onMarkDone={handleMarkDone}
                           notes={notes}
-                onAddNote={handleAddNote}
                 conversionData={conversionData}
                 timelineEvents={timelineEvents}
                 deletedActivityIds={deletedActivityIds}
                 currentRole={currentRole}
+                setEditingActivity={setEditingActivity}
+                setIsActivityModalOpen={setIsActivityModalOpen}
+                onEditActivity={handleEditActivity}
+                onDeleteActivity={handleDeleteActivity}
+                onMarkDone={handleMarkDone}
+                activityLogs={activityLogs}
             />
             <AdvancedScheduleActivityModal
               isOpen={isActivityModalOpen}
@@ -867,10 +1358,56 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               lead={lead}
               initialData={editingActivity}
               onSuccess={handleAddOrEditActivity}
+              onActivityChange={fetchActivities}
+              onActivityLogsChange={fetchActivityLogs}
             />
             <LostReasonModal isOpen={isLostReasonModalOpen} onClose={() => setIsLostReasonModalOpen(false)} onSubmit={handleLostReasonSubmit} title="Reason for Lost Lead" placeholder="Enter reason..."/>
             <LostReasonModal isOpen={isJunkReasonModalOpen} onClose={() => setIsJunkReasonModalOpen(false)} onSubmit={handleJunkReasonSubmit} title="Reason for Junk" placeholder="Enter reason..." />
             <ConversionModal isOpen={isConversionModalOpen} onClose={() => setIsConversionModalOpen(false)} onConfirm={handleConfirmConversion} lead={lead} />
+            <JunkReasonModal
+              lead={showJunkModal ? lead : null}
+              onClose={() => setShowJunkModal(false)}
+              onSuccess={handleJunkSuccess}
+            />
+            <LostLeadModal
+              lead={showLostModal ? lead : null}
+              onClose={() => setShowLostModal(false)}
+              onSuccess={handleLostSuccess}
+            />
+            <ConvertLeadModal
+              lead={showConvertModal ? lead : null}
+              onClose={() => setShowConvertModal(false)}
+              onSuccess={handleConvertSuccess}
+            />
+            {showDeleteConfirm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full flex flex-col items-center border border-red-200">
+      <div className="flex flex-col items-center mb-4">
+        <div className="bg-red-100 rounded-full p-3 mb-2">
+          <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </div>
+        <div className="text-xl font-bold text-red-700 mb-1">Delete Activity?</div>
+        <div className="text-gray-700 text-center">Are you sure you want to delete this activity? This action cannot be undone.</div>
+      </div>
+      <div className="flex gap-4 w-full justify-center mt-4">
+        <button
+          onClick={confirmDeleteActivity}
+          className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded shadow transition"
+        >
+          Delete
+        </button>
+        <button
+          onClick={cancelDeleteActivity}
+          className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-2 rounded shadow transition"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
                   </div>
               );
           };

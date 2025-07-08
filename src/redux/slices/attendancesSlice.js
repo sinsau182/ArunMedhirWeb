@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { getItemFromSessionStorage } from "./sessionStorageSlice";
 import getConfig from "next/config";
 const { publicRuntimeConfig } = getConfig();
-const API_BASE_URL = "http://192.168.0.200:8082" + "/attendance-summary";
+const API_BASE_URL = publicRuntimeConfig.apiURL + "/attendance-summary";
 
 export const fetchAllEmployeeAttendanceOneMonth = createAsyncThunk(
     "attendances/fetchAllEmployeeAttendanceOneMonth",

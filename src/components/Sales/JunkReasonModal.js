@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { updateLead } from '@/redux/slices/leadsSlice';
+import { updateLead, moveLeadToPipeline } from '@/redux/slices/leadsSlice';
+import axios from 'axios';
+import getConfig from 'next/config';
+
+const { publicRuntimeConfig } = getConfig();
+const API_BASE_URL = publicRuntimeConfig.apiURL;
 
 const JunkReasonModal = ({ lead, onClose, onSuccess }) => {
   const dispatch = useDispatch();
@@ -12,23 +17,34 @@ const JunkReasonModal = ({ lead, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!lead) {
+      alert("No lead selected.");
+      return;
+    }
     if (!reason.trim()) {
       alert("Please provide a reason for marking the lead as junk.");
       return;
     }
 
     try {
-      await dispatch(updateLead({
-        leadId: lead.leadId,
+      // Update lead status and reason for junk
+      await axios.put(`${API_BASE_URL}/leads/${lead.leadId}`, {
         status: 'Junk',
         reasonForJunk: reason.trim()
-      }));
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        }
+      });
+      // Move the lead to the junk stage (update stageId)
+      if (lead.pipelineId || lead.stageId) {
+        await dispatch(moveLeadToPipeline({
+          leadId: lead.leadId,
+          newPipelineId: lead.pipelineId || lead.stageId
+        }));
+      }
       if (onSuccess) {
-        onSuccess({
-          ...lead,
-          status: 'Junk',
-          reasonForJunk: reason.trim()
-        });
+        onSuccess({ ...lead, status: 'Junk', reasonForJunk: reason.trim() });
       } else {
         onClose();
       }
@@ -37,6 +53,8 @@ const JunkReasonModal = ({ lead, onClose, onSuccess }) => {
       alert('Failed to mark lead as junk. Please try again.');
     }
   };
+
+  if (!lead) return null;
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">

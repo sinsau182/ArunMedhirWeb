@@ -100,12 +100,14 @@ export const updateLeave = createAsyncThunk(
   "leaves/updateLeave",
   async ({ id, leaveData }, { rejectWithValue }) => {
     try {
+      const token = getItemFromSessionStorage("token", null);
       const response = await fetch(
-        `http://sessionhost:8080/api/v1/leaves/${id}`,
+        `${API_BASE_URL}/leaves/${id}`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify(leaveData),
         }

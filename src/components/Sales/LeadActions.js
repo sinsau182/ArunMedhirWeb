@@ -1,68 +1,60 @@
-import React, { useState } from 'react';
-import { FaEllipsisV, FaEdit, FaCheck, FaTimes, FaTrash } from 'react-icons/fa';
+import React, { useState, useRef, useEffect } from 'react';
+import { FaEllipsisV, FaPlus, FaRegClock, FaStickyNote, FaTrash } from 'react-icons/fa';
 
-const LeadActions = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const LeadActions = ({ lead, onScheduleActivity, onAddNote, onMarkLost }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const menuRef = useRef(null);
 
-  const handleAction = (action, e) => {
-    e.stopPropagation(); // Prevent card click event
-    action(lead);
-    setIsOpen(false);
-  };
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
-  const handleToggle = (e) => {
-    e.stopPropagation(); // Prevent card click event
-    setIsOpen(!isOpen);
-  };
+    const handleAction = (action) => {
+        action(lead);
+        setIsOpen(false);
+    };
 
-  return (
-    <div className="relative">
-      <button
-        onClick={handleToggle}
-        className="text-gray-500 hover:text-gray-700 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <FaEllipsisV />
-      </button>
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white border rounded-md shadow-lg z-10">
-          <ul className="py-1">
-            <li>
-              <button
-                onClick={(e) => handleAction(onEdit, e)}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <FaEdit className="mr-2" /> Edit
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={(e) => handleAction(onConvert, e)}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <FaCheck className="mr-2" /> Convert
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={(e) => handleAction(onMarkLost, e)}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <FaTimes className="mr-2" /> Mark as Lost
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={(e) => handleAction(onMarkJunk, e)}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <FaTrash className="mr-2" /> Mark as Junk
-              </button>
-            </li>
-          </ul>
+    return (
+        <div className="relative lead-actions" ref={menuRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="p-2 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-700"
+            >
+                <FaEllipsisV />
+            </button>
+            {isOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border z-50">
+                    <button
+                        onClick={() => handleAction(onScheduleActivity)}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                        <FaRegClock /> Schedule Activity
+                    </button>
+                    <button
+                        // onClick={() => handleAction(onAddNote)} // Assuming onAddNote exists
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                        <FaStickyNote /> Add Note
+                    </button>
+                    <div className="border-t my-1"></div>
+                    <button
+                        onClick={() => handleAction(onMarkLost)}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                        <FaTrash /> Mark as Lost
+                    </button>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 };
 
 export default LeadActions;

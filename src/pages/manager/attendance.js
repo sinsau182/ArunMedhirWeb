@@ -473,7 +473,7 @@ function Attendance() {
 
   // Filter leave data based on search input and selected departments (moved from renderLeaveTable)
   const filteredAndSearchedLeaveData = useMemo(() => {
-    let data = employees.map(generateLeaveData); // Start with all leave data mapped
+    let data = employees.map(generateAttendanceData); // Start with all leave data mapped
 
     // Apply department filter
     if (selectedDepartments.length > 0) {
@@ -482,7 +482,7 @@ function Attendance() {
       );
     }
 
-    console.log(data);
+    // console.log(data);
 
     // Apply search filter
     if (searchInput) {
@@ -496,7 +496,7 @@ function Attendance() {
     }
 
     return data;
-  }, [searchInput, selectedDepartments, employees, generateLeaveData]);
+  }, [searchInput, selectedDepartments, employees, generateAttendanceData]);
 
   // Calculate attendance summary statistics
   const calculateAttendanceSummary = useCallback(
@@ -658,9 +658,9 @@ function Attendance() {
       return calculateAttendanceSummary([emp], null);
     } else {
       // Calculate summary for all employees for the selected date
-      return calculateAttendanceSummary(filteredEmployees, summaryDate);
+      return calculateAttendanceSummary(filteredAndSearchedLeaveData, summaryDate);
     }
-  }, [filteredEmployees, calculateAttendanceSummary, summaryDate, selectedEmployeeId]);
+  }, [filteredAndSearchedLeaveData, calculateAttendanceSummary, summaryDate, selectedEmployeeId]);
 
   // Render functions
   const renderAttendanceTable = (props) => {

@@ -13,6 +13,8 @@ import {
   FaEnvelope,
   FaCommentDots,
   FaRegClock,
+  FaExclamationTriangle,
+  FaCheckCircle,
 } from "react-icons/fa";
 import LeadActions from './LeadActions';
 
@@ -38,6 +40,7 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
 
   const handleCardDoubleClick = (e) => {
     if (e.target.closest('.lead-actions')) {
+      e.stopPropagation();
       return;
     }
     router.push(`/Sales/leads/${lead.leadId}`);
@@ -56,6 +59,34 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
     }
     return <div className="flex items-center">{stars}</div>;
   };
+
+  // Helper to determine activity status
+  const getActivityStatus = (activities) => {
+    if (!activities || activities.length === 0) {
+      return { status: 'None', text: 'No activity scheduled' };
+    }
+
+    const now = new Date();
+    let hasUpcoming = false;
+
+    for (const activity of activities) {
+      if (activity.status !== 'done') {
+        const dueDate = new Date(activity.dueDate);
+        if (dueDate < now) {
+          return { status: 'Overdue', text: 'Activity overdue!' };
+        }
+        hasUpcoming = true;
+      }
+    }
+
+    if (hasUpcoming) {
+      return { status: 'Upcoming', text: 'Activity upcoming' };
+    }
+    
+    return { status: 'None', text: 'No upcoming activity' };
+  };
+
+  const activityStatus = getActivityStatus(lead.activities);
 
   // Initials for Sales Rep and Designer
   const getInitial = (name) => name ? name.charAt(0).toUpperCase() : '?';
@@ -102,10 +133,17 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
         ${isDragging ? 'z-50' : ''}
       `}
     >
-      {/* Top: Name, then Stars below, both left-aligned */}
-      <div className="mb-1">
-        <h3 className="font-semibold text-gray-900 text-base truncate">{lead.name}</h3>
-        <div className="mt-1 flex items-center">{renderStars(lead.rating || 0)}</div>
+      {/* Top section with status icon */}
+      <div className="flex justify-between items-start mb-1">
+        <div className="flex-1">
+          <h3 className="font-semibold text-gray-900 text-base truncate pr-2">{lead.name}</h3>
+          <div className="mt-1 flex items-center">{renderStars(lead.rating || 0)}</div>
+        </div>
+        <CustomTooltip text={activityStatus.text}>
+          {activityStatus.status === 'Overdue' && <FaExclamationTriangle className="text-red-500 text-lg" />}
+          {activityStatus.status === 'Upcoming' && <FaCheckCircle className="text-green-500 text-lg" />}
+          {activityStatus.status === 'None' && <FaRegClock className="text-yellow-500 text-lg" />}
+        </CustomTooltip>
       </div>
       {/* Second row: Budget • Date of Creation */}
       <div className="flex items-center gap-2 mb-2 text-sm text-gray-700">
@@ -143,16 +181,15 @@ const LeadCard = ({ lead, onEdit, onConvert, onMarkLost, onMarkJunk, onScheduleA
       </div>
       {/* Horizontal divider and activity row at the bottom */}
       <div className="mt-4 border-t border-gray-200 mb-0.5" />
-      <div className="flex items-center justify-between mt-2 mb-2">
-        <button
-          type="button"
-          title="Schedule Activity"
-          onClick={() => onScheduleActivity && onScheduleActivity(lead)}
-          className="hover:bg-blue-50 rounded-full p-1 transition-colors text-gray-500 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
-        >
-          <FaRegClock size={20} />
-        </button>
-        <span className="text-xs text-gray-400 ml-2">No activity scheduled</span>
+      <div className="flex items-center justify-between mt-2">
+        <div className="text-xs text-gray-400">
+          Last Updated: {formatDate(lead.updatedAt || lead.createdAt)}
+        </div>
+        <LeadActions 
+            lead={lead} 
+            onScheduleActivity={onScheduleActivity}
+            onMarkLost={onMarkLost} 
+        />
       </div>
     </div>
   );

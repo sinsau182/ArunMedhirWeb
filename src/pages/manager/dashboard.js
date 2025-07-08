@@ -1,5 +1,26 @@
 /* eslint-disable react/jsx-key */
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useState } from 'react';
+import {
+  FaUsers,
+  FaBullseye,
+  FaMoneyBillWave,
+  FaHandHoldingUsd,
+  FaExclamationCircle,
+  FaHourglassHalf,
+  FaUserPlus,
+  FaChartPie,
+  FaExternalLinkAlt,
+  FaFilter,
+  FaCrown,
+  FaPlus,
+  FaPhoneAlt,
+  FaEnvelope,
+  FaCalendarAlt,
+  FaStickyNote,
+  FaHandshake,
+  FaArrowRight,
+  FaClock,
+} from 'react-icons/fa';
 import {
   BarChart,
   Bar,
@@ -11,307 +32,576 @@ import {
   Pie,
   Cell,
   Legend,
-  CartesianGrid,
-} from "recharts";
-import { FaUsers, FaMoneyBillWave, FaChartLine, FaPlus, FaExternalLinkAlt, FaBell, FaUserClock, FaRegCommentDots, FaPhoneSlash, FaExclamationTriangle, FaTimes } from "react-icons/fa";
-import RequestDetails from "@/components/RequestDetails";
-import Sidebar from "@/components/Sidebar";
-import HradminNavbar from "@/components/HradminNavbar";
-import { useSelector, useDispatch } from "react-redux";
-// import { fetchEmployees } from "@/redux/slices/employeeSlice";
-import withAuth from "@/components/withAuth";
-import axios from "axios";
-import { getItemFromSessionStorage } from "@/redux/slices/sessionStorageSlice";
-import { toast } from "sonner";
-import getConfig from "next/config";
-import {
-  fetchExpenseRequests,
-  fetchIncomeRequests,
-} from "@/redux/slices/requestDetailsSlice";
-import Link from "next/link";
+} from 'recharts';
+import MainLayout from '@/components/MainLayout';
+import AddLeadModal from '@/components/Sales/AddLeadModal';
+import Link from 'next/link';
+import { toast } from 'sonner';
 
-
-// MOCK DATA FOR SALES DASHBOARD - Replace with actual data fetching
-const MOCK_LEADS_DATA = [
-  { status: 'New', count: 12 },
-  { status: 'Contacted', count: 8 },
-  { status: 'Qualified', count: 5 },
-  { status: 'Quoted', count: 3 },
-  { status: 'Converted', count: 2 },
-];
-
-const MOCK_TEAM_PERFORMANCE = [
-  { name: 'Alice', converted: 12, revenue: 150000 },
-  { name: 'Bob', converted: 9, revenue: 120000 },
-  { name: 'Charlie', converted: 7, revenue: 95000 },
-  { name: 'Dana', converted: 5, revenue: 75000 },
-];
-
-const MOCK_ACTIVITIES = [
-    { type: 'missed_call', text: 'Alice missed a scheduled call with "Innovate Inc."', time: '1 hour ago' },
-    { type: 'stale_lead', text: 'Bob has no updates on "Global Corp" for 4 days.', time: '3 hours ago' },
-    { type: 'deal_won', text: 'Alice closed the deal with "Innovate Inc."', time: '2 hours ago' },
-    { type: 'new_lead', text: 'A new lead "Tech Solutions" was assigned to Bob.', time: '5 hours ago' },
-    { type: 'stage_change', text: 'Charlie moved "Global Corp" to the "Quoted" stage.', time: '1 day ago' },
-    { type: 'note_added', text: 'You added a note to "Innovate Inc.".', time: '2 days ago' },
-];
-
-const MOCK_UNASSIGNED_LEADS = [
-    { id: 'LEAD201', name: 'Lead A', projectType: 'Residential', submittedBy: 'emp123' },
-    { id: 'LEAD202', name: 'Lead B', projectType: 'Commercial', submittedBy: 'emp124' },
-    { id: 'LEAD203', name: 'Lead C', projectType: 'Residential', submittedBy: 'emp125' },
-];
-
-const salesPersons = [
-  { id: 1, name: 'Alice' },
-  { id: 2, name: 'Bob' },
-  { id: 3, name: 'Charlie' },
-  { id: 4, name: 'Dana' },
-];
-
-const SalesKPI = ({ icon, label, value, currency = false, onClick }) => (
-  <div 
-    className={`bg-white p-6 rounded-lg shadow-md flex items-center gap-4 border border-gray-200 ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
-    onClick={onClick}
-  >
-    <div className="bg-blue-100 text-blue-600 p-3 rounded-full">
-      {icon}
-    </div>
-    <div>
-      <p className="text-gray-500 text-sm font-medium">{label}</p>
-      <p className="text-2xl font-bold text-gray-800">
-        {currency && '₹'}{typeof value === 'number' ? value.toLocaleString() : value}
-      </p>
-    </div>
-  </div>
-);
-
-const ActivityIcon = ({ type }) => {
-    const iconStyle = "w-5 h-5";
-    switch (type) {
-        case 'missed_call':
-            return <FaPhoneSlash className={`${iconStyle} text-yellow-600`} />;
-        case 'stale_lead':
-            return <FaExclamationTriangle className={`${iconStyle} text-red-600`} />;
-        case 'deal_won':
-            return <FaMoneyBillWave className={`${iconStyle} text-green-600`} />;
-        case 'new_lead':
-            return <FaUserClock className={`${iconStyle} text-blue-600`} />;
-        default:
-            return <FaRegCommentDots className={`${iconStyle} text-gray-500`} />;
+// --- MOCK DATA (Replace with API data) ---
+const MOCK_DATA = {
+  kpis: {
+    newLeads: { value: 42, change: 15 },
+    conversionRate: { value: '18%', convertedCount: 12, change: -2 },
+    avgDealValue: { value: 250000, change: 10 },
+    revenueWon: { value: 1250000, change: 25 },
+  },
+  actionCenter: {
+    unassignedLeads: [
+      { id: 'L401', name: 'Innovate Corp', source: 'Website' },
+      { id: 'L402', name: 'Global Tech', source: 'Referral' },
+    ],
+    overdueActivities: [
+      { id: 'L205', name: 'Quantum Solutions', task: 'Follow-up call', overdueBy: '2 days' },
+      { id: 'L112', name: 'Vertex Industries', task: 'Send proposal', overdueBy: '5 days' },
+    ],
+    staleLeads: [
+      { id: 'L150', name: 'Apex Enterprises', lastActivity: '10 days ago' },
+    ],
+  },
+  recentActivities: [
+    {
+      id: 1,
+      type: 'call',
+      leadName: 'Innovate Corp',
+      leadId: 'L401',
+      description: 'Alice completed a follow-up call',
+      timestamp: '2 minutes ago',
+      user: 'Alice'
+    },
+    {
+      id: 2,
+      type: 'stage_change',
+      leadName: 'Global Tech',
+      leadId: 'L402',
+      description: 'Bob moved lead from "Contacted" to "Qualified"',
+      timestamp: '15 minutes ago',
+      user: 'Bob'
+    },
+    {
+      id: 3,
+      type: 'email',
+      leadName: 'Quantum Solutions',
+      leadId: 'L205',
+      description: 'Charlie sent proposal email',
+      timestamp: '1 hour ago',
+      user: 'Charlie'
+    },
+    {
+      id: 4,
+      type: 'meeting',
+      leadName: 'Vertex Industries',
+      leadId: 'L112',
+      description: 'Dana scheduled site visit for tomorrow',
+      timestamp: '2 hours ago',
+      user: 'Dana'
+    },
+    {
+      id: 5,
+      type: 'note',
+      leadName: 'Apex Enterprises',
+      leadId: 'L150',
+      description: 'Alice added budget discussion notes',
+      timestamp: '3 hours ago',
+      user: 'Alice'
+    },
+    {
+      id: 6,
+      type: 'conversion',
+      leadName: 'Prime Solutions',
+      leadId: 'L301',
+      description: 'Bob converted lead to customer (₹3,50,000)',
+      timestamp: '4 hours ago',
+      user: 'Bob'
     }
+  ],
+  pipelineForecast: {
+    funnel: [
+      { name: 'New', value: 150 },
+      { name: 'Contacted', value: 110 },
+      { name: 'Qualified', value: 70 },
+      { name: 'Quoted', value: 45 },
+      { name: 'Converted', value: 25 },
+    ],
+    forecast: [
+      { stage: 'Qualified', value: 5000000, probability: '25%', forecastValue: 1250000 },
+      { stage: 'Quoted', value: 3000000, probability: '60%', forecastValue: 1800000 },
+      { stage: 'Negotiation', value: 1500000, probability: '80%', forecastValue: 1200000 },
+    ],
+  },
+  teamPerformance: {
+    leaderboard: [
+      { rank: 1, name: 'Alice', dealsWon: 12, activities: 150 },
+      { rank: 2, name: 'Bob', dealsWon: 9, activities: 120 },
+      { rank: 3, name: 'Charlie', dealsWon: 7, activities: 95 },
+    ],
+    sourcePerformance: [
+      { name: 'Website', value: 400 },
+      { name: 'Referral', value: 300 },
+      { name: 'Social Media', value: 200 },
+      { name: 'Cold Call', value: 100 },
+    ],
+  },
 };
 
-const SalesDashboard = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [showRequestDetails, setShowRequestDetails] = useState(false);
-  const [pendingLeaves, setPendingLeaves] = useState([]);
-  const [pendingCompOffs, setPendingCompOffs] = useState([]);
-  const [profileUpdates, setProfileUpdates] = useState([]);
-  const [unassignedLeads, setUnassignedLeads] = useState(MOCK_UNASSIGNED_LEADS);
-  const [selectedSalesRep, setSelectedSalesRep] = useState({});
+const salesPersons = [
+    { id: 1, name: 'Alice' },
+    { id: 2, name: 'Bob' },
+    { id: 3, name: 'Charlie' },
+    { id: 4, name: 'Dana' },
+  ];
 
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-  
-  const handleOpenRequestsClick = () => {
-    setShowRequestDetails(prev => !prev);
-  };
+const designers = [
+  { id: 1, name: 'Bob' },
+  { id: 2, name: 'Dana' },
+  { id: 3, name: 'Frank' },
+  { id: 4, name: 'Jack' },
+];
 
-  // --- Start of logic from old dashboard ---
-  const publicRuntimeConfig = getConfig().publicRuntimeConfig;
+const defaultLeadData = {
+  name: "",
+  contactNumber: "",
+  email: "",
+  projectType: "",
+  propertyType: "",
+  address: "",
+  area: "",
+  budget: "",
+  designStyle: "",
+  leadSource: "",
+  preferredContact: "",
+  notes: "",
+  status: "New",
+  rating: 0,
+  salesRep: null,
+  designer: null,
+  callDescription: null,
+  callHistory: [],
+  nextCall: null,
+  quotedAmount: null,
+  finalQuotation: null,
+  signupAmount: null,
+  paymentDate: null,
+  paymentMode: null,
+  panNumber: null,
+  discount: null,
+  reasonForLost: null,
+  reasonForJunk: null,
+  submittedBy: null,
+  paymentDetailsFileName: null,
+  bookingFormFileName: null,
+};
 
-  const fetchProfileUpdates = useCallback(async () => {
-    // Mocking this for now as it's not the core sales focus
-    setProfileUpdates([]);
-  }, []);
-  
-  const fetchPendingRequests = useCallback(async () => {
-    // Mocking this for now
-    setPendingLeaves([]);
-    setPendingCompOffs([]);
-  }, []);
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-  useEffect(() => {
-    fetchPendingRequests();
-    fetchProfileUpdates();
-  }, [fetchPendingRequests, fetchProfileUpdates]);
-  
-  const refreshRequests = useCallback(async () => {
-    await fetchPendingRequests();
-    await fetchProfileUpdates();
-  }, [fetchPendingRequests, fetchProfileUpdates]);
-  // --- End of logic from old dashboard ---
-
-  const handleAssignLead = (leadId) => {
-    const repName = selectedSalesRep[leadId];
-    if (!repName) {
-        toast.error("Please select a Sales Rep to assign.");
-        return;
-    }
-    setUnassignedLeads(prev => prev.filter(lead => lead.id !== leadId));
-    toast.success(`Lead ${leadId} assigned to ${repName}.`);
-    // In a real app, an API call would be made here.
-  };
-
-  // These would be calculated from your actual leads data
-  const totalLeads = 65;
-  const newLeadsThisMonth = 22;
-  const conversionRate = "18%";
-  const totalRevenue = 485000;
-  const openRequestsCount = pendingLeaves.length + pendingCompOffs.length + profileUpdates.length;
-
-  if (showRequestDetails) {
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">Administrative Requests</h2>
-                    <button onClick={() => setShowRequestDetails(false)} className="text-gray-400 hover:text-gray-600">
-                        <FaTimes />
-                    </button>
-                </div>
-                <div className="p-6 overflow-y-auto">
-                    <RequestDetails refreshRequests={refreshRequests} />
-                </div>
-                 <div className="bg-gray-50 px-6 py-3 flex justify-end items-center rounded-b-lg">
-                    <button onClick={() => setShowRequestDetails(false)} className="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+// --- Helper Functions ---
+function getActivityIcon(type) {
+  const iconClass = "w-4 h-4";
+  switch (type) {
+    case 'call':
+      return <FaPhoneAlt className={`${iconClass} text-blue-600`} />;
+    case 'email':
+      return <FaEnvelope className={`${iconClass} text-green-600`} />;
+    case 'meeting':
+      return <FaCalendarAlt className={`${iconClass} text-purple-600`} />;
+    case 'note':
+      return <FaStickyNote className={`${iconClass} text-yellow-600`} />;
+    case 'stage_change':
+      return <FaArrowRight className={`${iconClass} text-orange-600`} />;
+    case 'conversion':
+      return <FaHandshake className={`${iconClass} text-green-700`} />;
+    default:
+      return <FaClock className={`${iconClass} text-gray-500`} />;
   }
+}
 
+// --- Reusable Components ---
+function KpiCard({ icon, label, value, change, currency = false, convertedCount }) {
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        toggleSidebar={toggleSidebar}
-      />
+    <div className="bg-white p-5 rounded-lg shadow border border-gray-200">
+      <div className="flex items-center gap-4">
+        <div className="bg-blue-100 text-blue-600 p-3 rounded-full">{icon}</div>
+        <div>
+          <p className="text-sm text-gray-500 font-medium">{label}</p>
+          <p className="text-2xl font-bold text-gray-800">
+            {currency && '₹'}
+            {typeof value === 'number' ? value.toLocaleString() : value}
+          </p>
+          {convertedCount && (
+            <p className="text-sm text-gray-600 mt-1">
+              {convertedCount} converted this month
+            </p>
+          )}
+                        </div>
+                      </div>
+      <p className={`text-sm mt-2 ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        {change >= 0 ? `+${change}%` : `${change}%`} vs last month
+                        </p>
+    </div>
+  );
+}
 
-      <div
-        className={`flex-1 ${
-          isSidebarCollapsed ? "ml-16" : "ml-56"
-        } transition-all duration-300`}
-      >
-        <HradminNavbar />
+function ActionItem({ icon, title, subtitle, action }) {
+  return (
+    <div className="flex items-center justify-between gap-4 p-3 hover:bg-gray-50 rounded-md">
+      <div className="flex items-center gap-3">
+        <div className="text-gray-400">{icon}</div>
+        <div>
+          <p className="font-semibold text-gray-800 text-sm">{title}</p>
+          <p className="text-xs text-gray-500">{subtitle}</p>
+                          </div>
+                        </div>
+      {action}
+                      </div>
+  );
+}
 
-        <div className="p-6">
-            <header className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">Sales Dashboard</h1>
-                <div className="flex gap-4">
-                    <Link href="/SalesManager/Manager" className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2">
-                        <FaExternalLinkAlt /> View All Leads
-                    </Link>
-                    <Link href="/SalesManager/Manager" className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
-                        <FaPlus /> Add New Lead
-                    </Link>
-                </div>
-            </header>
-            
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <SalesKPI icon={<FaUsers size={24}/>} label="Total Leads in Pipeline" value={totalLeads} />
-                <SalesKPI icon={<FaChartLine size={24}/>} label="New Leads This Month" value={newLeadsThisMonth} />
-                <SalesKPI icon={<FaMoneyBillWave size={24}/>} label="Total Revenue Won" value={totalRevenue} currency={true} />
-                <SalesKPI icon={<FaBell size={24}/>} label="Open Admin Requests" value={openRequestsCount} onClick={handleOpenRequestsClick} />
+function SectionCard({ title, children, viewAllLink }) {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow border border-gray-200 h-full">
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-lg text-gray-800">{title}</h3>
+            {viewAllLink && (
+                 <Link href={viewAllLink} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                    View All <FaExternalLinkAlt size={12}/>
+                </Link>
+            )}
+                    </div>
+        <div className="space-y-4">{children}</div>
+                        </div>
+  );
+}
+
+function ActivityItem({ activity }) {
+  return (
+    <div className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-md">
+      <div className="flex-shrink-0 mt-1">
+        {getActivityIcon(activity.type)}
+                      </div>
+      <div className="flex-grow min-w-0">
+        <p className="text-sm text-gray-800 font-medium">
+          <Link href={`/Sales/leads/${activity.leadId}`} className="text-blue-600 hover:underline">
+            {activity.leadName}
+          </Link>
+        </p>
+        <p className="text-xs text-gray-600 mt-1">{activity.description}</p>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-xs text-gray-500">{activity.timestamp}</span>
+          <span className="text-xs text-gray-400">•</span>
+          <span className="text-xs text-gray-500">by {activity.user}</span>
+                          </div>
+                        </div>
+                      </div>
+  );
+}
+
+// --- Dashboard Sections ---
+function ActionCenter({ data, onAssign }) {
+    const [selectedSalesRep, setSelectedSalesRep] = useState({});
+
+    const handleAssign = (leadId) => {
+        const repName = selectedSalesRep[leadId];
+        if (!repName) {
+            toast.error("Please select a sales rep.");
+            return;
+        }
+        onAssign(leadId, repName);
+        toast.success(`Lead ${leadId} assigned to ${repName}.`);
+    };
+
+    return (
+        <SectionCard title="Action Center">
+            <div>
+                <h4 className="font-semibold text-sm text-gray-600 mb-2">Unassigned Leads ({data.unassignedLeads.length})</h4>
+                {data.unassignedLeads.map(lead => (
+                    <ActionItem
+                        key={lead.id}
+                        icon={<FaUserPlus size={20} />}
+                        title={lead.name}
+                        subtitle={`Source: ${lead.source}`}
+                        action={
+                            <div className="flex items-center gap-2">
+                                <select 
+                                    className="text-xs border-gray-300 rounded-md shadow-sm p-1"
+                                    onChange={(e) => setSelectedSalesRep(prev => ({...prev, [lead.id]: e.target.value}))}
+                                >
+                                    <option value="">Assign to...</option>
+                                    {salesPersons.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                                </select>
+                                <button 
+                                    onClick={() => handleAssign(lead.id)}
+                                    className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                                >
+                                    Assign
+                                </button>
+          </div>
+                        }
+                    />
+                ))}
             </div>
+             <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="font-semibold text-sm text-gray-600 mb-2">Leads with Overdue Activities ({data.overdueActivities.length})</h4>
+                {data.overdueActivities.map(lead => (
+                    <ActionItem
+                        key={lead.id}
+                        icon={<FaExclamationCircle className="text-red-500" size={20} />}
+                        title={lead.name}
+                        subtitle={`${lead.task} - Overdue by ${lead.overdueBy}`}
+                        action={ <Link href={`/Sales/leads/${lead.id}`} className="text-xs text-blue-600 hover:underline">View</Link> }
+                    />
+                ))}
+            </div>
+            <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="font-semibold text-sm text-gray-600 mb-2">Stale Leads ({data.staleLeads.length})</h4>
+                {data.staleLeads.map(lead => (
+                    <ActionItem
+                        key={lead.id}
+                        icon={<FaHourglassHalf className="text-yellow-500" size={20} />}
+                        title={lead.name}
+                        subtitle={`Last activity: ${lead.lastActivity}`}
+                        action={ <Link href={`/Sales/leads/${lead.id}`} className="text-xs text-blue-600 hover:underline">View</Link> }
+                    />
+                ))}
+            </div>
+        </SectionCard>
+    );
+}
 
-            {/* Main Content Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Left Column */}
-                <div className="space-y-8">
-                    {/* Pipeline Stages Chart */}
-                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4">Pipeline Stages</h3>
-                        <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={MOCK_LEADS_DATA} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="status" tick={{fontSize: 12}} />
-                                <YAxis allowDecimals={false} />
-                                <Tooltip cursor={{fill: 'rgba(239, 246, 255, 0.5)'}} />
-                                <Bar dataKey="count" fill="#3B82F6" name="Leads" barSize={40} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+function RecentActivity({ activities = [] }) {
+  return (
+    <SectionCard title="Recent Activity" viewAllLink="/SalesManager/Manager">
+      <div className="max-h-96 overflow-y-auto">
+        {activities && activities.length > 0 ? (
+          activities.map(activity => (
+            <ActivityItem key={activity.id} activity={activity} />
+          ))
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <FaClock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <p>No recent activities</p>
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
 
-                    {/* Unassigned Leads */}
-                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4">Unassigned Leads</h3>
-                        <div className="space-y-4">
-                            {unassignedLeads.length > 0 ? unassignedLeads.map((lead) => (
-                                <div key={lead.id} className="flex flex-wrap items-center justify-between gap-4 p-3 bg-gray-50 rounded-md border">
-                                    <div>
-                                        <p className="font-semibold text-gray-800">{lead.name}</p>
-                                        <p className="text-sm text-gray-500">{lead.projectType}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <select
-                                            onChange={(e) => setSelectedSalesRep(prev => ({...prev, [lead.id]: e.target.value}))}
-                                            className="p-2 border border-gray-300 rounded-md shadow-sm text-sm"
-                                        >
-                                            <option value="">Assign to...</option>
-                                            {salesPersons.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                                        </select>
-                                        <button 
-                                            onClick={() => handleAssignLead(lead.id)}
-                                            className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
-                                        >
-                                            Assign
-                                        </button>
-                                    </div>
-                                </div>
-                            )) : (
-                                <p className="text-gray-500 text-center py-4">No unassigned leads.</p>
-                            )}
-                        </div>
-                    </div>
+function SalesPipelineFunnel({ data }) {
+  return (
+    <SectionCard title="Sales Pipeline Funnel">
+        <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
+                <Tooltip cursor={{ fill: '#f3f4f6' }} />
+                <Bar dataKey="value" fill="#3B82F6" barSize={30}>
+                    {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+    </SectionCard>
+  );
+}
+
+function RevenueForecast({ data }) {
+  return (
+    <SectionCard title="Revenue Forecast (Weighted)">
+        <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+                <thead>
+                    <tr className="text-left text-gray-500">
+                        <th className="p-2">Stage</th>
+                        <th className="p-2">Probability</th>
+                        <th className="p-2 text-right">Forecast</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {data.forecast.map(item => (
+                        <tr key={item.stage} className="border-b border-gray-100">
+                            <td className="p-2 font-semibold">{item.stage}</td>
+                            <td className="p-2 text-gray-600">{item.probability}</td>
+                            <td className="p-2 text-right font-bold text-gray-800">₹{item.forecastValue.toLocaleString()}</td>
+                        </tr>
+                    ))}
+                    <tr className="font-bold bg-gray-50">
+                        <td colSpan="2" className="p-2 text-right">Total Forecast</td>
+                        <td className="p-2 text-right text-blue-600">₹{data.forecast.reduce((acc, i) => acc + i.forecastValue, 0).toLocaleString()}</td>
+                    </tr>
+                </tbody>
+            </table>
+              </div>
+    </SectionCard>
+  );
+}
+
+function TeamLeaderboard({ data }) {
+  return (
+     <SectionCard title="Team Leaderboard" viewAllLink="/manager/team">
+        {data.map(member => (
+            <div key={member.rank} className="flex items-center gap-4 text-sm">
+                <div className="font-bold text-gray-500 w-6">{member.rank === 1 ? <FaCrown className="text-yellow-500"/> : member.rank}.</div>
+                <div className="flex-grow font-semibold text-gray-800">{member.name}</div>
+                <div className="text-right">
+                    <p className="font-semibold">{member.dealsWon} <span className="text-gray-500 font-normal">deals</span></p>
                 </div>
-
-                {/* Right Column */}
-                <div className="space-y-8">
-                     {/* Recent Activity */}
-                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4">Recent Activity / Alerts</h3>
-                        <div className="space-y-4">
-                            {MOCK_ACTIVITIES.map((activity, index) => (
-                                <div key={index} className="flex items-start gap-3">
-                                    <div className="bg-gray-100 p-2.5 rounded-full mt-1">
-                                        <ActivityIcon type={activity.type} />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-700">{activity.text}</p>
-                                        <p className="text-xs text-gray-400">{activity.time}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    {/* Team Leaderboard */}
-                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4">Team Leaderboard</h3>
-                        <div className="space-y-4">
-                            {MOCK_TEAM_PERFORMANCE.map((member, index) => (
-                                <div key={member.name} className="flex items-center gap-4">
-                                    <div className="text-gray-400 font-bold w-6">{index + 1}</div>
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-gray-800">{member.name}</p>
-                                        <p className="text-sm text-gray-500">{member.converted} deals converted</p>
-                                    </div>
-                                    <div className="font-bold text-green-600">₹{member.revenue.toLocaleString()}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                <div className="text-right">
+                     <p className="font-semibold">{member.activities} <span className="text-gray-500 font-normal">activities</span></p>
                 </div>
             </div>
+        ))}
+    </SectionCard>
+  );
+}
+
+function LeadSourcePerformance({ data }) {
+  return (
+    <SectionCard title="Lead Source Performance">
+        <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8">
+                    {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                    </Pie>
+                <Tooltip />
+                <Legend iconType="circle" />
+            </PieChart>
+        </ResponsiveContainer>
+    </SectionCard>
+  );
+}
+
+function MainDashboard() {
+    const [dashboardData, setDashboardData] = useState(MOCK_DATA);
+    const [showAddLeadModal, setShowAddLeadModal] = useState(false);
+
+    const handleAssignLead = (leadId, repName) => {
+        setDashboardData(prev => ({
+            ...prev,
+            actionCenter: {
+                ...prev.actionCenter,
+                unassignedLeads: prev.actionCenter.unassignedLeads.filter(l => l.id !== leadId),
+            }
+        }));
+    };
+
+    const handleAddLeadSubmit = (formData) => {
+        if (!formData.salesRep || !formData.designer) {
+            toast.error('Please assign both Sales Person and Designer.');
+            return;
+        }
+        
+        const leadData = {
+            ...defaultLeadData,
+            ...formData,
+            status: formData.status || "New",
+            submittedBy: "SALESMANAGER",
+        };
+
+        // Generate a new lead ID
+        const newId = `LEAD${Math.floor(Math.random() * 100000)}`;
+        const newLead = { ...leadData, leadId: newId };
+
+        // Add new activity for lead creation
+        const newActivity = {
+            id: Date.now(),
+            type: 'note',
+            leadName: formData.name,
+            leadId: newId,
+            description: `Manager created new lead and assigned to ${formData.salesRep}`,
+            timestamp: 'Just now',
+            user: 'Manager'
+        };
+
+        // Update the dashboard data to reflect the new lead
+        setDashboardData(prev => ({
+            ...prev,
+            kpis: {
+                ...prev.kpis,
+                newLeads: { ...prev.kpis.newLeads, value: prev.kpis.newLeads.value + 1 }
+            },
+            recentActivities: [newActivity, ...(prev.recentActivities || [])],
+            pipelineForecast: {
+                ...prev.pipelineForecast,
+                funnel: prev.pipelineForecast.funnel.map(stage => 
+                    stage.name === 'New' ? { ...stage, value: stage.value + 1 } : stage
+                )
+            }
+        }));
+
+        toast.success(`Lead "${formData.name}" added successfully!`);
+        setShowAddLeadModal(false);
+    };
+
+    return (
+        <MainLayout>
+            <div className="p-6 bg-gray-50 min-h-screen">
+                <header className="flex justify-between items-center mb-6">
+                        <div>
+                        <h1 className="text-3xl font-bold text-gray-800">Sales Command Center</h1>
+                        <p className="text-gray-600">Welcome back, Manager. Here's your sales overview for today.</p>
+                            </div>
+                    <div className="flex items-center gap-4">
+                        <button className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2">
+                            <FaFilter /> Quick Filters
+                        </button>
+                        <button 
+                            onClick={() => setShowAddLeadModal(true)}
+                            className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                        >
+                            <FaPlus /> Add New Lead
+                        </button>
+                         <Link href="/SalesManager/Manager" className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                           Go to Pipeline
+                        </Link>
+                        </div>
+                </header>
+
+                {/* KPI Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <KpiCard icon={<FaUsers size={24}/>} label="New Leads" value={dashboardData.kpis.newLeads.value} change={dashboardData.kpis.newLeads.change} />
+                    <KpiCard 
+                        icon={<FaBullseye size={24}/>} 
+                        label="Conversion Rate" 
+                        value={dashboardData.kpis.conversionRate.value} 
+                        change={dashboardData.kpis.conversionRate.change} 
+                        convertedCount={dashboardData.kpis.conversionRate.convertedCount}
+                    />
+                    <KpiCard icon={<FaHandHoldingUsd size={24}/>} label="Avg. Deal Value" value={dashboardData.kpis.avgDealValue.value} change={dashboardData.kpis.avgDealValue.change} currency={true} />
+                    <KpiCard icon={<FaMoneyBillWave size={24}/>} label="Revenue Won" value={dashboardData.kpis.revenueWon.value} change={dashboardData.kpis.revenueWon.change} currency={true} />
+                </div>
+
+                {/* Main Dashboard Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column (Action Center) */}
+                    <div className="lg:col-span-1">
+                        <ActionCenter data={dashboardData.actionCenter} onAssign={handleAssignLead} />
+              </div>
+
+                    {/* Right Column (Charts & Forecasts) */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                           <SalesPipelineFunnel data={dashboardData.pipelineForecast.funnel} />
+                           <RecentActivity activities={dashboardData.recentActivities} />
+            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                           <TeamLeaderboard data={dashboardData.teamPerformance.leaderboard} />
+                           <LeadSourcePerformance data={dashboardData.teamPerformance.sourcePerformance} />
         </div>
       </div>
     </div>
-  );
-};
 
-export default withAuth(SalesDashboard, ["MANAGER", "SALESMANAGER"]);
+                {/* Add Lead Modal */}
+                <AddLeadModal
+                    isOpen={showAddLeadModal}
+                    onClose={() => setShowAddLeadModal(false)}
+                    onSubmit={handleAddLeadSubmit}
+                    initialData={defaultLeadData}
+                    isManagerView={true}
+                    salesPersons={salesPersons}
+                    designers={designers}
+                />
+            </div>
+        </MainLayout>
+  );
+}
+
+export default MainDashboard;

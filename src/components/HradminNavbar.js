@@ -1,4 +1,4 @@
-import { User, Settings } from "lucide-react";
+import { User, Settings, Box, Menu } from "lucide-react";
 import { useState, useEffect } from "react";
 import axios from "axios"; // Import axios for API requests
 import {
@@ -18,8 +18,15 @@ import { getItemFromSessionStorage } from "@/redux/slices/sessionStorageSlice";
 import { toast } from "sonner";
 import getConfig from "next/config";
 import { clearSession } from "@/utils/sessionManager";
+import Link from "next/link";
+import {
+  Bell,
+  ChevronDown,
+  CircleHelp,
+  MessageCircle,
+} from "lucide-react";
 
-const Navbar = () => {
+const HradminNavbar = ({ toggleSidebar }) => {
   const router = useRouter();
   const dispatch = useDispatch();
   const [employeeData, setEmployeeData] = useState(null);
@@ -217,6 +224,41 @@ const Navbar = () => {
     }
   };
 
+  const getMenuItems = (role) => {
+    switch (role) {
+      case "HRADMIN":
+        return [
+          { name: "Dashboard", link: "/hradmin/dashboard", icon: <User /> },
+          { name: "Employees", link: "/hradmin/employees", icon: <User /> },
+        ];
+      case "MANAGER":
+      case "SALESMANAGER":
+        return [
+          { name: "Dashboard", link: "/manager/dashboard", icon: <User /> },
+          { name: "Team", link: "/manager/team", icon: <User /> },
+          { name: "Leads", link: "/manager/leads", icon: <User /> },
+          { name: "Sales", link: "/SalesManager/Manager", icon: <User /> },
+        ];
+      case "ACCOUNTANT":
+        return [
+          { name: "Customers", link: "/account/customers", icon: <User /> },
+          { name: "Vendor", link: "/account/vendor", icon: <User /> },
+          { name: "Employee", link: "/account/employee", icon: <User /> },
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const menuItems = getMenuItems(currentRole);
+
+  const mainNavLinks = [
+    { name: "Sales", link: "/SalesManager/Manager" },
+    { name: "Asset Management", link: "/asset-management", icon: <Box className="h-4 w-4" /> },
+    { name: "HR", link: "/hradmin/dashboard" },
+    { name: "Accounts", link: "/account/customers" },
+  ];
+
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 ${navbarColor}`}>
       <nav className="flex justify-between items-center p-3 shadow-md w-full">
@@ -350,9 +392,37 @@ const Navbar = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Main Navigation Links */}
+        <nav className="flex items-center space-x-6">
+          {mainNavLinks.map((item) => (
+            <Link
+              key={item.name}
+              href={item.link}
+              className={`flex items-center gap-2 text-sm font-medium ${
+                router.pathname.startsWith(item.link)
+                  ? "text-blue-600"
+                  : "text-gray-500 hover:text-blue-600"
+              }`}
+            >
+              {item.icon}
+              {item.name}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Sidebar Toggle Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          className="mr-2"
+        >
+          <Menu className="h-6 w-6" />
+        </Button>
       </nav>
     </header>
   );
 };
 
-export default Navbar;
+export default HradminNavbar;

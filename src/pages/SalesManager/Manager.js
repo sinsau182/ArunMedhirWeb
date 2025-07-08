@@ -18,7 +18,9 @@ import {
   FaUserShield,
   FaSitemap,
   FaChevronLeft,
-  FaChevronRight
+  FaChevronRight,
+  FaRobot,
+  FaEnvelopeOpenText,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import ConvertLeadModal from "@/components/Sales/ConvertLeadModal";
@@ -248,6 +250,10 @@ const MOCK_LEADS = [
     paymentDetailsFileName: null,
     bookingFormFileName: null,
     createdAt: '2024-05-10T09:00:00Z',
+    activities: [
+      { id: 1, type: 'task', summary: 'Follow-up call', dueDate: '2024-05-15', status: 'done' },
+      { id: 2, type: 'meeting', summary: 'Client meeting', dueDate: '2024-07-30', status: 'pending' }, // Upcoming
+    ],
   },
   {
     leadId: 'LEAD102',
@@ -283,6 +289,10 @@ const MOCK_LEADS = [
     paymentDetailsFileName: null,
     bookingFormFileName: null,
     createdAt: '2024-05-20T11:30:00Z',
+    activities: [
+      { id: 3, type: 'call', summary: 'Initial call', dueDate: '2024-05-21', status: 'done' },
+      { id: 4, type: 'task', summary: 'Send quote', dueDate: '2024-05-25', status: 'pending' }, // Overdue
+    ],
   },
   {
     leadId: 'LEAD103',
@@ -318,6 +328,7 @@ const MOCK_LEADS = [
     paymentDetailsFileName: null,
     bookingFormFileName: null,
     createdAt: '2024-06-01T14:00:00Z',
+    activities: [], // No activities
   }
 ];
 
@@ -732,7 +743,148 @@ const PermissionsSettings = () => {
   );
 };
 
-// +++ NEW: Settings Page for Pipeline & Stage Management +++
+// +++ NEW: Template Management Settings +++
+const TemplateSettings = () => {
+  const [activeTab, setActiveTab] = useState('email');
+  const [templates, setTemplates] = useState({
+    email: [
+      { id: 'email1', name: 'Initial Introduction', subject: 'Following up from {{company.name}}', body: 'Hi {{lead.name}},\n\nThanks for your interest. I would love to schedule a brief call to discuss your needs.\n\nBest,\n{{user.name}}' },
+      { id: 'email2', name: 'Quote Follow-Up', subject: 'Quote for {{lead.projectType}}', body: 'Hi {{lead.name}},\n\nHere is the quote we discussed. Please let me know if you have any questions.\n\nBest,\n{{user.name}}' },
+    ],
+    sms: [
+      { id: 'sms1', name: 'Meeting Reminder', body: 'Hi {{lead.name}}, friendly reminder about our meeting today at {{activity.time}}. Talk soon! - {{user.name}}' },
+    ],
+  });
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({ name: '', subject: '', body: '' });
+
+  const handleCreate = () => {
+    if (!newTemplate.name || !newTemplate.body) {
+      toast.error("Template name and body are required.");
+      return;
+    }
+    const newId = `${activeTab}${Date.now()}`;
+    setTemplates(prev => ({
+      ...prev,
+      [activeTab]: [...prev[activeTab], { ...newTemplate, id: newId }],
+    }));
+    setIsCreating(false);
+    setNewTemplate({ name: '', subject: '', body: '' });
+    toast.success("Template created successfully!");
+  };
+
+  const availablePlaceholders = [
+    { value: '{{lead.name}}', description: "Lead's full name" },
+    { value: '{{lead.email}}', description: "Lead's email address" },
+    { value: '{{lead.projectType}}', description: 'Type of project' },
+    { value: '{{user.name}}', description: 'Your name' },
+    { value: '{{company.name}}', description: 'Your company name' },
+  ];
+
+  return (
+    <div>
+      <h3 className="text-lg font-bold text-gray-800 mb-1">Email & SMS Templates</h3>
+      <p className="text-sm text-gray-600 mb-6">Create and manage standardized templates for your team.</p>
+      
+      <div className="flex border-b mb-6">
+        <button onClick={() => setActiveTab('email')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'email' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Email Templates</button>
+        <button onClick={() => setActiveTab('sms')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'sms' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>SMS Templates</button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-2">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="font-semibold text-gray-700 capitalize">{activeTab} Templates</h4>
+            <button onClick={() => setIsCreating(true)} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"><FaPlus /> Create New</button>
+          </div>
+          
+          {isCreating && (
+            <div className="p-4 bg-gray-50 rounded-lg border mb-6 space-y-4">
+              <input type="text" placeholder="Template Name" value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} className="w-full p-2 border rounded-md"/>
+              {activeTab === 'email' && <input type="text" placeholder="Email Subject" value={newTemplate.subject} onChange={e => setNewTemplate({...newTemplate, subject: e.target.value})} className="w-full p-2 border rounded-md"/>}
+              <textarea placeholder="Template Body" value={newTemplate.body} onChange={e => setNewTemplate({...newTemplate, body: e.target.value})} className="w-full p-2 border rounded-md" rows="5"></textarea>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                <button onClick={handleCreate} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700">Save Template</button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {templates[activeTab].map(template => (
+              <div key={template.id} className="p-4 bg-white border rounded-lg shadow-sm">
+                <p className="font-bold text-gray-800">{template.name}</p>
+                {template.subject && <p className="text-sm text-gray-500 mt-1"><strong>Subject:</strong> {template.subject}</p>}
+                <p className="text-sm text-gray-600 bg-gray-50 p-2 mt-2 rounded whitespace-pre-wrap">{template.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="md:col-span-1">
+          <div className="p-4 bg-gray-50 rounded-lg border">
+            <h4 className="font-semibold text-gray-700 mb-2">Placeholders</h4>
+            <p className="text-xs text-gray-500 mb-4">Use these placeholders in your templates. They will be replaced with actual data.</p>
+            <div className="space-y-2">
+              {availablePlaceholders.map(p => (
+                <div key={p.value}>
+                  <code className="text-sm text-blue-700 bg-blue-100 px-1 rounded">{p.value}</code>
+                  <p className="text-xs text-gray-500 ml-2">{p.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// +++ NEW: Automation Rules Settings +++
+const AutomationSettings = ({ stages }) => {
+  const [rules, setRules] = useState([
+    { id: 1, name: 'Stale Lead Alert', trigger: { type: 'time_in_stage', stage: 'Qualified', days: 7 }, action: { type: 'send_notification', recipient: 'assigned_salesperson' } },
+    { id: 2, name: 'New Lead Task', trigger: { type: 'lead_created' }, action: { type: 'create_task', recipient: 'sales_manager' } },
+  ]);
+
+  return (
+    <div>
+      <h3 className="text-lg font-bold text-gray-800 mb-1">Automation Rules</h3>
+      <p className="text-sm text-gray-600 mb-6">Create IF-THEN rules to automate tasks and alerts in your pipeline.</p>
+      
+      <div className="flex justify-end mb-4">
+        <button className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
+          <FaPlus /> Add New Rule
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {rules.map(rule => (
+          <div key={rule.id} className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+            <p className="font-bold text-gray-800 mb-4">{rule.name}</p>
+            <div className="flex items-center gap-4 text-center">
+              <div className="w-1/3">
+                <p className="text-sm font-semibold text-gray-500 mb-1">IF</p>
+                <div className="p-3 bg-gray-50 rounded-md text-sm">
+                  {rule.trigger.type === 'time_in_stage' && `A lead stays in the "${rule.trigger.stage}" stage for more than ${rule.trigger.days} days`}
+                  {rule.trigger.type === 'lead_created' && 'A new lead is created'}
+                </div>
+              </div>
+              <FaChevronRight className="text-gray-300 text-xl" />
+              <div className="w-1/3">
+                <p className="text-sm font-semibold text-gray-500 mb-1">THEN</p>
+                <div className="p-3 bg-gray-50 rounded-md text-sm">
+                  {rule.action.type === 'send_notification' && `Send a notification to the ${rule.action.recipient.replace('_', ' ')}`}
+                  {rule.action.type === 'create_task' && `Create a new task for the ${rule.action.recipient.replace('_', ' ')}`}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const SettingsPage = ({ 
   leads, 
   kanbanStatuses, 
@@ -750,6 +902,8 @@ const SettingsPage = ({
     { id: 'forms', label: 'Stage-Dependent Forms', icon: FaTasks },
     { id: 'permissions', label: 'User Roles & Permissions', icon: FaUserShield },
     { id: 'workflow', label: 'Workflow', icon: FaSitemap },
+    { id: 'automation', label: 'Automation', icon: FaRobot },
+    { id: 'templates', label: 'Templates', icon: FaEnvelopeOpenText },
   ];
 
   const renderSettingsContent = () => {
@@ -769,6 +923,10 @@ const SettingsPage = ({
         return <PermissionsSettings />;
       case 'workflow':
         return <WorkflowSettings workflow={workflowConfig} onUpdateWorkflow={onWorkflowConfigChange} />;
+      case 'automation':
+        return <AutomationSettings stages={kanbanStatuses} />;
+      case 'templates':
+        return <TemplateSettings />;
       default:
         return <div className="text-center text-gray-500">Select a setting to configure.</div>;
     }
@@ -1267,8 +1425,8 @@ const ManagerContent = ({ role }) => {
         // Text search (if text is present)
         const matchesText = filterText
           ? Object.values(lead).some(value =>
-              String(value).toLowerCase().includes(filterText.toLowerCase())
-            )
+        String(value).toLowerCase().includes(filterText.toLowerCase())
+      )
           : true;
 
         // Structured filters
@@ -1339,10 +1497,10 @@ const ManagerContent = ({ role }) => {
 
       if (requiredFields.length > 0) {
         setStageActionModalData({ isOpen: true, lead: oldLead, targetStage: newStatus });
-      } else {
-        setLeads(prevLeads => prevLeads.map(l =>
-          l.leadId === leadId ? { ...l, status: newStatus } : l
-        ));
+    } else {
+      setLeads(prevLeads => prevLeads.map(l =>
+        l.leadId === leadId ? { ...l, status: newStatus } : l
+      ));
       }
     }
   };

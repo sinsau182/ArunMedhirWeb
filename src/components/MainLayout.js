@@ -1,9 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from './HradminNavbar';
 import Sidebar from './Sidebar';
+import { useRouter } from 'next/router';
 
-const MainLayout = ({ children }) => {
+const MainLayout = ({ children, module }) => {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeModule, setActiveModule] = useState('hr');
+  const router = useRouter();
+
+  useEffect(() => {
+    // If module prop is provided, use it directly
+    if (module) {
+      setActiveModule(module);
+      return;
+    }
+
+    // Otherwise, determine module from the path
+    const path = router.pathname;
+    if (path.startsWith('/SalesManager') || path.startsWith('/manager')) {
+      setActiveModule('sales');
+    } else if (path.startsWith('/hradmin')) {
+      setActiveModule('hr');
+    } else if (path.startsWith('/account')) {
+      setActiveModule('accounts');
+    } else if (path.startsWith('/asset-management')) {
+      setActiveModule('assets');
+    } else if (path.startsWith('/employee')) {
+        setActiveModule('employee');
+    }
+  }, [router.pathname, module]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!isSidebarCollapsed);
@@ -11,7 +36,7 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
+      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} module={activeModule} />
       <Navbar />
       
       <main 

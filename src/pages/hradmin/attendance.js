@@ -482,7 +482,7 @@ function Attendance() {
       );
     }
 
-    // console.log(data);
+    // // console.log(data);
 
     // Apply search filter
     if (searchInput) {
@@ -1564,7 +1564,7 @@ function Attendance() {
       </div>
     );
   }
-  console.log(attendance);
+  // console.log(attendance);
 
   return (
     <div className="flex h-screen bg-gray-100">

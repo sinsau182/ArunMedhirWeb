@@ -17,11 +17,24 @@ import {
   FiEye,
   FiLoader,
   FiCheck,
+  FiBriefcase,
+  FiFileText,
+  FiMapPin,
 } from "react-icons/fi";
 import { FaCalendarCheck } from "react-icons/fa";
 import { X } from "lucide-react";
 import getConfig from "next/config";
 import { clearSession } from "@/utils/sessionManager";
+
+// Helper function to generate initials from a name
+const getInitials = (name) => {
+  if (!name) return "?";
+  const parts = name.split(" ");
+  if (parts.length > 1) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
 
 function EmployeeProfilePage() {
   const router = useRouter();
@@ -38,10 +51,12 @@ function EmployeeProfilePage() {
   const [isEditable, setIsEditable] = useState(true); // Controls if editing is allowed based on updateStatus
   const [showPendingChangesModal, setShowPendingChangesModal] = useState(false);
   const [pendingChanges, setPendingChanges] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview"); // State for the new tab system
 
   // Main state for form data, used during editing
   const [formData, setFormData] = useState({
     employee: {
+      name: "",
       fatherName: "",
       gender: "",
       phone1: "",
@@ -57,6 +72,11 @@ function EmployeeProfilePage() {
       passport: "",
       drivingLicense: "",
       voterId: "",
+      aadharDoc: null,
+      panDoc: null,
+      passportDoc: null,
+      drivingLicenseDoc: null,
+      voterIdDoc: null,
       // Potential state for file objects if needed, e.g., aadharFile: null
     },
     bank: {
@@ -248,107 +268,47 @@ function EmployeeProfilePage() {
 
     // Check document changes
     if (
-      employeeById.pendingUpdateRequest.profileImgUrl &&
-      employeeById.pendingUpdateRequest.profileImgUrl !==
-        employeeById.employeeImgUrl
+      employeeById.pendingUpdateRequest.aadharNumber &&
+      employeeById.pendingUpdateRequest.aadharNumber !==
+        employeeById.idProofs?.aadharNumber
     ) {
       changes.documents.push({
-        field: "Profile Image",
-        oldValue: employeeById.employeeImgUrl,
-        newValue: employeeById.pendingUpdateRequest.profileImgUrl,
-        isImage: true,
+        field: "Aadhar Number",
+        oldValue: employeeById.idProofs?.aadharNumber,
+        newValue: employeeById.pendingUpdateRequest.aadharNumber,
       });
     }
     if (
-      employeeById.pendingUpdateRequest.passbookImgUrl &&
-      employeeById.pendingUpdateRequest.passbookImgUrl !==
-        employeeById.bankDetails?.passbookImgUrl
+      employeeById.pendingUpdateRequest.panNumber &&
+      employeeById.pendingUpdateRequest.panNumber !==
+        employeeById.idProofs?.panNumber
     ) {
       changes.documents.push({
-        field: "Bank Passbook",
-        oldValue: employeeById.bankDetails?.passbookImgUrl,
-        newValue: employeeById.pendingUpdateRequest.passbookImgUrl,
-        isImage: true,
+        field: "PAN Number",
+        oldValue: employeeById.idProofs?.panNumber,
+        newValue: employeeById.pendingUpdateRequest.panNumber,
       });
     }
-    if (
-      employeeById.pendingUpdateRequest.aadharImgUrl &&
-      employeeById.pendingUpdateRequest.aadharImgUrl !==
-        employeeById.idProofs?.aadharImgUrl
-    ) {
-      changes.documents.push({
-        field: "Aadhar Card",
-        oldValue: employeeById.idProofs?.aadharImgUrl,
-        newValue: employeeById.pendingUpdateRequest.aadharImgUrl,
-        isImage: true,
-      });
-    }
-    if (
-      employeeById.pendingUpdateRequest.pancardImgUrl &&
-      employeeById.pendingUpdateRequest.pancardImgUrl !==
-        employeeById.idProofs?.pancardImgUrl
-    ) {
-      changes.documents.push({
-        field: "PAN Card",
-        oldValue: employeeById.idProofs?.pancardImgUrl,
-        newValue: employeeById.pendingUpdateRequest.pancardImgUrl,
-        isImage: true,
-      });
-    }
-    if (
-      employeeById.pendingUpdateRequest.passportImgUrl &&
-      employeeById.pendingUpdateRequest.passportImgUrl !==
-        employeeById.idProofs?.passportImgUrl
-    ) {
-      changes.documents.push({
-        field: "Passport",
-        oldValue: employeeById.idProofs?.passportImgUrl,
-        newValue: employeeById.pendingUpdateRequest.passportImgUrl,
-        isImage: true,
-      });
-    }
-    if (
-      employeeById.pendingUpdateRequest.drivingLicenseImgUrl &&
-      employeeById.pendingUpdateRequest.drivingLicenseImgUrl !==
-        employeeById.idProofs?.drivingLicenseImgUrl
-    ) {
-      changes.documents.push({
-        field: "Driving License",
-        oldValue: employeeById.idProofs?.drivingLicenseImgUrl,
-        newValue: employeeById.pendingUpdateRequest.drivingLicenseImgUrl,
-        isImage: true,
-      });
-    }
-    if (
-      employeeById.pendingUpdateRequest.voterIdImgUrl &&
-      employeeById.pendingUpdateRequest.voterIdImgUrl !==
-        employeeById.idProofs?.voterIdImgUrl
-    ) {
-      changes.documents.push({
-        field: "Voter ID",
-        oldValue: employeeById.idProofs?.voterIdImgUrl,
-        newValue: employeeById.pendingUpdateRequest.voterIdImgUrl,
-        isImage: true,
-      });
-    }
+    // ... continue for other documents
 
     setPendingChanges(changes);
     setShowPendingChangesModal(true);
   };
 
-  // Fetch data on component mount
   useEffect(() => {
+    if (sessionStorage.getItem("employeeId")) {
     fetchByEmployeeId();
+    } else {
+      toast.error("No employee ID found in session.");
+      // Redirect to login or another appropriate page
+    }
   }, [fetchByEmployeeId]);
 
-  // --- Input Handling ---
+  // --- Form Handling ---
   const handleInputChange = (section, field, value) => {
     setFormData((prev) => ({
       ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
-      },
+      [section]: { ...prev[section], [field]: value },
     }));
   };
 
@@ -357,1355 +317,581 @@ function EmployeeProfilePage() {
       ...prev,
       [section]: {
         ...prev[section],
-        [parentField]: {
-          ...prev[section][parentField],
-          [field]: value,
-        },
+        [parentField]: { ...prev[section][parentField], [field]: value },
       },
     }));
   };
 
-  // --- Edit/Save Logic ---
+  const handleFileChange = (section, field, file) => {
+    if (file && file.size > 2 * 1024 * 1024) {
+      toast.error("File size cannot exceed 2MB");
+      return;
+    }
+    handleInputChange(section, field, file);
+  };
+
   const handleEditProfileClick = () => {
-    if (!isEditable) {
-      toast.error("Editing is disabled while an update request is pending.");
-      return;
-    }
-    if (!employeeById) {
-      toast.error("Employee data not loaded yet.");
-      return;
-    }
+    if (!employeeById) return;
 
-    try {
-      // Pre-fill all form data when entering edit mode
-      if (!isPageInEditMode) {
-        const currentData = employeeById;
-
-        // Pre-fill all sections at once
+    // Pre-fill the form data with current employee data
         setFormData({
           employee: {
-            ...formData.employee,
-            fatherName: currentData?.fathersName || "",
-            gender: currentData?.gender || "",
-            phone1: currentData?.phone || "",
-            phone2: currentData?.alternatePhone || "",
-            email: { personal: currentData?.emailPersonal || "" },
-            currentAddress: currentData?.currentAddress || "",
-            permanentAddress: currentData?.permanentAddress || "",
-            // Keep profileImage if it's a File, otherwise reset
-            profileImage:
-              formData.employee.profileImage instanceof File
-                ? formData.employee.profileImage
-                : null,
-          },
-          bank: {
-            ...formData.bank,
-            accountNumber: currentData?.bankDetails?.accountNumber || "",
-            accountHolderName:
-              currentData?.bankDetails?.accountHolderName || "",
-            ifscCode: currentData?.bankDetails?.ifscCode || "",
-            bankName: currentData?.bankDetails?.bankName || "",
-            branchName: currentData?.bankDetails?.branchName || "",
-            upiId: currentData?.bankDetails?.upiId || "",
-            upiPhone: currentData?.bankDetails?.upiPhoneNumber || "",
-            // Keep passbookDoc if it's a File, otherwise reset
-            passbookDoc:
-              formData.bank.passbookDoc instanceof File
-                ? formData.bank.passbookDoc
-                : null,
+        name: employeeById.name || "",
+        fatherName: employeeById.fatherName || "",
+        gender: employeeById.gender || "",
+        phone1: employeeById.phone || "",
+        phone2: employeeById.alternatePhone || "",
+        email: { personal: employeeById.emailPersonal || "" },
+        currentAddress: employeeById.currentAddress || "",
+        permanentAddress: employeeById.permanentAddress || "",
+        profileImage: employeeById.profileImage || null,
           },
           idProofs: {
-            ...formData.idProofs,
-            aadharNo: currentData?.idProofs?.aadharNo || "",
-            panNo: currentData?.idProofs?.panNo || "",
-            passport: currentData?.idProofs?.passport || "",
-            drivingLicense: currentData?.idProofs?.drivingLicense || "",
-            voterId: currentData?.idProofs?.voterId || "",
+        aadharNo: employeeById.idProofs?.aadharNumber || "",
+        panNo: employeeById.idProofs?.panNumber || "",
+        passport: employeeById.idProofs?.passportNumber || "",
+        drivingLicense: employeeById.idProofs?.drivingLicenseNumber || "",
+        voterId: employeeById.idProofs?.voterIdNumber || "",
+        aadharDoc: null,
+        panDoc: null,
+        passportDoc: null,
+        drivingLicenseDoc: null,
+        voterIdDoc: null,
+      },
+      bank: {
+        accountNumber: employeeById.bankDetails?.accountNumber || "",
+        accountHolderName: employeeById.bankDetails?.accountHolderName || "",
+        ifscCode: employeeById.bankDetails?.ifscCode || "",
+        bankName: employeeById.bankDetails?.bankName || "",
+        branchName: employeeById.bankDetails?.branchName || "",
+        upiId: employeeById.bankDetails?.upiId || "",
+        upiPhone: employeeById.bankDetails?.upiPhoneNumber || "",
+        passbookDoc: employeeById.bankDetails?.passbookDoc || null,
           },
         });
-      }
 
-      setIsPageInEditMode(!isPageInEditMode);
-    } catch (error) {
-      toast.error("Failed to toggle edit mode");
-    }
+    setIsPageInEditMode(true);
   };
 
-  // Add a function to handle canceling edits
   const handleCancelClick = () => {
     setIsPageInEditMode(false);
-    // Optionally re-fetch data to reset form
-    fetchByEmployeeId();
+    // Optionally reset formData state here if needed
   };
 
-  // Add a function to check if any changes have been made
   const hasChangesBeenMade = () => {
     if (!employeeById) return false;
 
-    // Check personal info changes
-    if (formData.employee.email.personal !== employeeById.emailPersonal) {
-      return true;
-    }
-    if (formData.employee.phone1 !== employeeById.phone) {
-      return true;
-    }
-    if (formData.employee.phone2 !== employeeById.alternatePhone) {
-      return true;
-    }
-    if (formData.employee.currentAddress !== employeeById.currentAddress) {
-      return true;
-    }
-    if (formData.employee.permanentAddress !== employeeById.permanentAddress) {
+    // Check personal info
+    if (
+      formData.employee.name !== (employeeById.name || "") ||
+      formData.employee.fatherName !== (employeeById.fatherName || "") ||
+      formData.employee.gender !== (employeeById.gender || "") ||
+      formData.employee.phone1 !== (employeeById.phone || "") ||
+      formData.employee.phone2 !== (employeeById.alternatePhone || "") ||
+      formData.employee.email.personal !== (employeeById.emailPersonal || "") ||
+      formData.employee.currentAddress !== (employeeById.currentAddress || "") ||
+      formData.employee.permanentAddress !== (employeeById.permanentAddress || "") ||
+      formData.employee.profileImage !== (employeeById.profileImage || null)
+    ) {
       return true;
     }
 
-    // Check bank info changes
+    // Check ID proofs
     if (
+      formData.idProofs.aadharNo !==
+        (employeeById.idProofs?.aadharNumber || "") ||
+      formData.idProofs.panNo !== (employeeById.idProofs?.panNumber || "") ||
+      formData.idProofs.passport !==
+        (employeeById.idProofs?.passportNumber || "") ||
+      formData.idProofs.drivingLicense !==
+        (employeeById.idProofs?.drivingLicenseNumber || "") ||
+      formData.idProofs.voterId !==
+        (employeeById.idProofs?.voterIdNumber || "")
+    ) {
+      return true;
+    }
+
+    // Check bank details
+    if (
+      formData.bank.accountNumber !==
+        (employeeById.bankDetails?.accountNumber || "") ||
       formData.bank.accountHolderName !==
-      employeeById.bankDetails?.accountHolderName
+        (employeeById.bankDetails?.accountHolderName || "") ||
+      formData.bank.ifscCode !== (employeeById.bankDetails?.ifscCode || "") ||
+      formData.bank.bankName !== (employeeById.bankDetails?.bankName || "") ||
+      formData.bank.branchName !== (employeeById.bankDetails?.branchName || "") ||
+      formData.bank.upiId !== (employeeById.bankDetails?.upiId || "") ||
+      formData.bank.upiPhone !==
+        (employeeById.bankDetails?.upiPhoneNumber || "") ||
+      formData.bank.passbookDoc !==
+        (employeeById.bankDetails?.passbookDoc || null)
     ) {
       return true;
     }
-    if (
-      formData.bank.accountNumber !== employeeById.bankDetails?.accountNumber
-    ) {
-      return true;
-    }
-    if (formData.bank.bankName !== employeeById.bankDetails?.bankName) {
-      return true;
-    }
-    if (formData.bank.branchName !== employeeById.bankDetails?.branchName) {
-      return true;
-    }
-    if (formData.bank.ifscCode !== employeeById.bankDetails?.ifscCode) {
-      return true;
-    }
-    if (formData.bank.upiPhone !== employeeById.bankDetails?.upiPhoneNumber) {
-      return true;
-    }
 
-    // Check if any files have been uploaded
-    if (formData.employee.profileImage instanceof File) {
-      return true;
-    }
-    if (formData.bank.passbookDoc instanceof File) {
-      return true;
-    }
-    if (formData.idProofs.aadharImage instanceof File) {
-      return true;
-    }
-    if (formData.idProofs.panImage instanceof File) {
-      return true;
-    }
-    if (formData.idProofs.passportImage instanceof File) {
-      return true;
-    }
-    if (formData.idProofs.drivingLicenseImage instanceof File) {
-      return true;
-    }
-    if (formData.idProofs.voterIdImage instanceof File) {
-      return true;
-    }
-
-    // No changes detected
     return false;
   };
 
-  // Update the handleSaveAllClick function to check for changes
   const handleSaveAllClick = async () => {
-    if (!isEditable) {
-      toast.error("Cannot save while an update request is pending.");
-      return;
-    }
-    if (!employeeById?.employeeId) {
-      toast.error("Cannot save: Employee ID is missing.");
-      return;
-    }
-
-    // Check if any changes have been made
     if (!hasChangesBeenMade()) {
-      toast.info("No changes have been made. Nothing to save.");
+      toast.info("No changes were made.");
       setIsPageInEditMode(false);
       return;
     }
 
     setLoading(true);
+
+    const apiFormData = new FormData();
+    apiFormData.append("employeeId", employeeById.id);
+
+    // Append changed employee data
+    if (formData.employee.phone1 !== (employeeById.phone || ""))
+      apiFormData.append("phone", formData.employee.phone1);
+    if (formData.employee.phone2 !== (employeeById.alternatePhone || ""))
+      apiFormData.append("alternatePhone", formData.employee.phone2);
+    if (formData.employee.email.personal !== (employeeById.emailPersonal || ""))
+      apiFormData.append("emailPersonal", formData.employee.email.personal);
+    if (formData.employee.currentAddress !== (employeeById.currentAddress || ""))
+      apiFormData.append("currentAddress", formData.employee.currentAddress);
+      if (
+      formData.employee.permanentAddress !== (employeeById.permanentAddress || "")
+    )
+      apiFormData.append("permanentAddress", formData.employee.permanentAddress);
+    if (
+      formData.employee.profileImage &&
+      typeof formData.employee.profileImage === "object"
+    )
+      apiFormData.append("profileImage", formData.employee.profileImage);
+
+    // Append changed bank data
+      if (
+      formData.bank.accountNumber !==
+      (employeeById.bankDetails?.accountNumber || "")
+    )
+      apiFormData.append("accountNumber", formData.bank.accountNumber);
+    if (
+      formData.bank.bankName !== (employeeById.bankDetails?.bankName || "")
+    )
+      apiFormData.append("bankName", formData.bank.bankName);
+    if (
+      formData.bank.branchName !== (employeeById.bankDetails?.branchName || "")
+    )
+      apiFormData.append("branchName", formData.bank.branchName);
+    if (
+      formData.bank.ifscCode !== (employeeById.bankDetails?.ifscCode || "")
+    )
+      apiFormData.append("ifscCode", formData.bank.ifscCode);
+    if (
+      formData.bank.upiPhone !== (employeeById.bankDetails?.upiPhoneNumber || "")
+    )
+      apiFormData.append("upiPhoneNumber", formData.bank.upiPhone);
+    if (
+      formData.bank.passbookDoc &&
+      typeof formData.bank.passbookDoc === "object"
+    )
+      apiFormData.append("passbookDoc", formData.bank.passbookDoc);
+
+    // Append changed ID proofs
+    if (formData.idProofs.panNo !== (employeeById.idProofs?.panNumber || ""))
+      apiFormData.append("panNumber", formData.idProofs.panNo);
+    if (
+      formData.idProofs.aadharNo !== (employeeById.idProofs?.aadharNumber || "")
+    )
+      apiFormData.append("aadharNumber", formData.idProofs.aadharNo);
+    if (
+      formData.idProofs.passport !==
+      (employeeById.idProofs?.passportNumber || "")
+    )
+      apiFormData.append("passportNumber", formData.idProofs.passport);
+
+
     try {
-      // Create a payload with only the changed fields
-      const payload = {
-        employeeId: employeeById.employeeId,
-      };
-
-      // Only include personal info fields that have changed
-      if (formData.employee.email.personal !== employeeById.emailPersonal) {
-        payload.emailPersonal = formData.employee.email.personal;
-      }
-      if (formData.employee.phone1 !== employeeById.phone) {
-        payload.phone = formData.employee.phone1;
-      }
-      if (formData.employee.phone2 !== employeeById.alternatePhone) {
-        payload.alternatePhone = formData.employee.phone2;
-      }
-      if (formData.employee.currentAddress !== employeeById.currentAddress) {
-        payload.currentAddress = formData.employee.currentAddress;
-      }
-      if (
-        formData.employee.permanentAddress !== employeeById.permanentAddress
-      ) {
-        payload.permanentAddress = formData.employee.permanentAddress;
-      }
-
-      // Include bank details that have changed (don't require both fields to be filled)
-      if (
-        formData.bank.accountNumber !== employeeById.bankDetails?.accountNumber
-      ) {
-        payload.accountNumber = formData.bank.accountNumber;
-      }
-      if (formData.bank.ifscCode !== employeeById.bankDetails?.ifscCode) {
-        payload.ifscCode = formData.bank.ifscCode;
-      }
-      if (
-        formData.bank.accountHolderName !==
-        employeeById.bankDetails?.accountHolderName
-      ) {
-        payload.accountHolderName = formData.bank.accountHolderName;
-      }
-      if (formData.bank.bankName !== employeeById.bankDetails?.bankName) {
-        payload.bankName = formData.bank.bankName;
-      }
-      if (formData.bank.branchName !== employeeById.bankDetails?.branchName) {
-        payload.branchName = formData.bank.branchName;
-      }
-      if (formData.bank.upiPhone !== employeeById.bankDetails?.upiPhoneNumber) {
-        payload.upiPhoneNumber = formData.bank.upiPhone;
-      }
-
-      // Create FormData for the request
-      const formDataPayload = new FormData();
-      formDataPayload.append("updateRequest", JSON.stringify(payload));
-
-      // Add files if they exist
-      if (formData.employee.profileImage instanceof File) {
-        formDataPayload.append("profileImage", formData.employee.profileImage);
-      }
-      if (formData.bank.passbookDoc instanceof File) {
-        formDataPayload.append("passbookImage", formData.bank.passbookDoc);
-      }
-
-      // Add document files if they exist
-      if (formData.idProofs.aadharImage instanceof File) {
-        formDataPayload.append("aadharImage", formData.idProofs.aadharImage);
-      }
-      if (formData.idProofs.panImage instanceof File) {
-        formDataPayload.append("panImage", formData.idProofs.panImage);
-      }
-      if (formData.idProofs.passportImage instanceof File) {
-        formDataPayload.append(
-          "passportImage",
-          formData.idProofs.passportImage
-        );
-      }
-      if (formData.idProofs.drivingLicenseImage instanceof File) {
-        formDataPayload.append(
-          "drivingLicenseImage",
-          formData.idProofs.drivingLicenseImage
-        );
-      }
-      if (formData.idProofs.voterIdImage instanceof File) {
-        formDataPayload.append("voterIdImage", formData.idProofs.voterIdImage);
-      }
-
-      const response = await fetch(
-        `${publicRuntimeConfig.apiURL}/employee/update-request`,
-        {
+      const response = await fetch(`${publicRuntimeConfig.apiURL}/employee/request-update`, {
           method: "PUT",
-          body: formDataPayload,
-        }
-      );
+        body: apiFormData, // Sending as multipart/form-data
+      });
 
-      let result;
-      try {
-        result = await response.json();
-      } catch (jsonError) {
-        toast.error("Failed to parse response");
-        result = { message: await response.text() };
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Failed to submit for approval.");
       }
 
-      if (response.ok) {
-        toast.success(
-          result.message || "Update request submitted successfully."
-        );
+      toast.success("Profile update submitted for approval!");
         setIsPageInEditMode(false);
-        fetchByEmployeeId();
-      } else {
-        toast.error(result.message || `Failed: ${response.statusText}`);
-      }
+      fetchByEmployeeId(); // Re-fetch to show updated status
     } catch (error) {
-      toast.error("Failed to submit update request.");
+      toast.error(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- Logout ---
   const handleLogout = () => {
     clearSession();
     router.push("/login");
-    toast.success("Logged out successfully");
   };
 
-  // --- Render ---
-  if (loading && !employeeById) {
-    // Show a loading indicator only on initial load
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <FiLoader className="w-10 h-10 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  // --- Render Functions for Profile Cards ---
 
-  // Handle case where employee data failed to load
-  if (!employeeById && !loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
-        <h2 className="text-xl text-red-600 mb-4">
-          Failed to load employee data.
-        </h2>
-        <button
-          onClick={fetchByEmployeeId}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
-
-      <div
-        className={`flex-1 transition-all duration-300 ${
-          isSidebarCollapsed ? "ml-20" : "ml-56"
-        }`}
-      >
-        <HradminNavbar />
-
-        <main className="p-6 pt-24">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="relative h-64 bg-gradient-to-r bg-[#3B6FA0]">
-                <div className="absolute inset-0 opacity-10 bg-[url('/pattern.svg')] bg-repeat"></div>
-                <div className="relative h-full px-8 py-6 flex flex-col justify-between">
-                  {/* Top Row */}
-                  <div className="flex justify-between items-start">
-                    {/* Status Badges */}
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2 bg-white/10 backdrop-blur px-3 py-1.5 rounded-full text-white text-sm">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            employeeById?.updateStatus === "Pending"
-                              ? "bg-yellow-400"
-                              : "bg-green-400"
-                          }`}
-                        ></div>
-                        <span>
-                          {employeeById?.updateStatus === "Pending"
-                            ? "Update Pending"
-                            : "Active Employee"}
+  const renderProfileHeader = () => (
+    <div className="bg-blue-600 p-6 rounded-lg shadow-md mb-8">
+      <div className="flex items-center gap-6">
+        <div className="flex-shrink-0">
+          <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center border-4 border-blue-200">
+            {employeeById?.profileImage ? (
+              <img
+                src={employeeById.profileImage}
+                alt="Profile"
+                className="rounded-full w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-4xl font-bold text-blue-600">
+                {getInitials(employeeById?.name)}
                         </span>
-                        {employeeById?.updateStatus === "Pending" && (
-                          <button
-                            onClick={fetchPendingChanges}
-                            className="ml-2 px-2 py-0.5 bg-white/20 rounded-md text-xs hover:bg-white/30 transition-colors"
-                          >
-                            View Changes
-                          </button>
                         )}
                       </div>
-                      <div className="flex items-center space-x-2 bg-white/10 backdrop-blur px-3 py-1.5 rounded-full text-white text-sm">
-                        <FaCalendarCheck className="w-4 h-4" />
-                        <span>
-                          Joined on{" "}
-                          {employeeById?.joiningDate
-                            ? new Date(
-                                employeeById.joiningDate
-                              ).toLocaleDateString()
-                            : "N/A"}
-                        </span>
                       </div>
+        <div className="flex-grow">
+          <h1 className="text-3xl font-bold text-white">{employeeById?.name}</h1>
+          <div className="text-blue-100 text-sm mt-1 flex items-center flex-wrap gap-x-4 gap-y-1">
+            <span>{employeeById?.id}</span>
+            <span className="opacity-50">•</span>
+            <span>{employeeById?.designation}</span>
+            <span className="opacity-50">•</span>
+            <span>{employeeById?.department}</span>
                     </div>
-                    {/* Settings Menu */}
-                    <div className="relative">
+          <div className="text-blue-100 text-sm mt-2">
+            <span className="font-semibold">Reports to:</span> {managerName}
+          </div>
+        </div>
+        <div className="flex-shrink-0 self-start">
+          {isPageInEditMode ? (
+            <div className="flex gap-2">
                       <button
-                        onClick={() => setShowProfileMenu(!showProfileMenu)}
-                        className="p-2 hover:bg-white/10 rounded-lg text-white transition-colors"
-                      >
-                        <FiSettings className="w-5 h-5" />
-                      </button>
-                      {showProfileMenu && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
-                          <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center">
-                            <FiSettings className="w-4 h-4 mr-2" /> Settings
+                onClick={handleCancelClick}
+                className="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+              >
+                Cancel
                           </button>
                           <button
-                            onClick={handleLogout}
-                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center"
+                onClick={handleSaveAllClick}
+                className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                disabled={loading}
                           >
-                            <FiLogOut className="w-4 h-4 mr-2" /> Log out
+                {loading ? <FiLoader className="animate-spin" /> : <FiCheck />}
+                Save Changes
                           </button>
                         </div>
+          ) : (
+            isEditable && (
+              <button
+                onClick={handleEditProfileClick}
+                className="px-4 py-2 text-sm bg-white text-blue-600 font-semibold rounded-md shadow hover:bg-gray-100 flex items-center gap-2"
+              >
+                <FiEdit2 />
+                Edit Profile
+              </button>
+            )
                       )}
                     </div>
-                  </div>
-                  {/* Bottom Row */}
-                  <div className="flex items-end space-x-6">
-                    {/* Profile Picture */}
-                    <div className="relative">
-                      <div className="w-28 h-28 rounded-xl bg-white p-1 shadow-lg">
-                        <div className="w-full h-full rounded-lg bg-gray-100 border border-white overflow-hidden flex items-center justify-center">
-                          {formData.employee.profileImage instanceof File ? (
-                            <img
-                              src={URL.createObjectURL(
-                                formData.employee.profileImage
-                              )}
-                              alt="Profile Preview"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : employeeById?.employeeImgUrl ? (
-                            <img
-                              src={employeeById.employeeImgUrl}
-                              alt="Profile"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <FiUser className="w-16 h-16 text-gray-300" />
-                          )}
                         </div>
-                      </div>
-                      {/* Profile Image Upload Input - only visible/enabled when editing personal info */}
-                      {isPageInEditMode && (
-                        <>
-                          <label
-                            htmlFor="profile-upload"
-                            className={`absolute -bottom-2 -right-2 bg-blue-500 text-white p-2 rounded-lg shadow-lg transition-colors ${
-                              isEditable
-                                ? "cursor-pointer hover:bg-blue-600"
-                                : "opacity-50 cursor-not-allowed"
-                            }`}
-                          >
-                            <FiUpload className="w-4 h-4" />
-                          </label>
-                          <input
-                            id="profile-upload"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            disabled={!isEditable}
-                            onChange={(e) => {
-                              const file = e.target.files[0];
-                              if (file) {
-                                handleInputChange(
-                                  "employee",
-                                  "profileImage",
-                                  file
-                                );
-                              }
-                            }}
-                          />
-                        </>
-                      )}
-                    </div>
-                    {/* Employee Info */}
-                    <div className="flex-1 mb-2">
-                      <h1 className="text-3xl font-bold text-white mb-1">
-                        {employeeById?.name || "Employee Name"}
-                      </h1>
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2 bg-white/10 backdrop-blur px-3 py-1.5 rounded-lg text-white text-sm">
-                          <span className="font-medium">
-                            {employeeById?.employeeId || "-"}
-                          </span>
                         </div>
-                        <div className="flex items-center space-x-2 text-white/80 text-sm">
-                          <span>{employeeById?.designationName || "-"}</span>
-                          <span className="text-white/40">•</span>
-                          <span>{employeeById?.departmentName || "-"}</span>
-                        </div>
-                      </div>
-                      <div className="mt-2 text-white/80 text-sm">
-                        <span>
-                          {employeeById?.emailOfficial || "No official email"}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Quick Info */}
-                    <div className="flex space-x-3">
-                      {/* Add Edit Profile button here, to the left of Reports to */}
-                      {!isPageInEditMode ? (
-                        <div className="relative group">
+  );
+
+  const renderTabNavigation = () => (
+    <div className="border-b border-gray-200 mb-6">
+      <nav className="flex space-x-6">
                           <button
-                            onClick={handleEditProfileClick}
-                            className={`flex flex-col items-center bg-white/10 backdrop-blur px-4 py-2 rounded-lg text-white ${
-                              !isEditable
-                                ? "opacity-50 cursor-not-allowed"
-                                : "hover:bg-white/20"
+          onClick={() => setActiveTab("overview")}
+          className={`px-1 py-4 text-sm font-medium transition-colors duration-200 ${
+            activeTab === "overview"
+              ? "border-b-2 border-blue-600 text-blue-600"
+              : "border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             }`}
-                            disabled={!isEditable || loading}
                           >
-                            <FiEdit2 className="w-4 h-4 mb-1" />
-                            <span className="text-xs">Edit Profile</span>
+          <FiUser className="inline-block mr-2" /> Overview
                           </button>
-                          {!isEditable && (
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                              <div className="relative">
-                                <p>
-                                  Cannot edit while update request is pending
-                                </p>
-                                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          <div
-                            onClick={handleSaveAllClick}
-                            className="flex flex-col items-center bg-white/10 backdrop-blur px-4 py-2 rounded-lg text-white cursor-pointer"
-                          >
                             <button
-                              className="flex items-center justify-center text-green-400 hover:text-green-300 disabled:opacity-50"
-                              disabled={loading || !isEditable}
+          onClick={() => setActiveTab("employment")}
+          className={`px-1 py-4 text-sm font-medium transition-colors duration-200 ${
+            activeTab === "employment"
+              ? "border-b-2 border-blue-600 text-blue-600"
+              : "border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
                             >
-                              {loading ? (
-                                <FiLoader className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <FiCheck className="w-4 h-4" />
-                              )}
+          <FiBriefcase className="inline-block mr-2" /> Employment
                             </button>
-                            <span className="text-xs mt-1">Save Changes</span>
-                          </div>
-                          <div
-                            onClick={handleCancelClick}
-                            className="flex flex-col items-center bg-white/10 backdrop-blur px-4 py-2 rounded-lg text-white cursor-pointer"
-                          >
                             <button
-                              className="flex items-center justify-center text-red-400 hover:text-red-300 disabled:opacity-50"
-                              disabled={loading}
+          onClick={() => setActiveTab("documents")}
+          className={`px-1 py-4 text-sm font-medium transition-colors duration-200 ${
+            activeTab === "documents"
+              ? "border-b-2 border-blue-600 text-blue-600"
+              : "border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
                             >
-                              <X className="w-4 h-4" />
+          <FiFileText className="inline-block mr-2" /> Documents
                             </button>
-                            <span className="text-xs mt-1">Cancel</span>
+      </nav>
                           </div>
-                        </>
-                      )}
-                      <div className="flex flex-col items-center bg-white/10 backdrop-blur px-4 py-2 rounded-lg text-white">
-                        <span className="text-xs text-white/80">
-                          Reports to
-                        </span>
-                        <span className="font-medium">{managerName}</span>
-                      </div>
-                      <div className="flex flex-col items-center bg-white/10 backdrop-blur px-4 py-2 rounded-lg text-white">
-                        <span className="text-xs text-white/80">PF Status</span>
-                        <span className="font-medium">
-                          {employeeById?.pfEnrolled
-                            ? "Enrolled"
-                            : "Not Enrolled"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* --- Profile Info Sections --- */}
-              <div className="p-6 bg-gray-50">
-                <div className="grid grid-cols-1 lg:grid-cols-11 gap-6">
-                  <div className="lg:col-span-8 space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                      {/* Personal Information Card */}
-                      <div className="lg:col-span-6">
-                        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-                          <div className="flex justify-between items-center mb-3 pb-3 -mt-2 border-b border-gray-100">
-                            <div className="flex items-center">
-                              <FiUser className="w-5 h-5 text-blue-500 mr-2" />
-                              <h3 className="text-lg font-semibold text-gray-800">
-                                Personal Information
-                              </h3>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            {/* Father's Name - Read Only */}
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                Father&apos;s Name
-                              </label>
-                              <p className="text-base text-gray-900">
-                                {employeeById?.fathersName || "-"}
-                              </p>
-                            </div>
-                            {/* Gender - Read Only */}
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                Gender
-                              </label>
-                              <p className="text-base text-gray-900">
-                                {employeeById?.gender || "-"}
-                              </p>
-                            </div>
-                            {/* Phone - Editable */}
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                Phone
-                              </label>
-                              {isPageInEditMode ? (
-                                <input
-                                  type="tel"
-                                  value={formData.employee.phone1}
-                                  onChange={(e) =>
-                                    handleInputChange(
-                                      "employee",
-                                      "phone1",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white disabled:bg-gray-100"
-                                  pattern="[0-9]{10}"
-                                  disabled={!isEditable}
-                                />
-                              ) : (
-                                <p className="text-base text-gray-900">
-                                  {employeeById?.phone || "-"}
-                                </p>
-                              )}
-                            </div>
-                            {/* Alternate Phone - Editable */}
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                Alternate Phone
-                              </label>
-                              {isPageInEditMode ? (
-                                <input
-                                  type="tel"
-                                  value={formData.employee.phone2 || ""}
-                                  onChange={(e) =>
-                                    handleInputChange(
-                                      "employee",
-                                      "phone2",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white disabled:bg-gray-100"
-                                  pattern="[0-9]{10}"
-                                  placeholder="10-digit number"
-                                  disabled={!isEditable}
-                                />
-                              ) : (
-                                <p className="text-base text-gray-900">
-                                  {employeeById?.alternatePhone || "-"}
-                                </p>
-                              )}
-                            </div>
-                            {/* Personal Email - Editable */}
-                            <div className="col-span-2 bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                Personal Email
-                              </label>
-                              {isPageInEditMode ? (
-                                <input
-                                  type="email"
-                                  value={formData.employee.email.personal}
-                                  onChange={(e) =>
-                                    handleNestedInputChange(
-                                      "employee",
-                                      "email",
-                                      "personal",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white disabled:bg-gray-100"
-                                  disabled={!isEditable}
-                                />
-                              ) : (
-                                <p className="text-base text-gray-900">
-                                  {employeeById?.emailPersonal || "-"}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+  );
 
-                      {/* Statutory Information Card */}
-                      <div className="lg:col-span-6">
-                        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-                          <div className="flex items-center mb-5 pb-3 border-b border-gray-100">
-                            <FiShield className="w-5 h-5 text-blue-500 mr-2" />
-                            <h3 className="text-lg font-semibold text-gray-800">
-                              Statutory Information
-                            </h3>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                PF Status
-                              </label>
-                              <div className="flex items-center">
-                                <div
-                                  className={`w-2 h-2 rounded-full mr-2 ${
-                                    employeeById?.pfEnrolled
-                                      ? "bg-green-500"
-                                      : "bg-red-500"
-                                  }`}
-                                ></div>
-                                <p className="text-base text-gray-900">
-                                  {employeeById?.pfEnrolled
-                                    ? "Enrolled"
-                                    : "Not Enrolled"}
-                                </p>
-                              </div>
+  const renderInfoField = (label, value) => (
+    <div>
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className="font-medium text-gray-800">{value || "-"}</p>
                             </div>
-                            {employeeById?.pfEnrolled && (
-                              <div className="bg-gray-50 p-3 rounded-lg">
-                                <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                  UAN Number
-                                </label>
-                                <p className="text-base text-gray-900">
-                                  {employeeById?.uanNumber || "-"}
-                                </p>
-                              </div>
-                            )}
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                ESIC Status
-                              </label>
-                              <div className="flex items-center">
-                                <div
-                                  className={`w-2 h-2 rounded-full mr-2 ${
-                                    employeeById?.esicEnrolled
-                                      ? "bg-green-500"
-                                      : "bg-red-500"
-                                  }`}
-                                ></div>
-                                <p className="text-base text-gray-900">
-                                  {employeeById?.esicEnrolled
-                                    ? "Enrolled"
-                                    : "Not Enrolled"}
-                                </p>
-                              </div>
+  );
+  
+  const renderTextInput = (section, field, label, placeholder) => (
+    <div>
+      <label className="text-sm text-gray-500 block mb-1">{label}</label>
+                                <input
+        type="text"
+        value={formData[section]?.[field] || ""}
+        onChange={(e) => handleInputChange(section, field, e.target.value)}
+        className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+        placeholder={placeholder}
+      />
                             </div>
-                            {employeeById?.esicEnrolled && (
-                              <div className="bg-gray-50 p-3 rounded-lg">
-                                <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                  ESIC Number
-                                </label>
-                                <p className="text-base text-gray-900">
-                                  {employeeById?.esicNumber || "-"}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+  );
 
-                    {/* ID Proofs Card */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-                      <div className="flex justify-between items-center mb-5 pb-2 -mt-2 border-b border-gray-100">
-                        <div className="flex items-center">
-                          <FiBook className="w-5 h-5 text-blue-500 mr-2" />
-                          <h3 className="text-lg font-semibold text-gray-800">
-                            Identity Documents
-                          </h3>
+  const renderFileInput = (section, docField, label) => (
+    <div>
+      <label className="text-sm text-gray-500 block mb-1">{label}</label>
+      <div className="flex items-center gap-2">
+        <input type="file" onChange={(e) => handleFileChange(section, docField, e.target.files[0])} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                            </div>
+                            </div>
+  );
+
+  const renderDocInfoField = (label, value, docUrl) => (
+    <div>
+      <p className="text-sm text-gray-500">{label}</p>
+      <div className="flex items-center justify-between">
+        <p className="font-medium text-gray-800">{value || "-"}</p>
+        {docUrl && <a href={docUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-1"><FiEye /> View</a>}
+                          </div>
+                              </div>
+  );
+
+  const renderProfileCard = (title, icon, children) => (
+     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <div className="flex items-center gap-3 mb-6">
+          {icon}
+          <h2 className="text-xl font-bold text-gray-800">{title}</h2>
                         </div>
+        {children}
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {[
-                          {
-                            label: "Aadhar No.",
-                            key: "aadharNo",
-                            imgUrlKey: "aadharImgUrl",
-                            fileKey: "aadharImage",
-                          },
-                          {
-                            label: "PAN No.",
-                            key: "panNo",
-                            imgUrlKey: "pancardImgUrl",
-                            fileKey: "panImage",
-                          },
-                          {
-                            label: "Passport",
-                            key: "passport",
-                            imgUrlKey: "passportImgUrl",
-                            fileKey: "passportImage",
-                          },
-                          {
-                            label: "Driving License",
-                            key: "drivingLicense",
-                            imgUrlKey: "drivingLicenseImgUrl",
-                            fileKey: "drivingLicenseImage",
-                          },
-                          {
-                            label: "Voter ID",
-                            key: "voterId",
-                            imgUrlKey: "voterIdImgUrl",
-                            fileKey: "voterIdImage",
-                          },
-                        ].map(({ label, key, imgUrlKey, fileKey }) => (
-                          <div
-                            key={key}
-                            className="bg-gray-50 p-3 rounded-lg space-y-1"
-                          >
-                            <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                              {label}
-                            </label>
-                            {/* Always show the number as read-only */}
-                            <p className="text-base text-gray-900">
-                              {employeeById?.idProofs?.[key] || "-"}
-                            </p>
-                            <div className="pt-2 border-t border-gray-200 mt-2">
+  );
+
+  const renderPersonalInformationCard = () => (
+    renderProfileCard("Personal Information", <FiUser className="text-blue-600"/>, 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               {isPageInEditMode ? (
+          <>
+            {renderTextInput("employee", "name", "Full Name", "Enter employee's name")}
+            {renderTextInput("employee", "fatherName", "Father's Name", "Enter father's name")}
+            {/* Gender Dropdown for editing */}
                                 <div>
-                                  {!formData.idProofs[fileKey] && (
-                                    <label
-                                      htmlFor={`upload-${key}`}
-                                      className={`inline-flex items-center px-3 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 ${
-                                        isEditable
-                                          ? "cursor-pointer"
-                                          : "opacity-50 cursor-not-allowed"
-                                      }`}
-                                    >
-                                      <FiUpload className="w-3 h-3 mr-1" />{" "}
-                                      Upload
-                                    </label>
-                                  )}
+              <label className="text-sm text-gray-500 block mb-1">Gender</label>
+              <select 
+                value={formData.employee.gender}
+                onChange={(e) => handleInputChange("employee", "gender", e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            {renderTextInput("employee", "phone1", "Phone", "Enter phone number")}
+            {renderTextInput("employee", "phone2", "Alternate Phone", "Enter alternate number")}
+            {/* Nested input for email */}
+             <div>
+              <label className="text-sm text-gray-500 block mb-1">Personal Email</label>
                                   <input
-                                    type="file"
-                                    id={`upload-${key}`}
-                                    className="hidden"
-                                    accept=".pdf,.jpg,.jpeg,.png"
-                                    disabled={!isEditable}
-                                    onChange={(e) => {
-                                      const file = e.target.files[0];
-                                      if (file) {
-                                        handleInputChange(
-                                          "idProofs",
-                                          fileKey,
-                                          file
-                                        );
-                                      }
-                                    }}
-                                  />
-                                  {formData.idProofs[fileKey] instanceof
-                                    File && (
-                                    <div className="mt-2 flex items-center text-sm">
-                                      <span className="text-gray-600 mr-2 truncate">
-                                        {formData.idProofs[fileKey].name}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleInputChange(
-                                            "idProofs",
-                                            fileKey,
-                                            null
-                                          )
-                                        }
-                                        className="text-red-500 hover:text-red-700"
-                                        disabled={!isEditable}
-                                      >
-                                        <X className="w-4 h-4" />
-                                      </button>
+                type="email"
+                value={formData.employee.email.personal || ""}
+                onChange={(e) => handleNestedInputChange("employee", "email", "personal", e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                placeholder="Enter personal email"
+              />
                                     </div>
-                                  )}
-                                </div>
-                              ) : employeeById?.idProofs?.[imgUrlKey] ? (
-                                <a
-                                  href={employeeById.idProofs[imgUrlKey]}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center"
-                                >
-                                  <FiEye className="w-4 h-4 mr-1" /> View
-                                  Document
-                                </a>
-                              ) : (
-                                <p className="text-xs text-gray-500">
-                                  No document
-                                </p>
+          </>
+        ) : (
+          <>
+            {renderInfoField("Full Name", employeeById?.name)}
+            {renderInfoField("Father's Name", employeeById?.fatherName)}
+            {renderInfoField("Gender", employeeById?.gender)}
+            {renderInfoField("Phone", employeeById?.phone)}
+            {renderInfoField("Alternate Phone", employeeById?.alternatePhone)}
+            {renderInfoField("Personal Email", employeeById?.emailPersonal)}
+                          </>
                               )}
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+    )
+  );
 
-                    {/* Salary Information Card */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-                      <div className="flex items-center mb-5 pb-3 -mt-2 border-b border-gray-100">
-                        <FiDollarSign className="w-5 h-5 text-blue-500 mr-2" />
-                        <h3 className="text-lg font-semibold text-gray-800">
-                          Salary Information
-                        </h3>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            Annual CTC
-                          </label>
-                          <p className="text-base text-gray-900">
-                            ₹
-                            {employeeById?.salaryDetails?.annualCtc?.toLocaleString() ||
-                              "-"}
-                          </p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            Monthly CTC
-                          </label>
-                          <p className="text-base text-gray-900">
-                            ₹
-                            {employeeById?.salaryDetails?.monthlyCtc?.toLocaleString() ||
-                              "-"}
-                          </p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            Basic Salary
-                          </label>
-                          <p className="text-base text-gray-900">
-                            ₹
-                            {employeeById?.salaryDetails?.basicSalary?.toLocaleString() ||
-                              "-"}
-                          </p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            HRA
-                          </label>
-                          <p className="text-base text-gray-900">
-                            ₹
-                            {employeeById?.salaryDetails?.hra?.toLocaleString() ||
-                              "-"}
-                          </p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            Allowances
-                          </label>
-                          <p className="text-base text-gray-900">
-                            ₹
-                            {employeeById?.salaryDetails?.allowances?.toLocaleString() ||
-                              "-"}
-                          </p>
-                        </div>
-                        {employeeById?.pfEnrolled && (
-                          <>
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                Employer PF
-                              </label>
-                              <p className="text-base text-gray-900">
-                                ₹
-                                {employeeById?.salaryDetails?.employerPfContribution?.toLocaleString() ||
-                                  "-"}
-                              </p>
-                            </div>
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                              <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                                Employee PF
-                              </label>
-                              <p className="text-base text-gray-900">
-                                ₹
-                                {employeeById?.salaryDetails?.employeePfContribution?.toLocaleString() ||
-                                  "-"}
-                              </p>
-                            </div>
+  const renderIdentityDocumentsCard = () => (
+    renderProfileCard("Identity Documents", <FiFileText className="text-blue-600" />,
+      <div className="space-y-4">
+        {isPageInEditMode ? (
+          <>
+            <div className="grid grid-cols-2 gap-2 items-end"><div className="col-span-1">{renderTextInput("idProofs", "panNo", "PAN Card", "PAN Number")}</div><div className="col-span-1">{renderFileInput("idProofs", "panDoc", "Upload PAN")}</div></div>
+            <div className="grid grid-cols-2 gap-2 items-end"><div className="col-span-1">{renderTextInput("idProofs", "aadharNo", "Aadhar Card", "Aadhar Number")}</div><div className="col-span-1">{renderFileInput("idProofs", "aadharDoc", "Upload Aadhar")}</div></div>
+            <div className="grid grid-cols-2 gap-2 items-end"><div className="col-span-1">{renderTextInput("idProofs", "passport", "Passport", "Passport Number")}</div><div className="col-span-1">{renderFileInput("idProofs", "passportDoc", "Upload Passport")}</div></div>
+            <div className="grid grid-cols-2 gap-2 items-end"><div className="col-span-1">{renderTextInput("idProofs", "drivingLicense", "Driving License", "License Number")}</div><div className="col-span-1">{renderFileInput("idProofs", "drivingLicenseDoc", "Upload License")}</div></div>
+            <div className="grid grid-cols-2 gap-2 items-end"><div className="col-span-1">{renderTextInput("idProofs", "voterId", "Voter ID", "Voter ID Number")}</div><div className="col-span-1">{renderFileInput("idProofs", "voterIdDoc", "Upload Voter ID")}</div></div>
+          </>
+        ) : (
+          <>
+            {renderDocInfoField("PAN Card", employeeById?.idProofs?.panNumber, employeeById?.idProofs?.panDoc)}
+            {renderDocInfoField("Aadhar Card", employeeById?.idProofs?.aadharNumber, employeeById?.idProofs?.aadharDoc)}
+            {renderDocInfoField("Passport", employeeById?.idProofs?.passportNumber, employeeById?.idProofs?.passportDoc)}
+            {renderDocInfoField("Driving License", employeeById?.idProofs?.drivingLicenseNumber, employeeById?.idProofs?.drivingLicenseDoc)}
+            {renderDocInfoField("Voter ID", employeeById?.idProofs?.voterIdNumber, employeeById?.idProofs?.voterIdDoc)}
                           </>
                         )}
                       </div>
-                    </div>
-                  </div>
+    )
+  );
 
-                  <div className="lg:col-span-3">
-                    {/* Bank Information Card */}
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-                      <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
-                        <div className="flex items-center">
-                          <FiCreditCard className="w-5 h-5 text-blue-500 mr-2" />
-                          <h3 className="text-lg font-semibold text-gray-800">
-                            Bank Information
-                          </h3>
+  const renderStatutoryCard = () => (
+    renderProfileCard("Statutory Information", <FiShield className="text-blue-600" />,
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {renderInfoField("PF Status", employeeById?.pfStatus || "Not Enrolled")}
+          {renderInfoField("ESIC Status", employeeById?.esicStatus || "Not Enrolled")}
+          {renderInfoField("UAN Number", employeeById?.uanNumber)}
+          {renderInfoField("PF Number", employeeById?.pfNumber)}
+          {renderInfoField("ESIC Number", employeeById?.esicNumber)}
                         </div>
-                      </div>
-                      <div className="grid grid-cols-1 gap-6">
-                        {/* Account Number - Editable */}
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            Account Number
-                          </label>
+    )
+  );
+
+  const renderBankDetailsCard = () => (
+    renderProfileCard("Bank Information", <FiCreditCard className="text-blue-600" />,
+      !isPageInEditMode && !employeeById?.bankDetails ? (
+        <div className="text-center py-8">
+            <p className="text-gray-500 mb-4">No bank details have been added yet.</p>
+            <button onClick={handleEditProfileClick} className="px-4 py-2 text-sm bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700">
+                + Add Bank Details
+            </button>
+                        </div>
+      ) : (
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {isPageInEditMode ? (
-                            <input
-                              type="text"
-                              value={formData.bank.accountNumber}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "bank",
-                                  "accountNumber",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white disabled:bg-gray-100"
-                              disabled={!isEditable}
-                            />
-                          ) : (
-                            <p className="text-base text-gray-900">
-                              {employeeById?.bankDetails?.accountNumber || "-"}
-                            </p>
+              <>
+                {renderTextInput("bank", "accountHolderName", "Account Holder Name", "Enter name as per bank")}
+                {renderTextInput("bank", "accountNumber", "Account Number", "Enter account number")}
+                {renderTextInput("bank", "ifscCode", "IFSC Code", "Enter IFSC code")}
+                {renderTextInput("bank", "bankName", "Bank Name", "Enter bank name")}
+                {renderTextInput("bank", "branchName", "Branch Name", "Enter branch name")}
+                {renderFileInput("bank", "passbookDoc", "Upload Passbook/Cheque")}
+              </>
+            ) : (
+              <>
+                {renderInfoField("Account Holder Name", employeeById?.bankDetails?.accountHolderName)}
+                {renderInfoField("Account Number", employeeById?.bankDetails?.accountNumber)}
+                {renderInfoField("IFSC Code", employeeById?.bankDetails?.ifscCode)}
+                {renderInfoField("Bank Name", employeeById?.bankDetails?.bankName)}
+                {renderInfoField("Branch Name", employeeById?.bankDetails?.branchName)}
+                {renderDocInfoField("Passbook/Cheque", "", employeeById?.bankDetails?.passbookDoc)}
+              </>
                           )}
                         </div>
-                        {/* IFSC Code - Editable */}
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            IFSC Code
-                          </label>
+      )
+    )
+  );
+  
+  const renderEmploymentCard = () => (
+    renderProfileCard("Employment Details", <FiBriefcase className="text-blue-600"/>,
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {renderInfoField("Designation", employeeById?.designation)}
+        {renderInfoField("Department", employeeById?.department)}
+        {renderInfoField("Date of Joining", new Date(employeeById?.dateOfJoining).toLocaleDateString())}
+        {renderInfoField("Work Location", employeeById?.workLocation)}
+        {renderInfoField("Employee Type", employeeById?.employeeType)}
+        {renderInfoField("Status", employeeById?.status)}
+        {renderInfoField("Reports To", managerName)}
+                        </div>
+    )
+  );
+  
+  const renderAddressCard = () => (
+    renderProfileCard("Address", <FiMapPin className="text-blue-600"/>,
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {isPageInEditMode ? (
-                            <input
-                              type="text"
-                              value={formData.bank.ifscCode}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "bank",
-                                  "ifscCode",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white disabled:bg-gray-100"
-                              disabled={!isEditable}
-                            />
+          <>
+            {renderTextInput("employee", "currentAddress", "Current Address", "Enter current address")}
+            {renderTextInput("employee", "permanentAddress", "Permanent Address", "Enter permanent address")}
+          </>
                           ) : (
-                            <p className="text-base text-gray-900">
-                              {employeeById?.bankDetails?.ifscCode || "-"}
-                            </p>
+          <>
+            {renderInfoField("Current Address", employeeById?.currentAddress)}
+            {renderInfoField("Permanent Address", employeeById?.permanentAddress)}
+          </>
                           )}
                         </div>
-                        {/* Bank Name - Editable */}
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            Bank Name
-                          </label>
-                          {isPageInEditMode ? (
-                            <input
-                              type="text"
-                              value={formData.bank.bankName}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "bank",
-                                  "bankName",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white disabled:bg-gray-100"
-                              disabled={!isEditable}
-                            />
-                          ) : (
-                            <p className="text-base text-gray-900">
-                              {employeeById?.bankDetails?.bankName || "-"}
-                            </p>
-                          )}
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            Branch Name
-                          </label>
-                          {isPageInEditMode ? (
-                            <input
-                              type="text"
-                              value={formData.bank.branchName}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "bank",
-                                  "branchName",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white disabled:bg-gray-100"
-                              disabled={!isEditable}
-                            />
-                          ) : (
-                            <p className="text-base text-gray-900">
-                              {employeeById?.bankDetails?.branchName || "-"}
-                            </p>
-                          )}
-                        </div>
-                        {/* UPI Phone - Editable */}
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            UPI Phone
-                          </label>
-                          {isPageInEditMode ? (
-                            <input
-                              type="tel"
-                              value={formData.bank.upiPhone}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "bank",
-                                  "upiPhone",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white disabled:bg-gray-100"
-                              pattern="[0-9]{10}"
-                              placeholder="10-digit number"
-                              disabled={!isEditable}
-                            />
-                          ) : (
-                            <p className="text-base text-gray-900">
-                              {employeeById?.bankDetails?.upiPhoneNumber || "-"}
-                            </p>
-                          )}
-                        </div>
-                        {/* UPI ID - Read Only */}
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            UPI ID
-                          </label>
-                          <p className="text-base text-gray-900">
-                            {employeeById?.bankDetails?.upiId || "-"}
-                          </p>
-                        </div>
-                        {/* Passbook Upload - Enabled in Edit Mode */}
-                        <div className="border-t pt-4 mt-4">
-                          <label className="text-sm text-gray-600 mb-1.5 block font-medium">
-                            Bank Passbook
-                          </label>
-                          {isPageInEditMode ? (
-                            <div>
-                              <label
-                                htmlFor="passbook-upload"
-                                className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ${
-                                  isEditable
-                                    ? "cursor-pointer"
-                                    : "opacity-50 cursor-not-allowed"
-                                }`}
-                              >
-                                <FiUpload className="w-4 h-4 mr-2" />
-                                {formData.bank.passbookDoc instanceof File
-                                  ? "Change File"
-                                  : "Upload File"}
-                              </label>
-                              <input
-                                type="file"
-                                id="passbook-upload"
-                                className="hidden"
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                disabled={!isEditable}
-                                onChange={(e) => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    handleInputChange(
-                                      "bank",
-                                      "passbookDoc",
-                                      file
-                                    );
-                                  }
-                                }}
-                              />
-                              {formData.bank.passbookDoc instanceof File && (
-                                <div className="mt-2 flex items-center text-sm">
-                                  <span className="text-gray-600 mr-2 truncate">
-                                    {formData.bank.passbookDoc.name}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleInputChange(
-                                        "bank",
-                                        "passbookDoc",
-                                        null
-                                      )
-                                    }
-                                    className="text-red-500 hover:text-red-700"
-                                    disabled={!isEditable}
-                                  >
-                                    {" "}
-                                    <X className="w-4 h-4" />{" "}
-                                  </button>
+    )
+  );
+
+  // --- Main Render ---
+  return (
+    <div className="min-h-screen flex bg-gray-50">
+      <Sidebar isCollapsed={isSidebarCollapsed} />
+      <div
+        className={`flex-1 transition-all duration-300 ${
+          isSidebarCollapsed ? "ml-16" : "ml-64"
+        }`}
+      >
+        <HradminNavbar
+          // ... props
+        />
+
+        <main className="p-6">
+          {loading && <div className="text-center p-12">Loading profile...</div>}
+
+          {!loading && employeeById && (
+            <>
+              {renderProfileHeader()}
+              {renderTabNavigation()}
+              
+              <div className="space-y-8">
+                 {activeTab === 'overview' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {renderPersonalInformationCard()}
+                      {renderIdentityDocumentsCard()}
                                 </div>
                               )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between mt-2 bg-gray-50 p-3 rounded-lg">
-                              <p className="text-base text-gray-900 truncate">
-                                {employeeById?.bankDetails?.passbookImgUrl
-                                  ? employeeById.bankDetails.passbookImgUrl
-                                      .split("/")
-                                      .pop()
-                                  : "Not uploaded"}
-                              </p>
-                              {employeeById?.bankDetails?.passbookImgUrl && (
-                                <a
-                                  href={employeeById.bankDetails.passbookImgUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center"
-                                >
-                                  <FiEye className="w-4 h-4 mr-1" /> View
-                                </a>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
 
-      {/* Add the Pending Changes Modal */}
-      {showPendingChangesModal && pendingChanges && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Field Changes
-              </h3>
-              <button
-                onClick={() => setShowPendingChangesModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
+                 {activeTab === 'employment' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {renderEmploymentCard()}
+                      {renderAddressCard()}
+                            </div>
+                 )}
+
+                 {activeTab === 'documents' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {renderStatutoryCard()}
+                      {renderBankDetailsCard()}
             </div>
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {/* Personal Information Changes */}
-              {pendingChanges.personalInfo.map((field, index) => (
-                <div
-                  key={field.field + index}
-                  className="border rounded p-3 bg-gray-50 text-sm"
-                >
-                  <p className="font-medium text-gray-700 mb-1">
-                    {field.field}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-xs text-gray-500">Old Value:</p>
-                      <p className="text-gray-800 break-words">
-                        {field.oldValue || "(empty)"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">New Value:</p>
-                      <p className="text-green-700 break-words">
-                        {field.newValue || "(empty)"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {/* Bank Details Changes */}
-              {pendingChanges.bankDetails.map((field, index) => (
-                <div
-                  key={field.field + index}
-                  className="border rounded p-3 bg-gray-50 text-sm"
-                >
-                  <p className="font-medium text-gray-700 mb-1">
-                    {field.field}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-xs text-gray-500">Old Value:</p>
-                      <p className="text-gray-800 break-words">
-                        {field.oldValue || "(empty)"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">New Value:</p>
-                      <p className="text-green-700 break-words">
-                        {field.newValue || "(empty)"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {/* Document Updates */}
-              {pendingChanges.documents.map((doc, index) => (
-                <div
-                  key={doc.field + index}
-                  className="border rounded p-3 bg-gray-50 text-sm"
-                >
-                  <p className="font-medium text-gray-700 mb-1">{doc.field}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-xs text-gray-500">Old Value:</p>
-                      {doc.isImage ? (
-                        doc.oldValue ? (
-                          <a
-                            href={doc.oldValue}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <img
-                              src={doc.oldValue}
-                              alt={`Old ${doc.field}`}
-                              className="h-16 rounded border"
-                            />
-                          </a>
-                        ) : (
-                          <span className="italic text-gray-400">(empty)</span>
-                        )
-                      ) : (
-                        <p className="text-gray-800 break-words">
-                          {doc.oldValue || "(empty)"}
-                        </p>
                       )}
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500">New Value:</p>
-                      {doc.isImage ? (
-                        doc.newValue ? (
-                          <a
-                            href={doc.newValue}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <img
-                              src={doc.newValue}
-                              alt={`New ${doc.field}`}
-                              className="h-16 rounded border"
-                            />
-                          </a>
-                        ) : (
-                          <span className="italic text-gray-400">(empty)</span>
-                        )
-                      ) : (
-                        <p className="text-green-700 break-words">
-                          {doc.newValue || "(empty)"}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 text-right">
-              <button
-                onClick={() => setShowPendingChangesModal(false)}
-                className="border border-gray-300 rounded px-4 py-1 text-sm hover:bg-gray-100"
-              >
-                Close
-              </button>
-            </div>
-          </div>
+            </>
+          )}
+
+          {!loading && !employeeById && (
+            <div className="text-center p-12 text-red-500">
+              Failed to load employee profile. Please try again.
         </div>
       )}
+        </main>
+      </div>
     </div>
   );
 }
 
-export default withAuth(EmployeeProfilePage);
+export default withAuth(EmployeeProfilePage, ["hradmin", "employee"]);

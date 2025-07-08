@@ -1,999 +1,246 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { CheckCircle2, Clock, CalendarIcon, Calendar, Play } from "lucide-react";
-import HradminNavbar from "../../components/HradminNavbar";
-import Sidebar from "../../components/Sidebar";
+import React, { useState, useEffect } from "react";
 import withAuth from "@/components/withAuth";
-import { toast } from "sonner";
-import { getItemFromSessionStorage } from "@/redux/slices/sessionStorageSlice";
-import { Badge } from "@/components/ui/badge";
+import HradminNavbar from "@/components/HradminNavbar";
+import Sidebar from "@/components/Sidebar";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchOneEmployeeAttendanceOneMonth } from "@/redux/slices/attendancesSlice";
+import {
+  applyLeave,
+  applyCompOffLeave,
+  fetchLeaveHistory,
+} from "@/redux/slices/leaveSlice";
+import { fetchLeaveBalance } from "@/redux/slices/leaveBalanceSlice";
+import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Calendar, Plane, PlusCircle } from "lucide-react";
+import ApplyLeaveModal from "@/components/modals/ApplyLeaveModal";
+import ApplyCompOffModal from "@/components/modals/ApplyCompOffModal";
+import AttendanceTab from "@/components/employee/attendance/AttendanceTab";
+import LeaveTab from "@/components/employee/attendance/LeaveTab";
 
-const EmployeeAttendance = () => {
+// --- ENRICHED DUMMY DATA FOR DEVELOPMENT ---
+
+const dummyLeaveBalance = {
+  leaveCarriedForward: 5.0,
+  earnedLeave: 12.0,
+  compOffCarriedForward: 2.0,
+  compOffEarned: 1.0,
+  leavesTaken: 4.5,
+  newLeaveBalance: 15.5 // Now a healthy positive balance
+};
+
+const dummyLeaveHistory = [
+  { id: 1, leaveType: 'Casual Leave', startDate: '2024-07-15', endDate: '2024-07-15', reason: 'Personal work', status: 'Approved' },
+  { id: 2, leaveType: 'Sick Leave', startDate: '2024-06-20', endDate: '2024-06-21', reason: 'Fever', status: 'Approved' },
+  { id: 3, leaveType: 'Earned Leave', startDate: '2024-05-10', endDate: '2024-05-15', reason: 'Vacation', status: 'Pending' },
+  { id: 4, leaveType: 'Casual Leave', startDate: '2024-04-01', endDate: '2024-04-01', reason: 'Bank work', status: 'Rejected' },
+];
+
+const dummyAttendance = {
+    // Detailed daily log for July
+    attendanceData: [
+        { date: '2024-07-01', status: 'Present', checkIn: '09:30 AM', checkOut: '06:15 PM', totalHours: '8h 45m' },
+        { date: '2024-07-02', status: 'Present', checkIn: '09:25 AM', checkOut: '06:05 PM', totalHours: '8h 40m' },
+        { date: '2024-07-03', status: 'Late', checkIn: '10:15 AM', checkOut: '06:30 PM', totalHours: '8h 15m' },
+        { date: '2024-07-04', status: 'Present', checkIn: '09:28 AM', checkOut: '06:00 PM', totalHours: '8h 32m' },
+        { date: '2024-07-05', status: 'Half Day', checkIn: '09:30 AM', checkOut: '01:30 PM', totalHours: '4h 00m' },
+        { date: '2024-07-06', status: 'Weekend' },
+        { date: '2024-07-07', status: 'Weekend' },
+        { date: '2024-07-08', status: 'Present', checkIn: '09:20 AM', checkOut: '06:10 PM', totalHours: '8h 50m' },
+        { date: '2024-07-09', status: 'Present', checkIn: '09:35 AM', checkOut: '06:15 PM', totalHours: '8h 40m' },
+        { date: '2024-07-10', status: 'Missed Punch', checkIn: '09:40 AM', checkOut: null, totalHours: 'N/A' },
+        { date: '2024-07-11', status: 'Present', checkIn: '09:22 AM', checkOut: '06:02 PM', totalHours: '8h 40m' },
+        { date: '2024-07-12', status: 'Present', checkIn: '09:31 AM', checkOut: '06:01 PM', totalHours: '8h 30m' },
+        { date: '2024-07-13', status: 'Weekend' },
+        { date: '2024-07-14', status: 'Weekend' },
+        { date: '2024-07-15', status: 'On Leave' },
+        { date: '2024-07-16', status: 'Present', checkIn: '09:29 AM', checkOut: '06:05 PM', totalHours: '8h 36m' },
+        { date: '2024-07-17', status: 'Late', checkIn: '10:05 AM', checkOut: '06:20 PM', totalHours: '8h 15m' },
+        { date: '2024-07-18', status: 'Present', checkIn: '09:30 AM', checkOut: '06:00 PM', totalHours: '8h 30m' },
+        { date: '2024-07-19', status: 'Absent' },
+    ],
+    // The summary arrays can be derived from attendanceData, but we keep them for simplicity
+    presentDates: ['2024-07-01', '2024-07-02', '2024-07-04', '2024-07-08', '2024-07-09', '2024-07-11', '2024-07-12', '2024-07-16', '2024-07-18'],
+    absentDates: ['2024-07-19'],
+    fullLeaveDates: ['2024-07-15'],
+};
+
+// ------------------------------------
+
+const isSameDate = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const EmployeeAttendanceAndLeave = () => {
   const dispatch = useDispatch();
-  const { attendance, loading, error } = useSelector(
-    (state) => state.attendances
-  );
+  
+  // --- Data Selectors (Using Dummy Data) ---
+  // To switch to live data, comment out these lines and uncomment the useSelector hooks below.
+  const attendance = dummyAttendance;
+  const attendanceLoading = false;
+  const leaveBalance = dummyLeaveBalance;
+  const leaveBalanceLoading = false;
+  const leaveHistory = { leaveHistory: dummyLeaveHistory };
+  const historyLoading = false;
 
+  /*
+  // --- LIVE DATA HOOKS ---
+  const { attendance, loading: attendanceLoading } = useSelector((state) => state.attendances);
+  const { balance: leaveBalance, loading: leaveBalanceLoading } = useSelector((state) => state.leaveBalance);
+  const { history: leaveHistory, historyLoading } = useSelector((state) => state.leave);
+  */
+  
+  const [holidays] = useState([
+    { date: "2024-08-15", name: "Independence Day" },
+    { date: "2024-10-02", name: "Gandhi Jayanti" },
+  ]);
+
+  // --- State Management ---
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [date, setDate] = useState(null); // State to manage selected date
-  const [attendanceData, setAttendanceData] = useState([]); // State for attendance data for the calendar
-  const [showReasonForm, setShowReasonForm] = useState(false); // State to control reason form visibility
-  const [reason, setReason] = useState(""); // State to store the reason
-  const [showToast, setShowToast] = useState(false); // State to control toast visibility
-  const [reasonSubmitted, setReasonSubmitted] = useState(false); // State to track if reason was submitted
-  const [monthlySummary, setMonthlySummary] = useState({}); // State to store monthly attendance summary counts
-  const calendarRef = useRef(null);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date()); // State for real-time updates
-  const [dailyAttendanceData, setDailyAttendanceData] = useState(null); // State for daily attendance data
+  const [activeTab, setActiveTab] = useState("attendance");
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const [selectedMonth, setSelectedMonth] = useState('Jul'); // Set to July for dummy data
+  
+  const [multiSelectedDates, setMultiSelectedDates] = useState([]);
+  
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isCompOffModalOpen, setIsCompOffModalOpen] = useState(false);
+  const [initialDatesForModal, setInitialDatesForModal] = useState([]);
+  
+  const employeeId =
+    typeof window !== "undefined" ? sessionStorage.getItem("employeeId") : null;
 
-  // Get current date info
-  const today = new Date();
-  const currentMonth = today.toLocaleString("default", { month: "short" });
-  const currentYear = today.getFullYear().toString();
-
-  // Initialize with current month and year
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-
-  // Add useEffect for calendar click outside handling
+  // Data fetching useEffect can be commented out when using dummy data
+  /*
   useEffect(() => {
-    const handleCalendarClickOutside = (event) => {
-      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
-        setIsCalendarOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleCalendarClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleCalendarClickOutside);
-    };
-  }, []);
-
-  // Update current time every second for real-time calculations
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const toggleCalendar = useCallback(
-    () => setIsCalendarOpen(!isCalendarOpen),
-    [isCalendarOpen]
-  );
-
-  const handleMonthSelection = useCallback(
-    (month, year) => {
-      setSelectedMonth(month);
-      setSelectedYear(year);
-      setIsCalendarOpen(false);
-
-      // Get employee ID from session storage
-      const employeeId = sessionStorage.getItem("employeeId");
-      if (!employeeId) {
-        toast.error("Employee ID not found in session storage.");
-        return;
-      }
-
-      // Dispatch the action to fetch attendance data
-      dispatch(
-        fetchOneEmployeeAttendanceOneMonth({
-          employeeId,
-          month,
-          year,
-        })
-      );
-    },
-    [dispatch]
-  );
-
-  // Initial data fetch when component mounts
-  useEffect(() => {
-    const employeeId = sessionStorage.getItem("employeeId");
-    if (!employeeId) {
-      toast.error("Employee ID not found in session storage.");
-      return;
+    if (employeeId) {
+      dispatch(fetchOneEmployeeAttendanceOneMonth({ employeeId, month: selectedMonth, year: selectedYear }));
+      dispatch(fetchLeaveBalance(employeeId));
+      dispatch(fetchLeaveHistory());
     }
+  }, [dispatch, employeeId, selectedMonth, selectedYear]);
+  */
 
-    // Fetch data for current month and year
-    dispatch(
-      fetchOneEmployeeAttendanceOneMonth({
-        employeeId,
-        month: currentMonth,
-        year: currentYear,
-      })
-    );
-  }, [dispatch, currentMonth, currentYear]);
+  // --- Handlers ---
+  const handleDateClick = (dayData) => {
+    const clickedDate = dayData.date;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  // Update attendance data when Redux store changes
-  useEffect(() => {
-    if (attendance && !loading && !error) {
-      const monthIndex = new Date(
-        `${selectedMonth} 1, ${selectedYear}`
-      ).getMonth();
-      const daysInMonth = new Date(
-        parseInt(selectedYear),
-        monthIndex + 1,
-        0
-      ).getDate();
-
-      const formattedData = [];
-      const summaryCounts = {
-        Present: 0,
-        "Present with Leave": 0,
-        "Present on Holiday": 0,
-        "Half Day on Holiday": 0,
-        "Half Day": 0,
-        "On Leave": 0,
-        Holiday: 0,
-        Weekend: 0,
-        "Loss of Pay": 0,
-        Absent: 0,
-        "No Data": 0,
-      };
-
-      // Helper function to determine attendance status for a given date
-      const getAttendanceStatusForDate = (dateString) => {
-        // Check present dates
-        if (attendance.presentDates?.includes(dateString)) {
-          return "P";
-        }
-
-        // Check full leave dates
-        if (attendance.fullLeaveDates?.includes(dateString)) {
-          return "PL";
-        }
-
-        // Check half day leave dates
-        if (attendance.halfDayLeaveDates?.includes(dateString)) {
-          return "P/A";
-        }
-
-        // Check full comp-off dates
-        if (attendance.fullCompoffDates?.includes(dateString)) {
-          return "P";
-        }
-
-        // Check half comp-off dates
-        if (attendance.halfCompoffDates?.includes(dateString)) {
-          return "P/A";
-        }
-
-        // Check weekly off dates
-        if (attendance.weeklyOffDates?.includes(dateString)) {
-          return "H";
-        }
-
-        // Check absent dates
-        if (attendance.absentDates?.includes(dateString)) {
-          return "A";
-        }
-
-        return null;
-      };
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        // Create date string in YYYY-MM-DD format
-        const dateString = `${selectedYear}-${String(monthIndex + 1).padStart(
-          2,
-          "0"
-        )}-${String(day).padStart(2, "0")}`;
-        const status = getAttendanceStatusForDate(dateString);
-
-        let fullStatus = "No Data";
-        let leaveType = null;
-
-        switch (status) {
-          case "P":
-            fullStatus = "Present";
-            break;
-          case "PL":
-            fullStatus = "Present with Leave";
-            break;
-          case "A":
-            fullStatus = "Absent";
-            break;
-          // case "L":
-          //   fullStatus = "On Leave";
-          //   leaveType = "Full Day";
-          //   break;
-          case "H":
-            fullStatus = "Holiday";
-            break;
-          case "W":
-            fullStatus = "Weekend";
-            break;
-          case "PH":
-            fullStatus = "Present on Holiday";
-            leaveType = "On Holiday";
-            break;
-          case "PH/A":
-            fullStatus = "Half Day on Holiday";
-            leaveType = "Half Day on Holiday";
-            break;
-          case "P/A":
-            fullStatus = "Half Day";
-            leaveType = "Half Day";
-            break;
-          case "LOP":
-            fullStatus = "Loss of Pay";
-            leaveType = "Loss of Pay";
-            break;
-          default:
-            fullStatus = "No Data";
-        }
-
-        formattedData.push({
-          date: new Date(parseInt(selectedYear), monthIndex, day),
-          status: fullStatus,
-          isLate: false,
-          checkIn: null,
-          checkOut: null,
-          leaveType: leaveType,
-          checkinTimes: attendance?.checkinTimes || [],
-          checkoutTimes: attendance?.checkoutTimes || [],
-          totalWorkingMinutes: attendance?.totalWorkingMinutes || 0,
-        });
-
-        summaryCounts[fullStatus] = (summaryCounts[fullStatus] || 0) + 1;
-      }
-      setAttendanceData(formattedData);
-      setMonthlySummary(summaryCounts);
-    } else if (error) {
-      toast.error(`Failed to fetch attendance data: ${error}`);
-      setAttendanceData([]);
-      setMonthlySummary({});
-    }
-  }, [attendance, loading, error, selectedMonth, selectedYear]);
-
-  // Auto-hide toast after 3 seconds
-  useEffect(() => {
-    if (showToast) {
-      const timer = setTimeout(() => {
-        setShowToast(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showToast]);
-
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
-  const generateCalendarDays = () => {
-    const monthIndex = new Date(
-      `${selectedMonth} 1, ${selectedYear}`
-    ).getMonth();
-    const year = parseInt(selectedYear);
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-    let daysArray = [];
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      daysArray.push(new Date(year, monthIndex, day));
-    }
-
-    return daysArray;
-  };
-
-  const handleSubmitReason = (e) => {
-    e.preventDefault();
-
-    // Show toast notification
-    setShowToast(true);
-
-    // Mark reason as submitted
-    setReasonSubmitted(true);
-
-    // Close form and reset reason
-    setShowReasonForm(false);
-    setReason("");
-  };
-
-  // Function to fetch attendance data for a specific date
-  const fetchAttendanceData = async (selectedDate) => {
-    try {
-      const employeeId = sessionStorage.getItem("employeeId");
-      const token = getItemFromSessionStorage("token", null);
-
-      if (!employeeId || !token) {
-        toast.error("Employee ID or token not found in session storage.");
-        return;
-      }
-
-      // Fix: Format date properly without timezone conversion
-      const year = selectedDate.getFullYear();
-      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
-      const day = String(selectedDate.getDate()).padStart(2, "0");
-      const formattedDate = `${year}-${month}-${day}`;
-
-      // Construct the URL in the new format: /employee/{employeeId}/month/{monthShortName}/year/{fullYear}
-      const url = `http://192.168.0.200:8082/employee/daily/${employeeId}/${formattedDate}`;
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    if (clickedDate >= today && dayData.status !== "Weekend" && dayData.status !== "Holiday") {
+      setMultiSelectedDates((currentSelected) => {
+        const isAlreadySelected = currentSelected.some((d) => isSameDate(d, clickedDate));
+        return isAlreadySelected
+          ? currentSelected.filter((d) => !isSameDate(d, clickedDate))
+          : [...currentSelected, clickedDate];
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log(data);
-
-      // Store the daily attendance data
-      setDailyAttendanceData(data);
-
-      // Update state with fetched data while preserving status and color information
-      setAttendanceData((prevData) => {
-        const updatedData = prevData.map((d) => {
-          if (d.date.toDateString() === selectedDate.toDateString()) {
-            return {
-              ...d,
-              // Store the new API response data
-              dailyAttendanceData: data,
-              // Preserve the status and other display properties
-              status: d.status,
-              isLate: d.isLate,
-              leaveType: d.leaveType,
-            };
-          }
-          return d;
-        });
-        return updatedData;
-      });
-    } catch (error) {
-      toast.error(`Failed to fetch attendance data: ${error.message}`);
-    }
-  };
-
-  // Update the onClick handler for each date
-  const handleDateClick = (day) => {
-    setDate(day);
-    
-    // Find attendance data for the selected date
-    const selectedDayData = attendanceData.find(
-      (d) => d.date.toDateString() === day.toDateString()
-    );
-    
-    // Only fetch daily attendance data for present dates
-    if (selectedDayData && selectedDayData.status === "Present") {
-      fetchAttendanceData(day);
     } else {
-      // Clear daily attendance data for non-present dates
-      setDailyAttendanceData(null);
+      toast.info("You can only select future working days to apply for leave.");
     }
   };
 
-  const calendarDays = generateCalendarDays();
+  const clearSelection = () => setMultiSelectedDates([]);
 
-  // Helper function to format time in AM/PM
-  const formatTime = (timeString) => {
-    const date = new Date(timeString);
-    return date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+  const handleOpenLeaveModal = (dates) => {
+    setInitialDatesForModal(dates);
+    setIsLeaveModalOpen(true);
   };
 
-  const getDayName = (dateObj) => {
-    return dateObj.toLocaleDateString("en-US", { weekday: "long" });
+  const handleOpenCompOffModal = (dates) => {
+    setInitialDatesForModal(dates);
+    setIsCompOffModalOpen(true);
   };
 
-  // Helper function to parse time duration string (HH:MM:SS) to minutes
-  const parseTimeDuration = (timeString) => {
-    if (!timeString) return 0;
-    const [hours, minutes, seconds] = timeString.split(':').map(Number);
-    return hours * 60 + minutes + seconds / 60;
+  const handleSubmitLeave = async (leaveForm) => {
+    const leaveData = {
+      leaveDates: leaveForm.dates.map((d) => ({ date: d.date.toISOString().split("T")[0], shiftType: d.shiftType })),
+      reason: leaveForm.reason,
+    };
+    const result = await dispatch(applyLeave(leaveData));
+    if (applyLeave.fulfilled.match(result)) {
+      toast.success("Leave applied successfully!");
+      setIsLeaveModalOpen(false);
+      dispatch(fetchLeaveBalance(employeeId));
+      dispatch(fetchLeaveHistory());
+    } else {
+      toast.error(result.error.message || "Failed to apply for leave.");
+    }
   };
 
-  // Helper function to calculate additional time since last checkout
-  // const calculateAdditionalTime = (lastCheckout) => {
-  //   if (!lastCheckout) return 0;
-  //   const lastCheckoutTime = new Date(lastCheckout);
-  //   const timeDiff = currentTime.getTime() - lastCheckoutTime.getTime();
-  //   return timeDiff / (1000 * 60); // Convert to minutes
-  // };
-
-  // Helper function to calculate additional time since latest checkin
-  const calculateAdditionalTimeFromLatestCheckin = (latestCheckin) => {
-    if (!latestCheckin) return 0;
-    const latestCheckinTime = new Date(latestCheckin);
-    const timeDiff = currentTime.getTime() - latestCheckinTime.getTime();
-    return timeDiff / (1000 * 60); // Convert to minutes
-  };
-
-  // Helper function to format total working hours
-  // const formatWorkingHours = (workingHoursTillNow, lastCheckout) => {
-  //   const baseMinutes = parseTimeDuration(workingHoursTillNow);
-  //   const additionalMinutes = calculateAdditionalTime(lastCheckout);
-  //   const totalMinutes = baseMinutes + additionalMinutes;
-  //   const hours = Math.floor(totalMinutes / 60);
-  //   const minutes = Math.floor(totalMinutes % 60);
-  //   return `${hours}h ${minutes}m`;
-  // };
-
-  // Helper function to format live working hours (using latestCheckin)
-  const formatLiveWorkingHours = (workingHoursTillNow, latestCheckin) => {
-    const baseMinutes = parseTimeDuration(workingHoursTillNow);
-    const additionalMinutes = calculateAdditionalTimeFromLatestCheckin(latestCheckin);
-    const totalMinutes = baseMinutes + additionalMinutes;
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.floor(totalMinutes % 60);
-    return `${hours}h ${minutes}m`;
-  };
-
-  // Helper function to format workingHoursTillNow string to xh ym format
-  const formatWorkingHoursString = (workingHoursString) => {
-    if (!workingHoursString) return "0h 0m";
-    const [hours, minutes, seconds] = workingHoursString.split(':').map(Number);
-    return `${hours}h ${minutes}m`;
+  const handleSubmitCompOff = async (compOffForm) => {
+    const compOffData = {
+      leaveDates: compOffForm.dates.map((d) => d.date.toISOString().split("T")[0]),
+      shiftType: compOffForm.dates[0]?.timeSlot || compOffForm.dates[0]?.shiftType || "FULL_DAY",
+      reason: compOffForm.description,
+    };
+    const result = await dispatch(applyCompOffLeave(compOffData));
+    if (applyCompOffLeave.fulfilled.match(result)) {
+      toast.success("Comp-off application submitted successfully");
+      setIsCompOffModalOpen(false);
+      dispatch(fetchLeaveBalance(employeeId));
+      dispatch(fetchLeaveHistory());
+    } else {
+      toast.error(result.error.message || "Failed to apply for comp-off.");
+    }
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
+    <div className="flex min-h-screen bg-gray-50">
+      <ApplyLeaveModal
+        isOpen={isLeaveModalOpen}
+        onClose={() => setIsLeaveModalOpen(false)}
+        onSubmit={handleSubmitLeave}
+        initialDates={initialDatesForModal}
+        leaveBalance={leaveBalance?.newLeaveBalance}
+      />
+      <ApplyCompOffModal
+        isOpen={isCompOffModalOpen}
+        onClose={() => setIsCompOffModalOpen(false)}
+        onSubmit={handleSubmitCompOff}
+      />
 
-      {/* Main Content */}
-      <div
-        className={`flex-1 ${
-          isSidebarCollapsed ? "ml-16" : "ml-56"
-        } transition-all duration-300`}
-      >
-        {/* Navbar */}
-        <HradminNavbar />
-
-        {/* Content */}
-        <div className="p-6 space-y-6 mt-16">
-          {" "}
-          {/* Increased mt-16 for more spacing */}
-          {/* Monthly Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Monthly Summary</CardTitle>
-              <CardDescription>
-                Your attendance statistics for this month
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {/* Present */}
-                  <div className="flex flex-col bg-green-100 p-3 rounded-lg">
-                    <span className="font-medium text-green-800">
-                      Present (P)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Present"] || 0}
-                    </span>
-                  </div>
-                  {/* Present with Leave */}
-                  <div className="flex flex-col bg-lime-100 p-3 rounded-lg">
-                    <span className="font-medium text-green-800">
-                      Present with Leave (PL)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Present with Leave"] || 0}
-                    </span>
-                  </div>
-                  {/* Half Day */}
-                  <div className="flex flex-col bg-yellow-100 p-3 rounded-lg">
-                    <span className="font-medium text-yellow-800">
-                      Half Day (P/A)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Half Day"] || 0}
-                    </span>
-                  </div>
-                  {/* Absent */}
-                  <div className="flex flex-col bg-red-200 p-3 rounded-lg">
-                    <span className="font-medium text-red-900">Absent (A)</span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Absent"] || 0}
-                    </span>
-                  </div>
-                  {/* Holiday */}
-                  <div className="flex flex-col bg-gray-200 p-3 rounded-lg">
-                    <span className="font-medium text-gray-700">
-                      Holiday (H)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Holiday"] || 0}
-                    </span>
-                  </div>
-                  {/* Present on Holiday */}
-                  <div className="flex flex-col bg-blue-100 p-3 rounded-lg">
-                    <span className="font-medium text-blue-800">
-                      Present on Holiday (PH)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Present on Holiday"] || 0}
-                    </span>
-                  </div>
-                  {/* Half Day on Holiday */}
-                  <div className="flex flex-col bg-orange-200 p-3 rounded-lg">
-                    <span className="font-medium text-orange-800">
-                      Half Day on Holiday (PH/A)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Half Day on Holiday"] || 0}
-                    </span>
-                  </div>
-                  {/* Loss of Pay */}
-                  <div className="flex flex-col bg-purple-100 p-3 rounded-lg">
-                    <span className="font-medium text-purple-800">
-                      Loss of Pay (LOP)
-                    </span>
-                    <span className="text-2xl font-bold">
-                      {monthlySummary["Loss of Pay"] || 0}
-                    </span>
-                  </div>
-                  {/* No Data removed */}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Attendance Calendar */}
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <div className="flex justify-between items-center">
+      <Sidebar isSidebarCollapsed={isSidebarCollapsed} />
+      <div className={`flex-1 transition-all duration-300 ${isSidebarCollapsed ? "ml-16" : "ml-64"}`}>
+        <HradminNavbar
+          toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+        <main className="p-6 pt-20">
+          <div className="flex justify-between items-center mb-6">
                   <div>
-                    <CardTitle className="text-xl">
-                      Attendance Calendar
-                    </CardTitle>
-                    <CardDescription>
-                      View and track your attendance history
-                    </CardDescription>
+              <h1 className="text-3xl font-bold">Time & Attendance</h1>
+              <p className="text-gray-500">Manage your attendance and leave requests.</p>
                   </div>
-                  <div className="relative" ref={calendarRef}>
-                    <Badge
-                      variant="outline"
-                      className="px-4 py-2 cursor-pointer bg-blue-500 hover:bg-blue-600 transition-colors duration-200 flex items-center gap-2 text-white"
-                      onClick={toggleCalendar}
-                    >
-                      <Calendar className="h-4 w-4" />
-                      <span className="font-medium text-sm">
-                        {selectedYear}-{selectedMonth}
-                      </span>
-                    </Badge>
-                    {isCalendarOpen && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30">
-                        {/* Existing calendar content */}
-                        <div className="p-3 border-b flex justify-between items-center">
-                          <div className="text-sm font-medium text-gray-700">
-                            {selectedYear}
-                          </div>
-                          <select
-                            value={selectedYear}
-                            onChange={(e) => {
-                              const newYear = e.target.value;
-                              setSelectedYear(newYear);
-
-                              // Set default month based on year
-                              if (newYear === "2024") {
-                                setSelectedMonth("Aug");
-                                // Fetch data for August 2024
-                                const employeeId =
-                                  sessionStorage.getItem("employeeId");
-                                if (employeeId) {
-                                  dispatch(
-                                    fetchOneEmployeeAttendanceOneMonth({
-                                      employeeId,
-                                      month: "Aug",
-                                      year: newYear,
-                                    })
-                                  );
-                                }
-                              } else {
-                                setSelectedMonth("Jan");
-                                // Fetch data for January 2025
-                                const employeeId =
-                                  sessionStorage.getItem("employeeId");
-                                if (employeeId) {
-                                  dispatch(
-                                    fetchOneEmployeeAttendanceOneMonth({
-                                      employeeId,
-                                      month: "Jan",
-                                      year: newYear,
-                                    })
-                                  );
-                                }
-                              }
-                            }}
-                            className="ml-2 border rounded px-2 py-1 text-sm"
-                          >
-                            {[2024, 2025].map((year) => (
-                              <option key={year} value={year}>
-                                {year}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1.5 p-3">
-                          {(() => {
-                            const currentYear = new Date().getFullYear();
-                            const currentMonthIdx = new Date().getMonth(); // 0-based
-                            let months = [
-                              "Jan",
-                              "Feb",
-                              "Mar",
-                              "Apr",
-                              "May",
-                              "Jun",
-                              "Jul",
-                              "Aug",
-                              "Sep",
-                              "Oct",
-                              "Nov",
-                              "Dec",
-                            ];
-
-                            // Determine which months to show based on year
-                            let startIdx = 0;
-                            let endIdx = 11;
-
-                            if (parseInt(selectedYear) === 2024) {
-                              startIdx = 7; // August (0-based)
-                              endIdx = 11; // December
-                            } else if (parseInt(selectedYear) === 2025) {
-                              startIdx = 0; // January
-                              endIdx =
-                                currentYear === 2025 ? currentMonthIdx : 11;
-                            }
-
-                            return months
-                              .slice(startIdx, endIdx + 1)
-                              .map((month) => (
-                                <button
-                                  key={month}
-                                  className={`p-3 text-sm rounded-md transition-colors duration-200 ${
-                                    month === selectedMonth
-                                      ? "bg-blue-50 text-blue-600 font-medium hover:bg-blue-100"
-                                      : "hover:bg-gray-50 text-gray-700"
-                                  }`}
-                                  onClick={() =>
-                                    handleMonthSelection(month, selectedYear)
-                                  }
-                                >
-                                  {month}
-                                </button>
-                              ));
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                {/* Calendar Days */}
-                {loading ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                    <p>Loading attendance data...</p>
-                  </div>
-                ) : error ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                    <CalendarIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
-                    <p className="text-lg font-medium">
-                      Error loading attendance data
-                    </p>
-                    <p className="text-sm text-muted-foreground/80">{error}</p>
-                  </div>
-                ) : !attendance ||
-                  (!attendance.presentDates &&
-                    !attendance.fullLeaveDates &&
-                    !attendance.halfDayLeaveDates &&
-                    !attendance.fullCompoffDates &&
-                    !attendance.halfCompoffDates &&
-                    !attendance.weeklyOffDates &&
-                    !attendance.absentDates) ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                    <CalendarIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
-                    <p className="text-lg font-medium">
-                      No attendance data available
-                    </p>
-                    <p className="text-sm text-muted-foreground/80">
-                      There is no attendance data for the selected month.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1 border rounded-md p-2">
-                    {calendarDays.map((day, index) => {
-                      // Find attendance status for the current day
-                      const dayData = attendanceData.find(
-                        (d) => d.date.toDateString() === day.toDateString()
-                      );
-                      const status = dayData?.status;
-                      const dayNumber = day.getDate();
-
-                      // Determine background color based on status
-                      let bgColorClass = "hover:bg-gray-200";
-                      if (dayData) {
-                        switch (status) {
-                          case "Present":
-                            bgColorClass =
-                              "bg-green-100 hover:bg-green-200 text-green-800";
-                            break;
-                          case "Present with Leave":
-                            bgColorClass =
-                              "bg-lime-100 hover:bg-lime-200 text-lime-800";
-                            break;
-                          case "Absent":
-                            bgColorClass =
-                              "bg-red-200 hover:bg-red-300 text-red-900";
-                            break;
-                          case "Half Day":
-                            bgColorClass =
-                              "bg-yellow-100 hover:bg-yellow-200 text-yellow-800";
-                            break;
-                          case "Holiday":
-                            bgColorClass =
-                              "bg-gray-200 hover:bg-gray-300 text-gray-700";
-                            break;
-                          case "Present on Holiday":
-                            bgColorClass =
-                              "bg-blue-100 hover:bg-blue-200 text-blue-800";
-                            break;
-                          case "Half Day on Holiday":
-                            bgColorClass =
-                              "bg-orange-200 hover:bg-orange-300 text-orange-800";
-                            break;
-                          case "Loss of Pay":
-                            bgColorClass =
-                              "bg-purple-100 hover:bg-purple-200 text-purple-800";
-                            break;
-                          case "Weekend":
-                            bgColorClass =
-                              "bg-gray-300 hover:bg-gray-400 text-gray-600";
-                            break;
-                          default:
-                            bgColorClass = "hover:bg-gray-200";
-                        }
-                      }
-
-                      return (
-                        <div
-                          key={index}
-                          onClick={() => handleDateClick(day)}
-                          className={`w-[6.5%] text-center p-2 cursor-pointer rounded-md transition ${bgColorClass}`}
-                        >
-                          {dayNumber}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {/* Legend Table removed */}
-              </CardContent>
-            </Card>
-
-            {/* Attendance Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">
-                  {date ? (
-                    <>
-                      {date.toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                      <div className="text-base font-semibold text-gray-800 mt-1">
-                        {getDayName(date)}
-                      </div>
-                    </>
-                  ) : (
-                    "Select a date"
-                  )}
-                </CardTitle>
-                <CardDescription>Attendance details</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {date ? (
-                  (() => {
-                    // Find attendance details for the selected date
-                    const selectedDayData = attendanceData.find(
-                      (d) => d.date.toDateString() === date.toDateString()
-                    );
-
-                    if (!selectedDayData) {
-                      return (
-                        <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                          <p>No attendance data for this date.</p>
-                        </div>
-                      );
-                    }
-
-                    const {
-                      status,
-                      checkinTimes,
-                      checkoutTimes,
-                      totalWorkingMinutes,
-                      dailyAttendanceData,
-                    } = selectedDayData;
-
-                    // Calculate total working hours
-                    const totalWorkingHours = (
-                      totalWorkingMinutes / 60
-                    ).toFixed(1);
-
-                    // Check if this is a present date and has daily attendance data
-                    const isPresentDate = status === "Present" && (dailyAttendanceData || (date && dailyAttendanceData));
-                    
-                    // Get check-in and check-out times for present dates
-                    const attendanceDataForDate = dailyAttendanceData || selectedDayData?.dailyAttendanceData;
-                    const checkInTime = isPresentDate ? attendanceDataForDate?.firstCheckin : null;
-                    const checkOutTime = isPresentDate ? attendanceDataForDate?.lastCheckout : null;
-                    const workingHoursTillNow = isPresentDate ? attendanceDataForDate?.workingHoursTillNow : null;
-                    
-                    // Determine if employee is currently checked in (has latest check-in after last check-out)
-                    const isCurrentlyCheckedIn = isPresentDate && 
-                      attendanceDataForDate?.latestCheckin && 
-                      attendanceDataForDate?.lastCheckout &&
-                      new Date(attendanceDataForDate.latestCheckin) > new Date(attendanceDataForDate.lastCheckout);
-
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Status:</span>
-                          <span
-                            className={`${
-                              status === "Present"
-                                ? "bg-green-100 text-green-800"
-                                : status === "Present with Leave"
-                                ? "bg-lime-100 text-lime-800"
-                                : status === "Absent"
-                                ? "bg-red-200 text-red-900"
-                                : status === "Half Day"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : status === "Holiday"
-                                ? "bg-gray-200 text-gray-700"
-                                : status === "Present on Holiday"
-                                ? "bg-blue-100 text-blue-800"
-                                : status === "Half Day on Holiday"
-                                ? "bg-orange-200 text-orange-800"
-                                : status === "Loss of Pay"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-gray-100 text-gray-700"
-                            } text-xs font-semibold px-2 py-1 rounded-full`}
-                          >
-                            {status}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-blue-500" /> Check In
-                          </span>
-                          <span>
-                            {isPresentDate && checkInTime
-                              ? formatTime(checkInTime)
-                              : checkinTimes?.[0]
-                              ? formatTime(checkinTimes[0])
-                              : "-"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-blue-500" /> Check
-                            Out
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {isPresentDate && isCurrentlyCheckedIn ? (
-                              <>
-                                <Play className="h-4 w-4 text-green-500 animate-pulse" />
-                                <span className="text-green-600 font-medium">Running</span>
-                              </>
-                            ) : isPresentDate && checkOutTime ? (
-                              formatTime(checkOutTime)
-                            ) : checkoutTimes?.[0] ? (
-                              formatTime(checkoutTimes[0])
-                            ) : (
-                              "-"
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">
-                            Total Working Hours:
-                          </span>
-                          <span>
-                            {isPresentDate && workingHoursTillNow ? (
-                              isCurrentlyCheckedIn ? (
-                                formatLiveWorkingHours(workingHoursTillNow, attendanceDataForDate?.latestCheckin)
-                              ) : (
-                                // For past days or when not currently checked in, show workingHoursTillNow in xh ym format
-                                formatWorkingHoursString(workingHoursTillNow)
-                              )
-                            ) : (
-                              `${totalWorkingHours}h`
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                    <CalendarIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
-                    <p>Select a date to view attendance details</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
-        </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="attendance"><Calendar className="mr-2 h-4 w-4" /> Attendance</TabsTrigger>
+              <TabsTrigger value="leave"><Plane className="mr-2 h-4 w-4" /> Leave Management</TabsTrigger>
+            </TabsList>
+            <TabsContent value="attendance">
+              <AttendanceTab
+                attendanceData={{ ...attendance, month: selectedMonth, year: parseInt(selectedYear) }}
+                holidays={holidays}
+                leaveBalance={leaveBalance}
+                multiSelectedDates={multiSelectedDates}
+                onDateClick={handleDateClick}
+                onApplyLeaveClick={handleOpenLeaveModal}
+                onApplyCompOffClick={handleOpenCompOffModal}
+                onClearSelection={clearSelection}
+              />
+            </TabsContent>
+            <TabsContent value="leave">
+              <LeaveTab 
+                leaveBalance={leaveBalance} 
+                leaveHistory={leaveHistory?.leaveHistory} 
+                holidays={holidays}
+                isLoading={leaveBalanceLoading || historyLoading}
+                projectedLeaveDays={multiSelectedDates.length}
+              />
+            </TabsContent>
+          </Tabs>
+        </main>
       </div>
-
-      {/* Reason Form Modal */}
-      {showReasonForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">
-              Submit Reason for Unapproved Absence
-            </h3>
-            <form onSubmit={handleSubmitReason}>
-              <div className="mb-4">
-                <label
-                  htmlFor="reason"
-                  className="block text-sm font-medium mb-2"
-                >
-                  Reason for unapproved absence
-                </label>
-                <textarea
-                  id="reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full p-2 border rounded-md"
-                  rows="4"
-                  placeholder="Please provide a reason for your unapproved absence..."
-                  required
-                ></textarea>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowReasonForm(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-teal-400 text-white rounded-md hover:bg-teal-500"
-                >
-                  Submit
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-md shadow-lg z-50 flex items-center">
-          <CheckCircle2 className="h-5 w-5 mr-2" />
-          <span>Reason saved successfully!</span>
-        </div>
-      )}
     </div>
   );
 };
 
-export default withAuth(EmployeeAttendance);
+export default withAuth(EmployeeAttendanceAndLeave);

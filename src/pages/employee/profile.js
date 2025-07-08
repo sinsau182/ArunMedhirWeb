@@ -918,7 +918,7 @@ function EmployeeProfilePage() {
                   </div>
                 </div>
               </div>
-              
+
               {/* --- Profile Info Sections --- */}
               <div className="p-6 bg-gray-50">
                 <div className="grid grid-cols-1 lg:grid-cols-11 gap-6">

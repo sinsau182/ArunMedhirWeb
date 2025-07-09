@@ -758,6 +758,7 @@ const ManagerContent = ({ role }) => {
         <KanbanBoardClientOnly
           leadsByStatus={leadsByStatus}
           statuses={pipelines.map((p) => p.name)}
+          kanbanStatuses={pipelines}
           onScheduleActivity={handleScheduleActivity}
           onDragEnd={handleDragEnd}
           // Debug props

@@ -33,6 +33,7 @@ const KanbanColumn = ({
   onAddLead,
   onScheduleActivity
 }) => {
+  console.log(`KanbanColumn "${status}":`, { stage, stageColor: stage?.color, leadsCount: leads.length });
   const { setNodeRef, isOver } = useDroppable({
     id: status,
   });

@@ -91,6 +91,7 @@ const KanbanBoard = ({
         {Array.isArray(statuses) && statuses.map((statusName, idx) => {
           // Find the stage object for this status
           const stageObj = (rest.kanbanStatuses || []).find(s => s.name === statusName);
+          console.log(`KanbanBoard: Status "${statusName}" stageObj:`, stageObj);
           return (
             <KanbanColumn
               key={statusName}

@@ -21,6 +21,7 @@ import {
   FaChevronRight,
   FaRobot,
   FaEnvelopeOpenText,
+  FaCopy,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import ConvertLeadModal from "@/components/Sales/ConvertLeadModal";
@@ -46,6 +47,105 @@ import {
 } from '@/components/ui/table';
 import AdvancedScheduleActivityModal from '@/components/Sales/AdvancedScheduleActivityModal';
 import { useRouter } from 'next/router';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Simple UUID generator function
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+// Palette Field Component
+const PaletteField = ({ field }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `palette-${field.type}`,
+    data: {
+      isPaletteItem: true,
+      field: field,
+    }
+  });
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      {...attributes} 
+      {...listeners} 
+      className={`w-full p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left cursor-grab bg-white group ${
+        isDragging ? 'opacity-50 scale-95 shadow-lg' : 'hover:shadow-md'
+      }`}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-xl">{field.icon}</span>
+        <div className="flex-1">
+          <div className="font-medium text-gray-700 text-sm">{field.label}</div>
+          <div className="text-xs text-gray-500">{field.description}</div>
+        </div>
+        <div className="text-gray-400 group-hover:text-blue-500 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM20 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM20 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
+          </svg>
+        </div>
+      </div>
+      {/* Drag hint overlay */}
+      <div className="absolute inset-0 flex items-center justify-center bg-blue-500 bg-opacity-20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <span className="text-xs font-medium text-blue-700 bg-white px-2 py-1 rounded shadow">
+          Drag to add →
+        </span>
+      </div>
+    </div>
+  )
+};
+
+// Field Preview Component
+const FieldPreview = ({ field, availableFields }) => {
+  const fieldInfo = availableFields.find(f => f.type === field.type);
+  
+  return (
+     <div className="p-4 border rounded-lg bg-white shadow-xl w-72">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">{fieldInfo?.icon || '📝'}</span>
+            <label className="font-medium text-gray-800">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+          </div>
+          <p className="text-sm text-gray-500">
+            {field.placeholder || field.text || `${field.type} field`}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+};
+
+// Palette Field Preview Component
+const PaletteFieldPreview = ({ field }) => (
+  <div className="p-3 border rounded-lg bg-white shadow-xl">
+    <div className="flex items-center gap-3">
+      <span className="text-xl">{field.icon}</span>
+      <span className="font-medium text-gray-700 text-sm">{field.label}</span>
+    </div>
+  </div>
+);
 
 const DEFAULT_ROLES = [
   {
@@ -378,130 +478,906 @@ const FIELD_LABELS = {
 };
 const CONFIGURABLE_FIELDS = Object.keys(FIELD_LABELS);
 
-const StageFormsSettings = ({ stages, formConfigs, onConfigChange }) => {
-  const [selectedStage, setSelectedStage] = useState(null);
-  const [isAddingField, setIsAddingField] = useState(false);
-  const [newField, setNewField] = useState({ label: '', type: 'text', required: false });
+// Form Preview Component - Shows actual form fields as they would appear to users
+const FormPreview = ({ fields, availableFields, onFieldReorder }) => {
+  const [formData, setFormData] = useState({});
 
-  const handleAddField = () => {
-    if (!newField.label || !selectedStage) {
-      toast.error("Field label cannot be empty.");
-      return;
-    }
-    onConfigChange('add', selectedStage, { ...newField, id: `field_${Date.now()}` });
-    setNewField({ label: '', type: 'text', required: false });
-    setIsAddingField(false);
+  const handleInputChange = (fieldId, value) => {
+    setFormData(prev => ({ ...prev, [fieldId]: value }));
   };
 
-  const handleRemoveField = (fieldId) => {
-    onConfigChange('remove', selectedStage, { id: fieldId });
-  };
+  const renderFormField = (field) => {
+    const fieldInfo = availableFields.find(f => f.type === field.type);
+    const value = formData[field.id] || '';
 
-  const currentFields = (selectedStage && formConfigs[selectedStage]) ? formConfigs[selectedStage] : [];
+    switch (field.type) {
+      case 'text':
+      case 'email':
+      case 'tel':
+        return (
+          <input
+            type={field.type}
+            value={value}
+            onChange={(e) => handleInputChange(field.id, e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        );
 
-  return (
-    <div>
-      <h3 className="text-lg font-bold text-gray-800 mb-1">Stage-Dependent Forms</h3>
-      <p className="text-sm text-gray-600 mb-6">
-        Add custom fields that will be required when a lead enters a specific stage.
-      </p>
+      case 'textarea':
+        return (
+          <textarea
+            value={value}
+            onChange={(e) => handleInputChange(field.id, e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+            rows={4}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        );
 
-      <div className="mb-6 flex items-end gap-4">
-        <div className="flex-grow">
-          <label htmlFor="stage-select" className="block text-sm font-medium text-gray-700 mb-2">
-            Select a Stage to Configure
-          </label>
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => handleInputChange(field.id, e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        );
+
+      case 'select':
+        return (
           <select
-            id="stage-select"
-            value={selectedStage || ""}
-            onChange={(e) => {
-              setSelectedStage(e.target.value);
-              setIsAddingField(false);
-            }}
-            className="block w-full max-w-sm p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            value={value}
+            onChange={(e) => handleInputChange(field.id, e.target.value)}
+            required={field.required}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="" disabled>-- Choose a stage --</option>
-            {stages.filter(s => !['Converted', 'Lost', 'Junk'].includes(s)).map(stage => (
-              <option key={stage} value={stage}>{stage}</option>
+            <option value="">{field.placeholder || 'Select an option...'}</option>
+            {field.options?.map((option, idx) => (
+              <option key={idx} value={option}>{option}</option>
             ))}
           </select>
+        );
+
+      case 'checkbox':
+        return (
+          <div className="space-y-2">
+            {field.options?.map((option, idx) => (
+              <label key={idx} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={Array.isArray(value) ? value.includes(option) : false}
+                  onChange={(e) => {
+                    const currentValues = Array.isArray(value) ? value : [];
+                    const newValues = e.target.checked
+                      ? [...currentValues, option]
+                      : currentValues.filter(v => v !== option);
+                    handleInputChange(field.id, newValues);
+                  }}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">{option}</span>
+              </label>
+            ))}
+          </div>
+        );
+
+      case 'radio':
+        return (
+          <div className="space-y-2">
+            {field.options?.map((option, idx) => (
+              <label key={idx} className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={field.id}
+                  value={option}
+                  checked={value === option}
+                  onChange={(e) => handleInputChange(field.id, e.target.value)}
+                  className="border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">{option}</span>
+              </label>
+            ))}
+          </div>
+        );
+
+      case 'date':
+        return (
+          <input
+            type="date"
+            value={value}
+            onChange={(e) => handleInputChange(field.id, e.target.value)}
+            required={field.required}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        );
+
+      case 'time':
+        return (
+          <input
+            type="time"
+            value={value}
+            onChange={(e) => handleInputChange(field.id, e.target.value)}
+            required={field.required}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        );
+
+      case 'file':
+        return (
+          <input
+            type="file"
+            onChange={(e) => handleInputChange(field.id, e.target.files[0])}
+            required={field.required}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        );
+
+      case 'header':
+        return (
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            {field.text || 'Section Header'}
+          </h3>
+        );
+
+      case 'static-text':
+        return (
+          <p className="text-sm text-gray-600">
+            {field.text || 'This is some informational text.'}
+          </p>
+        );
+
+      case 'rating':
+        return (
+          <div className="flex items-center gap-1">
+            {[...Array(field.maxRating || 5)].map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleInputChange(field.id, idx + 1)}
+                className={`w-8 h-8 ${
+                  value > idx ? 'text-yellow-400' : 'text-gray-300'
+                } hover:text-yellow-400 transition-colors`}
+              >
+                ⭐
+              </button>
+            ))}
+          </div>
+        );
+
+      default:
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => handleInputChange(field.id, e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        );
+    }
+  };
+
+  if (!fields || fields.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+        <div className="text-center">
+          <span className="text-4xl text-gray-400 mb-4 block">📝</span>
+          <h3 className="text-lg font-medium text-gray-600 mb-2">No Form Fields</h3>
+          <p className="text-sm text-gray-500">Add some fields to see the form preview</p>
         </div>
-        {selectedStage && (
-          <button
-            onClick={() => setIsAddingField(!isAddingField)}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-          >
-            <FaPlus /> {isAddingField ? 'Cancel' : 'Add Field'}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {fields.map((field, index) => (
+        <div key={field.id} className="space-y-2">
+          {field.type !== 'header' && field.type !== 'static-text' && (
+            <label className="block text-sm font-medium text-gray-700">
+              {field.label || 'Untitled Field'}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+          )}
+          {renderFormField(field)}
+          {field.helpText && (
+            <p className="text-xs text-gray-500">{field.helpText}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Form Preview Modal Component
+const FormPreviewModal = ({ isOpen, onClose, fields, availableFields, stageName }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Form Preview: {stageName}</h2>
+            <p className="text-sm text-gray-500">This is how the form will appear to users</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <FaTimes />
           </button>
+        </div>
+
+        {/* Form Preview Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-gray-50 p-6 rounded-lg border">
+              <h3 className="text-lg font-semibold text-gray-800 mb-6">
+                {stageName} Stage Form
+              </h3>
+              <FormPreview 
+                fields={fields} 
+                availableFields={availableFields}
+              />
+              <div className="mt-8 flex justify-end gap-3">
+                <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-3 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+          >
+            Close Preview
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StageFormsSettings = ({ stages, formConfigs, onConfigChange }) => {
+  const [selectedStage, setSelectedStage] = useState(stages[0] || null);
+  const [fields, setFields] = useState([]);
+  const [selectedField, setSelectedField] = useState(null);
+  const [activeId, setActiveId] = useState(null);
+  const [activeTab, setActiveTab] = useState('fields'); // 'fields' or 'templates'
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [showFieldSettings, setShowFieldSettings] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState(new Set(['Basic Fields'])); // Start with Basic Fields expanded
+  const [previewMode, setPreviewMode] = useState(false);
+  const [showFormPreview, setShowFormPreview] = useState(false);
+
+  const FIELD_GROUPS = [
+    {
+      name: 'Basic Fields',
+      icon: '📝',
+      fields: [
+        { type: 'text', label: 'Short Text', icon: '📝', description: 'Single-line text input', default: { label: 'Full Name', placeholder: 'Enter full name...' } },
+        { type: 'textarea', label: 'Long Text', icon: '📄', description: 'Multi-line text area', default: { label: 'Description', placeholder: 'Enter detailed description...' } },
+        { type: 'number', label: 'Number', icon: '🔢', description: 'Numeric input field', default: { label: 'Amount', placeholder: 'Enter amount...' } },
+        { type: 'email', label: 'Email', icon: '📧', description: 'Email address input', default: { label: 'Work Email', placeholder: 'Enter work email...' } },
+      ]
+    },
+    {
+      name: 'Contact Fields',
+      icon: '📞',
+      fields: [
+        { type: 'tel', label: 'Phone', icon: '📞', description: 'Phone number input', default: { label: 'Phone Number', placeholder: 'Enter phone number...' } },
+        { type: 'text', label: 'Address', icon: '📍', description: 'Address input field', default: { label: 'Address', placeholder: 'Enter address...' } },
+      ]
+    },
+    {
+      name: 'Date & Time',
+      icon: '📅',
+      fields: [
+        { type: 'date', label: 'Date', icon: '📅', description: 'Date picker', default: { label: 'Meeting Date', placeholder: 'Select meeting date' } },
+        { type: 'time', label: 'Time', icon: '⏰', description: 'Time picker', default: { label: 'Meeting Time', placeholder: 'Select meeting time' } },
+      ]
+    },
+    {
+      name: 'Selection Fields',
+      icon: '📋',
+      fields: [
+        { type: 'select', label: 'Dropdown', icon: '📋', description: 'Single choice dropdown', default: { label: 'Priority Level', options: ['Low', 'Medium', 'High'] } },
+        { type: 'checkbox', label: 'Checkboxes', icon: '☑️', description: 'Multiple choice checkboxes', default: { label: 'Interests', options: ['Product Demo', 'Pricing', 'Technical Support'] } },
+        { type: 'radio', label: 'Radio Group', icon: '🔘', description: 'Single choice radio buttons', default: { label: 'Decision Maker', options: ['Yes', 'No', 'Maybe'] } },
+      ]
+    },
+    {
+      name: 'File Upload',
+      icon: '📎',
+      fields: [
+        { type: 'file', label: 'File Upload', icon: '📎', description: 'File upload field', default: { label: 'Upload Document' } },
+        { type: 'signature', label: 'Signature', icon: '✍️', description: 'Digital signature field', default: { label: 'Digital Signature' } },
+      ]
+    },
+    {
+      name: 'Display Fields',
+      icon: '🔤',
+      fields: [
+        { type: 'header', label: 'Header', icon: '🔤', description: 'Section header text', default: { text: 'Section Header' } },
+        { type: 'static-text', label: 'Static Text', icon: '📖', description: 'Informational text', default: { text: 'This is some informational text.' } },
+        { type: 'rating', label: 'Rating', icon: '⭐', description: 'Star rating field', default: { label: 'Satisfaction Rating', maxRating: 5 } },
+      ]
+    }
+  ];
+
+  // Flatten all fields for easy access
+  const AVAILABLE_FIELDS = FIELD_GROUPS.flatMap(group => group.fields);
+
+  const FIELD_TEMPLATES = [
+    {
+      name: 'Lead Contact Info',
+      description: 'Basic contact information for leads',
+      fields: [
+        { type: 'text', label: 'Full Name', placeholder: 'Enter full name...', required: true },
+        { type: 'email', label: 'Work Email', placeholder: 'Enter work email...', required: true },
+        { type: 'tel', label: 'Phone Number', placeholder: 'Enter phone number...', required: true },
+        { type: 'text', label: 'Company', placeholder: 'Enter company name...' },
+        { type: 'text', label: 'Job Title', placeholder: 'Enter job title...' }
+      ]
+    },
+    {
+      name: 'Product Demo Info',
+      description: 'Information needed for product demonstrations',
+      fields: [
+        { type: 'text', label: 'Use Case', placeholder: 'Describe your use case...', required: true },
+        { type: 'select', label: 'Team Size', options: ['1-10', '11-50', '51-200', '200+'], required: true },
+        { type: 'textarea', label: 'Current Solution', placeholder: 'Describe your current solution...' },
+        { type: 'date', label: 'Preferred Demo Date', placeholder: 'Select preferred date' },
+        { type: 'checkbox', label: 'Demo Requirements', options: ['Technical Demo', 'Business Demo', 'Integration Demo'] }
+      ]
+    },
+    {
+      name: 'Document Upload',
+      description: 'Standard document collection',
+      fields: [
+        { type: 'file', label: 'Business Requirements', required: true },
+        { type: 'file', label: 'Technical Specifications' },
+        { type: 'file', label: 'Budget Approval' },
+        { type: 'textarea', label: 'Additional Notes', placeholder: 'Any additional requirements...' }
+      ]
+    }
+  ];
+
+  useEffect(() => {
+    console.log('StageFormsSettings useEffect triggered:', { selectedStage, formConfigs, hasConfigForStage: !!formConfigs[selectedStage] });
+    if (selectedStage && formConfigs[selectedStage]) {
+      console.log('Loading fields for stage:', selectedStage, 'fieldCount:', formConfigs[selectedStage].length);
+      setFields(formConfigs[selectedStage]);
+    } else {
+      console.log('No config for stage, clearing fields');
+      setFields([]);
+    }
+    setSelectedField(null);
+  }, [selectedStage, formConfigs]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  const activeFieldData = useMemo(() => {
+    if (!activeId) return null;
+    if (String(activeId).startsWith('palette-')) {
+        const type = String(activeId).replace('palette-', '');
+        return AVAILABLE_FIELDS.find(f => f.type === type);
+    }
+    return fields.find(f => f.id === activeId);
+  }, [activeId, fields]);
+
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    console.log('handleDragEnd called:', { activeId: active.id, overId: over?.id, isPaletteItem: active.data.current?.isPaletteItem });
+    setActiveId(null);
+    if (!over) return;
+    
+    const isPaletteItem = active.data.current?.isPaletteItem;
+
+    if (isPaletteItem) {
+      const overIsCanvas = over.id === 'form-canvas-droppable' || fields.find(f => f.id === over.id);
+      console.log('Palette item dropped:', { overIsCanvas, overID: over.id });
+      if (overIsCanvas) {
+        const fieldTemplate = active.data.current.field;
+        const newField = {
+          id: generateId(),
+          type: fieldTemplate.type,
+          required: false,
+          ...fieldTemplate.default,
+        };
+        console.log('Creating new field:', newField);
+
+        const overIndex = fields.findIndex(f => f.id === over.id);
+        const newFields = [...fields];
+
+        if (overIndex !== -1) {
+          newFields.splice(overIndex, 0, newField);
+        } else {
+          newFields.push(newField);
+        }
+        
+        console.log('Updating fields:', { oldCount: fields.length, newCount: newFields.length });
+        setFields(newFields);
+        onConfigChange('update-stage-fields', selectedStage, newFields);
+        setSelectedField(newField);
+        
+        // Show success animation
+        setShowSuccessAnimation(true);
+        setTimeout(() => setShowSuccessAnimation(false), 1000);
+      }
+      return;
+    }
+
+    if (active.id !== over.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        const newFields = arrayMove(items, oldIndex, newIndex);
+        onConfigChange('update-stage-fields', selectedStage, newFields);
+        return newFields;
+      });
+    }
+  };
+
+  const applyTemplate = (template) => {
+    const templateFields = template.fields.map(field => ({
+      id: generateId(),
+      type: field.type,
+      label: field.label,
+      placeholder: field.placeholder,
+      required: field.required || false,
+      options: field.options,
+      ...field
+    }));
+    
+    setFields(templateFields);
+    onConfigChange('update-stage-fields', selectedStage, templateFields);
+    setSelectedField(templateFields[0]);
+    
+    // Show success animation
+    setShowSuccessAnimation(true);
+    setTimeout(() => setShowSuccessAnimation(false), 1000);
+    
+    toast.success(`Template "${template.name}" applied successfully!`);
+  };
+  
+  const handleFieldUpdate = (updatedField) => {
+    const newFields = fields.map(f => f.id === updatedField.id ? updatedField : f);
+    setFields(newFields);
+    onConfigChange('update-stage-fields', selectedStage, newFields);
+    setSelectedField(updatedField);
+  };
+
+  const removeField = (id) => {
+    const newFields = fields.filter(f => f.id !== id);
+    setFields(newFields);
+    onConfigChange('update-stage-fields', selectedStage, newFields);
+    if (selectedField && selectedField.id === id) {
+      setSelectedField(null);
+    }
+  };
+
+  const duplicateField = (field) => {
+    const fieldIndex = fields.findIndex(f => f.id === field.id);
+    const newField = {
+      ...field,
+      id: generateId(),
+      label: field.label ? `${field.label} (Copy)` : 'Untitled (Copy)',
+    };
+    const newFields = [
+        ...fields.slice(0, fieldIndex + 1),
+        newField,
+        ...fields.slice(fieldIndex + 1)
+    ];
+    setFields(newFields);
+    onConfigChange('update-stage-fields', selectedStage, newFields);
+    setSelectedField(newField);
+  };
+
+  const toggleGroup = (groupName) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupName)) {
+        newSet.delete(groupName);
+      } else {
+        newSet.add(groupName);
+      }
+      return newSet;
+    });
+  };
+
+  const openFieldSettings = (field) => {
+    setSelectedField(field);
+    setShowFieldSettings(true);
+  };
+
+  const closeFieldSettings = () => {
+    setShowFieldSettings(false);
+    setSelectedField(null);
+  };
+
+  const isDraggingFromPalette = activeId && String(activeId).startsWith('palette-');
+
+  return (
+    <DndContext 
+      sensors={sensors} 
+      collisionDetection={closestCenter} 
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
+    >
+      <div className="space-y-6">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <span>Lead Management</span>
+          <span>›</span>
+          <span className="font-medium text-gray-800">Stage Forms</span>
+        </div>
+
+        {/* Stage Navigation Tabs */}
+        <div className="bg-white rounded-lg border shadow-sm">
+          <div className="flex items-center gap-1 p-2 overflow-x-auto">
+            {stages.map(stage => (
+              <button
+                key={stage}
+                onClick={() => setSelectedStage(stage)}
+                className={`flex-shrink-0 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                  selectedStage === stage
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                }`}
+              >
+                {stage}
+              </button>
+            ))}
+            <button className="flex-shrink-0 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md">
+              <FaPlus size={12} />
+            </button>
+          </div>
+        </div>
+
+        {/* Main Form Builder */}
+        {selectedStage ? (
+          <div className="grid grid-cols-12 gap-6">
+            {/* Left Panel: Form Elements */}
+            <div className="col-span-3">
+              <div className="bg-white rounded-lg border shadow-sm h-full">
+                {/* Tab Navigation */}
+                <div className="flex border-b border-gray-200">
+                  <button
+                    onClick={() => setActiveTab('fields')}
+                    className={`flex-1 px-4 py-3 text-sm font-medium ${
+                      activeTab === 'fields'
+                        ? 'border-b-2 border-blue-600 text-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Form Elements
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className={`flex-1 px-4 py-3 text-sm font-medium ${
+                      activeTab === 'templates'
+                        ? 'border-b-2 border-blue-600 text-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Templates
+                  </button>
+                </div>
+
+                <div className="p-4">
+                  {activeTab === 'fields' ? (
+                    <div className="space-y-4">
+                      {FIELD_GROUPS.map((group) => (
+                        <div key={group.name} className="border border-gray-200 rounded-lg">
+                          <button
+                            onClick={() => toggleGroup(group.name)}
+                            className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{group.icon}</span>
+                              <span className="font-medium text-gray-700">{group.name}</span>
+                            </div>
+                            <FaChevronDown 
+                              className={`w-4 h-4 text-gray-400 transition-transform ${
+                                expandedGroups.has(group.name) ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+                          
+                          {expandedGroups.has(group.name) && (
+                            <div className="border-t border-gray-200 p-3 space-y-2">
+                              {group.fields.map((field) => (
+                                <PaletteField key={field.type} field={field} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {FIELD_TEMPLATES.map((template) => (
+                        <div
+                          key={template.name}
+                          onClick={() => applyTemplate(template)}
+                          className="p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-lg">📋</span>
+                            <span className="font-medium text-gray-700 text-sm">{template.name}</span>
+                          </div>
+                          <p className="text-xs text-gray-500">{template.description}</p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {template.fields.slice(0, 3).map((field, idx) => (
+                              <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                {field.label}
+                              </span>
+                            ))}
+                            {template.fields.length > 3 && (
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                +{template.fields.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Center Panel: Form Builder */}
+            <div className="col-span-6">
+              <div className={`bg-white rounded-lg border shadow-sm transition-all ${
+                isDraggingFromPalette ? 'border-blue-500 border-2' : 'border-gray-200'
+              }`}>
+                {/* Header with Mode Toggle */}
+                <div className="flex items-center justify-between p-6 border-b">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800">Form for: {selectedStage}</h3>
+                    <p className="text-sm text-gray-500">
+                      {previewMode ? 'Live preview of your form' : 'Drag fields to build your form'}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    {/* Success Animation */}
+                    {showSuccessAnimation && (
+                      <div className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-bounce">
+                        <div className="flex items-center gap-2">
+                          <span>✅</span>
+                          <span className="text-sm font-medium">Field added!</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Mode Toggle */}
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                      <button
+                        onClick={() => setPreviewMode(false)}
+                        className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
+                          !previewMode
+                            ? 'bg-white text-gray-800 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        Builder
+                      </button>
+                      <button
+                        onClick={() => setPreviewMode(true)}
+                        className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
+                          previewMode
+                            ? 'bg-white text-gray-800 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6">
+                  {previewMode ? (
+                    <div className="max-w-2xl mx-auto">
+                      <div className="bg-gray-50 p-6 rounded-lg border">
+                        <h4 className="text-lg font-semibold text-gray-800 mb-6">
+                          {selectedStage} Stage Form
+                        </h4>
+                        <FormPreview 
+                          fields={fields} 
+                          availableFields={AVAILABLE_FIELDS}
+                        />
+                        {fields.length > 0 && (
+                          <div className="mt-8 flex justify-end gap-3">
+                            <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                              Cancel
+                            </button>
+                            <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                              Submit
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <SortableContext items={fields} strategy={verticalListSortingStrategy}>
+                      <DroppableFormCanvas isDraggingFromPalette={isDraggingFromPalette} fields={fields}>
+                        {fields.length > 0 ? (
+                          <div className="space-y-3">
+                            {fields.map(field => (
+                              <FormFieldCard 
+                                key={field.id} 
+                                field={field}
+                                availableFields={AVAILABLE_FIELDS}
+                                onEdit={() => openFieldSettings(field)}
+                                onRemove={removeField}
+                                onDuplicate={duplicateField}
+                                onToggleRequired={(required) => handleFieldUpdate({ ...field, required })}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-64">
+                            <div className="text-center">
+                              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-2xl text-gray-400">📝</span>
+                              </div>
+                              <h4 className="text-lg font-medium text-gray-600 mb-2">No fields added yet</h4>
+                              <p className="text-sm text-gray-500 mb-4">Drag fields from the left panel to build your form</p>
+                              <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                                <span>💡</span>
+                                <span>Try using a template to get started quickly</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </DroppableFormCanvas>
+                    </SortableContext>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Panel: Quick Actions */}
+            <div className="col-span-3">
+              <div className="bg-white rounded-lg border shadow-sm p-6">
+                <h4 className="text-lg font-bold text-gray-800 mb-4">Quick Actions</h4>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className="w-full p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">📋</span>
+                      <div>
+                        <div className="font-medium text-gray-700">Use Template</div>
+                        <div className="text-xs text-gray-500">Apply pre-built form templates</div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      // Save form logic
+                      toast.success('Form saved successfully!');
+                    }}
+                    className="w-full p-3 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">💾</span>
+                      <div>
+                        <div className="font-medium text-gray-700">Save Form</div>
+                        <div className="text-xs text-gray-500">Save current form configuration</div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setShowFormPreview(true)}
+                    className="w-full p-3 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">👁️</span>
+                      <div>
+                        <div className="font-medium text-gray-700">Full Screen Preview</div>
+                        <div className="text-xs text-gray-500">Open form in fullscreen preview</div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Form Stats */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h5 className="text-sm font-semibold text-gray-700 mb-3">Form Statistics</h5>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Total Fields:</span>
+                      <span className="font-medium">{fields.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Required Fields:</span>
+                      <span className="font-medium">{fields.filter(f => f.required).length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Optional Fields:</span>
+                      <span className="font-medium">{fields.filter(f => !f.required).length}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border shadow-sm p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl text-gray-400">🎯</span>
+            </div>
+            <h3 className="text-lg font-medium text-gray-600 mb-2">Select a Stage</h3>
+            <p className="text-sm text-gray-500">Choose a stage from the tabs above to start building your form</p>
+          </div>
         )}
       </div>
 
-      {isAddingField && (
-        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-6 flex flex-col md:flex-row items-center gap-4">
-          <input
-            type="text"
-            placeholder="New field label (e.g., 'Quote Amount')"
-            value={newField.label}
-            onChange={(e) => setNewField({ ...newField, label: e.target.value })}
-            className="border p-2 rounded-md shadow-sm w-full md:w-1/3"
-          />
-          <select
-            value={newField.type}
-            onChange={(e) => setNewField({ ...newField, type: e.target.value })}
-            className="border p-2 rounded-md shadow-sm w-full md:w-auto"
-          >
-            <option value="text">Text</option>
-            <option value="textarea">Text Area</option>
-            <option value="number">Number</option>
-            <option value="date">Date</option>
-            <option value="image">Image Upload</option>
-            <option value="file">File Upload</option>
-          </select>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={newField.required}
-              onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            <span>Required</span>
-          </label>
-          <button onClick={handleAddField} className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">Save Field</button>
-        </div>
+      {/* Field Settings Modal */}
+      {showFieldSettings && selectedField && (
+        <FieldSettingsModal
+          field={selectedField}
+          onClose={closeFieldSettings}
+          onSave={(updatedField) => {
+            handleFieldUpdate(updatedField);
+            closeFieldSettings();
+          }}
+          availableFields={AVAILABLE_FIELDS}
+        />
       )}
 
-      {selectedStage ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <h4 className="text-md font-bold text-gray-800 mb-4">
-            Custom Fields for "{selectedStage}" Stage
-          </h4>
-          {currentFields.length > 0 ? (
-            <div className="space-y-3">
-              {currentFields.map(field => (
-                <div key={field.id} className="flex justify-between items-center p-3 bg-white border rounded-md">
-                  <div>
-                    <span className="font-semibold text-gray-800">{field.label}</span>
-                    {field.required && <span className="text-red-500 ml-2">*Required</span>}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full capitalize">{field.type}</span>
-                    <button onClick={() => handleRemoveField(field.id)} className="text-red-500 hover:text-red-700">
-                      <FaTrash />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No custom fields defined for this stage.</p>
-          )}
-        </div>
-      ) : (
-        <div className="text-center p-8 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
-          Please select a stage to add custom fields.
-        </div>
+      <DragOverlay>
+        {activeId && activeFieldData ? (
+          String(activeId).startsWith('palette-') ? 
+          <PaletteFieldPreview field={activeFieldData} /> : 
+          <FieldPreview field={activeFieldData} availableFields={AVAILABLE_FIELDS} />
+        ) : null}
+      </DragOverlay>
+
+      {/* Form Preview Modal */}
+      {showFormPreview && (
+        <FormPreviewModal
+          isOpen={showFormPreview}
+          onClose={() => setShowFormPreview(false)}
+          fields={fields}
+          availableFields={AVAILABLE_FIELDS}
+          stageName={selectedStage}
+        />
       )}
-    </div>
+    </DndContext>
   );
 };
 
@@ -898,13 +1774,15 @@ const SettingsPage = ({
   const [activeSettingsPage, setActiveSettingsPage] = useState('pipelineStages');
 
   const settingsPages = [
-    { id: 'pipelineStages', label: 'Pipeline Stages', icon: FaStream },
-    { id: 'forms', label: 'Stage-Dependent Forms', icon: FaTasks },
-    { id: 'permissions', label: 'User Roles & Permissions', icon: FaUserShield },
-    { id: 'workflow', label: 'Workflow', icon: FaSitemap },
-    { id: 'automation', label: 'Automation', icon: FaRobot },
-    { id: 'templates', label: 'Templates', icon: FaEnvelopeOpenText },
+    { id: 'pipelineStages', label: 'Pipeline Stages', icon: FaStream, description: 'Add, remove, and reorder the stages in your sales pipeline.' },
+    { id: 'forms', label: 'Stage Forms', icon: FaTasks, description: 'Require specific information from users when a lead enters a stage.' },
+    { id: 'permissions', label: 'User Roles & Permissions', icon: FaUserShield, description: 'Define what each user role can see and do within this module.' },
+    { id: 'workflow', label: 'Approval Workflow', icon: FaSitemap, description: 'Set up a sequence of roles that must approve a lead to proceed.' },
+    { id: 'automation', label: 'Automation Rules', icon: FaRobot, description: 'Create IF-THEN rules to automate tasks like alerts and notifications.' },
+    { id: 'templates', label: 'Email & SMS Templates', icon: FaEnvelopeOpenText, description: 'Create and manage standardized templates for your team to use.' },
   ];
+
+  const activePage = settingsPages.find(p => p.id === activeSettingsPage);
 
   const renderSettingsContent = () => {
     switch (activeSettingsPage) {
@@ -933,30 +1811,39 @@ const SettingsPage = ({
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-      <div className="flex gap-8">
-        <aside className="w-1/4 border-r border-gray-200 pr-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-6">Module Settings</h2>
-          <nav className="flex flex-col gap-2">
-            {settingsPages.map(page => (
-              <button
-                key={page.id}
-                onClick={() => setActiveSettingsPage(page.id)}
-                className={`flex items-center gap-3 w-full text-left p-3 rounded-md transition-colors duration-150 text-sm font-medium ${
-                  activeSettingsPage === page.id
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <page.icon className="w-5 h-5" />
-                <span>{page.label}</span>
-              </button>
-            ))}
-          </nav>
-        </aside>
-        <main className="w-3/4">
-          {renderSettingsContent()}
-        </main>
+    <div className="bg-gray-50 p-4 sm:p-6 rounded-lg -m-6">
+      {/* Top Navigation Tabs */}
+      <div className="mb-6">
+        <nav className="flex flex-wrap gap-1 border-b border-gray-200">
+          {settingsPages.map(page => (
+            <button
+              key={page.id}
+              onClick={() => setActiveSettingsPage(page.id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                activeSettingsPage === page.id
+                  ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+              }`}
+            >
+              <page.icon className="w-4 h-4 flex-shrink-0" />
+              <span>{page.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border">
+        {activePage && (
+          <div className="mb-6 pb-6 border-b border-gray-200">
+            <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <activePage.icon className="w-6 h-6 text-gray-400" />
+              {activePage.label}
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">{activePage.description}</p>
+          </div>
+        )}
+        {renderSettingsContent()}
       </div>
     </div>
   );
@@ -1275,6 +2162,387 @@ const FiltersDropdown = ({
   );
 };
 
+const DroppableFormCanvas = ({ children, isDraggingFromPalette, fields }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'form-canvas-droppable',
+  });
+
+  return (
+    <div 
+      ref={setNodeRef}
+      className={`min-h-[300px] transition-all duration-200 p-4 rounded-lg ${
+        isDraggingFromPalette && isOver 
+          ? 'bg-blue-50 border-2 border-blue-400 border-dashed shadow-inner' 
+          : isDraggingFromPalette 
+          ? 'bg-gray-50 border-2 border-gray-300 border-dashed' 
+          : 'border border-transparent'
+      }`}
+    >
+      {isDraggingFromPalette && fields.length === 0 && (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors ${
+              isOver ? 'bg-blue-200 text-blue-600' : 'bg-gray-200 text-gray-400'
+            }`}>
+              <span className="text-2xl">📝</span>
+            </div>
+            <h4 className={`text-lg font-medium mb-2 transition-colors ${
+              isOver ? 'text-blue-700' : 'text-gray-600'
+            }`}>
+              {isOver ? 'Drop field here!' : 'Drop zone'}
+            </h4>
+            <p className="text-sm text-gray-500">
+              Release to add the field to your form
+            </p>
+          </div>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+};
+
+// Form Field Card Component
+const FormFieldCard = ({ field, availableFields, onEdit, onRemove, onDuplicate, onToggleRequired }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: field.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  
+  const fieldInfo = availableFields.find(f => f.type === field.type);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group relative bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all"
+    >
+      {/* Drag Handle */}
+      <div {...attributes} {...listeners} className="absolute top-2 left-2 cursor-grab text-gray-400 hover:text-gray-600">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM20 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM20 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
+        </svg>
+      </div>
+
+      {/* Field Content */}
+      <div className="ml-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{fieldInfo?.icon || '📝'}</span>
+            <span className="font-medium text-gray-800">
+              {field.label || 'Untitled Field'} {field.required && <span className="text-red-500">*</span>}
+            </span>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => onToggleRequired(!field.required)}
+              className={`p-1.5 rounded-md text-xs font-medium ${
+                field.required 
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={field.required ? 'Remove required' : 'Make required'}
+            >
+              {field.required ? 'Required' : 'Optional'}
+            </button>
+            <button
+              onClick={() => onDuplicate(field)}
+              className="p-1.5 bg-gray-100 rounded-md text-gray-500 hover:text-blue-600 hover:bg-gray-200"
+              title="Duplicate field"
+            >
+              <FaCopy size={12} />
+            </button>
+            <button
+              onClick={() => onEdit(field)}
+              className="p-1.5 bg-gray-100 rounded-md text-gray-500 hover:text-blue-600 hover:bg-gray-200"
+              title="Edit field"
+            >
+              <FaWrench size={12} />
+            </button>
+            <button
+              onClick={() => onRemove(field.id)}
+              className="p-1.5 bg-gray-100 rounded-md text-gray-500 hover:text-red-600 hover:bg-gray-200"
+              title="Delete field"
+            >
+              <FaTrash size={12} />
+            </button>
+          </div>
+        </div>
+        
+        <p className="text-sm text-gray-500">
+          {field.placeholder || field.text || `${field.type} field`}
+        </p>
+        
+        {/* Field Type Badge */}
+        <div className="mt-2">
+          <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+            {fieldInfo?.label || field.type}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Field Settings Modal Component
+const FieldSettingsModal = ({ field, onClose, onSave, availableFields }) => {
+  const [editedField, setEditedField] = useState({ ...field });
+  const fieldInfo = availableFields.find(f => f.type === field.type);
+
+  const handleSave = () => {
+    onSave(editedField);
+  };
+
+  const handleChange = (key, value) => {
+    setEditedField(prev => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{fieldInfo?.icon || '📝'}</span>
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Field Settings</h2>
+              <p className="text-sm text-gray-500">{fieldInfo?.label || field.type} field</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <FaTimes />
+          </button>
+        </div>
+
+        <div className="flex h-[calc(90vh-140px)]">
+          {/* Settings Panel */}
+          <div className="w-1/2 p-6 border-r border-gray-200 overflow-y-auto">
+            <div className="space-y-6">
+              {/* Basic Settings */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Basic Settings</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Field Label</label>
+                    <input
+                      type="text"
+                      value={editedField.label || ''}
+                      onChange={(e) => handleChange('label', e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      placeholder="Enter field label"
+                    />
+                  </div>
+                  
+                  {(editedField.type === 'text' || editedField.type === 'textarea' || editedField.type === 'number' || editedField.type === 'email' || editedField.type === 'tel') && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Placeholder Text</label>
+                      <input
+                        type="text"
+                        value={editedField.placeholder || ''}
+                        onChange={(e) => handleChange('placeholder', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        placeholder="Enter placeholder text"
+                      />
+                    </div>
+                  )}
+                  
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editedField.required || false}
+                        onChange={(e) => handleChange('required', e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Required field</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Options for select, checkbox, radio */}
+              {(editedField.type === 'select' || editedField.type === 'checkbox' || editedField.type === 'radio') && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Options</h3>
+                  <div className="space-y-2">
+                    {editedField.options?.map((option, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => {
+                            const newOptions = [...editedField.options];
+                            newOptions[index] = e.target.value;
+                            handleChange('options', newOptions);
+                          }}
+                          className="flex-1 p-2 border border-gray-300 rounded-md"
+                        />
+                        <button
+                          onClick={() => {
+                            const newOptions = editedField.options.filter((_, i) => i !== index);
+                            handleChange('options', newOptions);
+                          }}
+                          className="p-2 text-red-500 hover:text-red-700"
+                        >
+                          <FaTrash size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const newOptions = [...(editedField.options || []), 'New Option'];
+                        handleChange('options', newOptions);
+                      }}
+                      className="w-full mt-2 p-2 border-2 border-dashed rounded-md text-gray-500 hover:border-blue-500 hover:text-blue-500"
+                    >
+                      + Add Option
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Advanced Settings */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Advanced Settings</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
+                    <textarea
+                      value={editedField.helpText || ''}
+                      onChange={(e) => handleChange('helpText', e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      rows={2}
+                      placeholder="Optional help text for users"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Validation Rules</label>
+                    <select
+                      value={editedField.validation || 'none'}
+                      onChange={(e) => handleChange('validation', e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="none">No validation</option>
+                      <option value="email">Email format</option>
+                      <option value="phone">Phone number</option>
+                      <option value="url">URL format</option>
+                      <option value="number">Numbers only</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Preview */}
+          <div className="w-1/2 p-6 bg-gray-50 overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Live Preview</h3>
+            <div className="bg-white p-6 rounded-lg border">
+              <div className="space-y-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  {editedField.label || 'Field Label'} {editedField.required && <span className="text-red-500">*</span>}
+                </label>
+                
+                {editedField.type === 'text' && (
+                  <input
+                    type="text"
+                    placeholder={editedField.placeholder}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    disabled
+                  />
+                )}
+                {editedField.type === 'textarea' && (
+                  <textarea
+                    placeholder={editedField.placeholder}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    rows={3}
+                    disabled
+                  />
+                )}
+                {editedField.type === 'select' && (
+                  <select className="w-full p-2 border border-gray-300 rounded-md">
+                    <option>{editedField.placeholder || 'Select an option...'}</option>
+                    {editedField.options?.map((option, idx) => (
+                      <option key={idx} value={option}>{option}</option>
+                    ))}
+                  </select>
+                )}
+                {editedField.type === 'checkbox' && (
+                  <div className="space-y-2">
+                    {editedField.options?.map((option, idx) => (
+                      <label key={idx} className="flex items-center gap-2">
+                        <input type="checkbox" disabled className="rounded border-gray-300" />
+                        <span className="text-sm text-gray-700">{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {editedField.type === 'radio' && (
+                  <div className="space-y-2">
+                    {editedField.options?.map((option, idx) => (
+                      <label key={idx} className="flex items-center gap-2">
+                        <input type="radio" disabled className="border-gray-300" />
+                        <span className="text-sm text-gray-700">{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {editedField.type === 'date' && (
+                  <input
+                    type="date"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    disabled
+                  />
+                )}
+                {editedField.type === 'file' && (
+                  <input
+                    type="file"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    disabled
+                  />
+                )}
+                
+                {editedField.helpText && (
+                  <p className="text-xs text-gray-500">{editedField.helpText}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-3 flex justify-end items-center gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ManagerContent = ({ role }) => {
   // const dispatch = useDispatch();
   // const { leads, loading, error } = useSelector((state) => state.leads);
@@ -1313,8 +2581,78 @@ const ManagerContent = ({ role }) => {
     });
   }, [kanbanStatuses]);
 
+  // --- ADD sensors DEFINITION HERE ---
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  // --- END sensors DEFINITION ---
+
+  // --- ADD DRAG EVENT HANDLERS ---
+  const [activeId, setActiveId] = useState(null);
+
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    console.log('handleDragEnd called:', { activeId: active.id, overId: over?.id, isPaletteItem: active.data.current?.isPaletteItem });
+    setActiveId(null);
+    if (!over) return;
+    
+    const isPaletteItem = active.data.current?.isPaletteItem;
+
+    if (isPaletteItem) {
+      const overIsCanvas = over.id === 'form-canvas-droppable' || fields.find(f => f.id === over.id);
+      console.log('Palette item dropped:', { overIsCanvas, overID: over.id });
+      if (overIsCanvas) {
+        const fieldTemplate = active.data.current.field;
+        const newField = {
+          id: generateId(),
+          type: fieldTemplate.type,
+          required: false,
+          ...fieldTemplate.default,
+        };
+        console.log('Creating new field:', newField);
+
+        const overIndex = fields.findIndex(f => f.id === over.id);
+        const newFields = [...fields];
+
+        if (overIndex !== -1) {
+          newFields.splice(overIndex, 0, newField);
+        } else {
+          newFields.push(newField);
+        }
+        
+        console.log('Updating fields:', { oldCount: fields.length, newCount: newFields.length });
+        setFields(newFields);
+        onConfigChange('update-stage-fields', selectedStage, newFields);
+        setSelectedField(newField);
+        
+        // Show success animation
+        setShowSuccessAnimation(true);
+        setTimeout(() => setShowSuccessAnimation(false), 1000);
+      }
+      return;
+    }
+
+    if (active.id !== over.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        const newFields = arrayMove(items, oldIndex, newIndex);
+        onConfigChange('update-stage-fields', selectedStage, newFields);
+        return newFields;
+      });
+    }
+  };
+  // --- END DRAG EVENT HANDLERS ---
 
   const handleFormConfigChange = (action, stage, field) => {
+    console.log('handleFormConfigChange called:', { action, stage, fieldCount: Array.isArray(field) ? field.length : 'not array', field });
     setFormConfigs(prev => {
       const newConfigs = { ...prev };
       let stageFields = newConfigs[stage] ? [...newConfigs[stage]] : [];
@@ -1323,9 +2661,13 @@ const ManagerContent = ({ role }) => {
         stageFields.push(field);
       } else if (action === 'remove') {
         stageFields = stageFields.filter(f => f.id !== field.id);
+      } else if (action === 'update-stage-fields') {
+        // field parameter contains the complete array of fields for this stage
+        stageFields = field;
       }
       
       newConfigs[stage] = stageFields;
+      console.log('Updated formConfigs for stage:', stage, 'fieldCount:', stageFields.length);
       return newConfigs;
     });
   };
@@ -1469,41 +2811,6 @@ const ManagerContent = ({ role }) => {
     });
     return grouped;
   }, [dedupedLeads, filterText, kanbanStatuses, filters]);
-
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const leadId = active.id;
-    const newStatus = over.id;
-    const oldLead = leads.find(l => l.leadId === leadId);
-    if (newStatus === 'Converted') {
-      setPendingConversion({ lead: oldLead, fromStatus: oldLead.status });
-      setLeadToConvertId(leadId);
-      setShowConvertModal(true);
-    } else if (newStatus === 'Lost') {
-      setPendingLost({ lead: oldLead, fromStatus: oldLead.status });
-      setLeadToMarkLost(oldLead);
-      setShowLostReasonModal(true);
-    } else if (newStatus === 'Junk') {
-      setPendingJunk({ lead: oldLead, fromStatus: oldLead.status });
-      setLeadToMarkJunkId(leadId);
-      setShowJunkReasonModal(true);
-    } else {
-      const requiredFields = (formConfigs[newStatus] || []).filter(field => {
-        // A field is required if it's marked as such AND the lead doesn't already have a value for it.
-        // We will assume custom data is stored in a `customData` object on the lead.
-        return field.required && (!oldLead.customData || !oldLead.customData[field.id]);
-      });
-
-      if (requiredFields.length > 0) {
-        setStageActionModalData({ isOpen: true, lead: oldLead, targetStage: newStatus });
-    } else {
-      setLeads(prevLeads => prevLeads.map(l =>
-        l.leadId === leadId ? { ...l, status: newStatus } : l
-      ));
-      }
-    }
-  };
 
   const handleEdit = (lead) => {
     setEditingLead(lead);
@@ -1661,47 +2968,126 @@ const ManagerContent = ({ role }) => {
     setWorkflowConfig(newWorkflow);
   };
 
+  const FIELD_GROUPS = [
+    {
+      name: 'Basic Fields',
+      icon: '📝',
+      fields: [
+        { type: 'text', label: 'Short Text', icon: '📝', description: 'Single-line text input', default: { label: 'Full Name', placeholder: 'Enter full name...' } },
+        { type: 'textarea', label: 'Long Text', icon: '📄', description: 'Multi-line text area', default: { label: 'Description', placeholder: 'Enter detailed description...' } },
+        { type: 'number', label: 'Number', icon: '🔢', description: 'Numeric input field', default: { label: 'Amount', placeholder: 'Enter amount...' } },
+        { type: 'email', label: 'Email', icon: '📧', description: 'Email address input', default: { label: 'Work Email', placeholder: 'Enter work email...' } },
+      ]
+    },
+    {
+      name: 'Contact Fields',
+      icon: '📞',
+      fields: [
+        { type: 'tel', label: 'Phone', icon: '📞', description: 'Phone number input', default: { label: 'Phone Number', placeholder: 'Enter phone number...' } },
+        { type: 'text', label: 'Address', icon: '📍', description: 'Address input field', default: { label: 'Address', placeholder: 'Enter address...' } },
+      ]
+    },
+    {
+      name: 'Date & Time',
+      icon: '📅',
+      fields: [
+        { type: 'date', label: 'Date', icon: '📅', description: 'Date picker', default: { label: 'Meeting Date', placeholder: 'Select meeting date' } },
+        { type: 'time', label: 'Time', icon: '⏰', description: 'Time picker', default: { label: 'Meeting Time', placeholder: 'Select meeting time' } },
+      ]
+    },
+    {
+      name: 'Selection Fields',
+      icon: '📋',
+      fields: [
+        { type: 'select', label: 'Dropdown', icon: '📋', description: 'Single choice dropdown', default: { label: 'Priority Level', options: ['Low', 'Medium', 'High'] } },
+        { type: 'checkbox', label: 'Checkboxes', icon: '☑️', description: 'Multiple choice checkboxes', default: { label: 'Interests', options: ['Product Demo', 'Pricing', 'Technical Support'] } },
+        { type: 'radio', label: 'Radio Group', icon: '🔘', description: 'Single choice radio buttons', default: { label: 'Decision Maker', options: ['Yes', 'No', 'Maybe'] } },
+      ]
+    },
+    {
+      name: 'File Upload',
+      icon: '📎',
+      fields: [
+        { type: 'file', label: 'File Upload', icon: '📎', description: 'File upload field', default: { label: 'Upload Document' } },
+        { type: 'signature', label: 'Signature', icon: '✍️', description: 'Digital signature field', default: { label: 'Digital Signature' } },
+      ]
+    },
+    {
+      name: 'Display Fields',
+      icon: '🔤',
+      fields: [
+        { type: 'header', label: 'Header', icon: '🔤', description: 'Section header text', default: { text: 'Section Header' } },
+        { type: 'static-text', label: 'Static Text', icon: '📖', description: 'Informational text', default: { text: 'This is some informational text.' } },
+        { type: 'rating', label: 'Rating', icon: '⭐', description: 'Star rating field', default: { label: 'Satisfaction Rating', maxRating: 5 } },
+      ]
+    }
+  ];
+
+  // Flatten all fields for easy access
+  const AVAILABLE_FIELDS = FIELD_GROUPS.flatMap(group => group.fields);
+
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-6">
-          <button
-            onClick={() => handleOpenAddLeadForm()}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow flex items-center min-w-24 justify-center transition-colors duration-200 hover:bg-blue-700"
-          >
-            New
-          </button>
+    <DndContext 
+      sensors={sensors} 
+      collisionDetection={closestCenter} 
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
+    >
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Lead Management</h1>
+            <p className="text-sm text-gray-600">Manage your sales pipeline and leads</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handleViewChange('settings')}
+              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center gap-2"
+            >
+              <FaCog />
+              Settings
+            </button>
+            <button
+              onClick={() => setShowAddLeadModal(true)}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+            >
+              <FaPlus />
+              Add Lead
+            </button>
+          </div>
         </div>
 
-        {mainView === 'pipeline' && (
-          <div className="flex items-center space-x-4">
-            <div className="relative w-72">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                className="border p-2 rounded-md shadow-sm w-full pl-10 bg-white"
-              />
+        {/* Filters and Search */}
+        <div className="bg-white rounded-lg border shadow-sm p-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search leads..."
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
-
             <div className="relative">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`px-4 py-2 text-sm rounded-md flex items-center gap-2 border transition-colors ${
-                  activeFiltersCount > 0 ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-300 hover:bg-gray-50'
-                }`}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
               >
-                <FaCog />
+                <FaThLarge />
                 Filters
                 {activeFiltersCount > 0 && (
-                  <span className="bg-blue-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-1">
                     {activeFiltersCount}
                   </span>
                 )}
               </button>
-              <FiltersDropdown 
+              <FiltersDropdown
                 isOpen={showFilters}
                 onClose={() => setShowFilters(false)}
                 filters={filters}
@@ -1714,119 +3100,134 @@ const ManagerContent = ({ role }) => {
                 activeFiltersCount={activeFiltersCount}
               />
             </div>
-
-            <div className="flex items-center space-x-1 bg-gray-200 p-1 rounded-md">
+            <div className="flex items-center gap-2">
               <button
-                className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-blue-600 shadow text-white' : 'hover:bg-blue-100 text-blue-600'}`}
                 onClick={() => setViewMode('kanban')}
-                title="Kanban Board View"
+                className={`px-3 py-2 text-sm rounded-md ${
+                  viewMode === 'kanban'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                <FaThLarge size={18} />
+                <FaThLarge />
               </button>
               <button
-                className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'hover:bg-blue-100 text-blue-600'}`}
                 onClick={() => setViewMode('table')}
-                title="Table View"
+                className={`px-3 py-2 text-sm rounded-md ${
+                  viewMode === 'table'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                <FaListUl size={18} />
+                <FaListUl />
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Main Content */}
+        {mainView === 'pipeline' ? (
+          viewMode === 'kanban' ? (
+            <KanbanBoard
+              leadsByStatus={leadsByStatus}
+              kanbanStatuses={kanbanStatuses}
+              onEdit={handleEdit}
+              onConvert={handleConvert}
+              onMarkLost={handleMarkLost}
+              onMarkJunk={handleMarkJunk}
+              onScheduleActivity={handleScheduleActivity}
+            />
+          ) : (
+            <LeadsTable leads={dedupedLeads} />
+          )
+        ) : (
+          <SettingsPage
+            leads={dedupedLeads}
+            kanbanStatuses={kanbanStatuses}
+            setKanbanStatuses={setKanbanStatuses}
+            onDeleteStages={handleDeleteStages}
+            formConfigs={formConfigs}
+            onFormConfigChange={handleFormConfigChange}
+            workflowConfig={workflowConfig}
+            onWorkflowConfigChange={handleWorkflowConfigChange}
+          />
         )}
       </div>
 
-      {/* {loading && <p className="text-center">Loading opportunities...</p>}
-      {error && <p className="text-center text-red-500">Error: {error.message || "Could not fetch opportunities."}</p>} */}
-
-      {mainView === 'pipeline' ? (
-        viewMode === 'kanban' ? (
-          <KanbanBoard
-            leadsByStatus={leadsByStatus}
-            onDragEnd={handleDragEnd}
-            statuses={kanbanStatuses}
-            onEdit={handleEdit}
-            onConvert={handleConvert}
-            onMarkLost={handleMarkLost}
-            onMarkJunk={handleMarkJunk}
-            onAddLead={handleOpenAddLeadForm}
-            isAddingStage={isAddingStage}
-            newStageName={newStageName}
-            setNewStageName={setNewStageName}
-            onAddStage={handleAddStage}
-            onCancelAddStage={handleCancelAddStage}
-            onScheduleActivity={handleScheduleActivity}
-          />
-        ) : (
-          <LeadsTable leads={dedupedLeads} />
-        )
-      ) : (
-        <SettingsPage
-          leads={dedupedLeads}
-          kanbanStatuses={kanbanStatuses}
-          setKanbanStatuses={setKanbanStatuses}
-          onDeleteStages={handleDeleteStages}
-          formConfigs={formConfigs}
-          onFormConfigChange={handleFormConfigChange}
-          workflowConfig={workflowConfig}
-          onWorkflowConfigChange={handleWorkflowConfigChange}
+      {/* Modals */}
+      {showAddLeadModal && (
+        <AddLeadModal
+          isOpen={showAddLeadModal}
+          onClose={() => setShowAddLeadModal(false)}
+          onSubmit={handleAddLeadSubmit}
+          editingLead={editingLead}
+          salesPersons={salesPersons}
+          designers={designers}
         />
       )}
-
-      <AddLeadModal
-        isOpen={showAddLeadModal}
-        onClose={() => setShowAddLeadModal(false)}
-        onSubmit={handleAddLeadSubmit}
-        initialData={editingLead || defaultLeadData}
-        isManagerView={true}
-        salesPersons={salesPersons}
-        designers={designers}
-      />
 
       {showConvertModal && (
         <ConvertLeadModal
-          lead={pendingConversion?.lead}
+          isOpen={showConvertModal}
           onClose={handleConvertModalClose}
-          onSuccess={pendingConversion ? handleConvertSuccess : undefined}
+          onSubmit={handleConvertSuccess}
+          lead={pendingConversion?.lead}
+          fromStatus={pendingConversion?.fromStatus}
         />
       )}
+
       {showLostReasonModal && (
         <LostLeadModal
-          lead={pendingLost?.lead}
+          isOpen={showLostReasonModal}
           onClose={handleLostModalClose}
-          onSuccess={pendingLost ? handleLostSuccess : undefined}
+          onSubmit={handleLostSuccess}
+          lead={pendingLost?.lead}
+          fromStatus={pendingLost?.fromStatus}
         />
       )}
+
       {showJunkReasonModal && (
         <JunkReasonModal
-          lead={pendingJunk?.lead}
+          isOpen={showJunkReasonModal}
           onClose={handleJunkModalClose}
-          onSuccess={pendingJunk ? handleJunkSuccess : undefined}
+          onSubmit={handleJunkSuccess}
+          lead={leads.find(l => l.leadId === leadToMarkJunkId)}
         />
       )}
-      
-      <DeletePipelineModal
-        isOpen={showDeletePipelineModal}
-        onClose={() => setShowDeletePipelineModal(false)}
-        stages={kanbanStatuses}
-        onDeleteStages={handleDeleteStages}
-      />
 
-      <StageActionModal
-        isOpen={stageActionModalData.isOpen}
-        onClose={() => setStageActionModalData({ isOpen: false, lead: null, targetStage: '' })}
-        lead={stageActionModalData.lead}
-        targetStage={stageActionModalData.targetStage}
-        stageConfig={formConfigs[stageActionModalData.targetStage]}
-        onSubmit={handleStageActionSubmit}
-      />
+      {showScheduleActivityModal && (
+        <AdvancedScheduleActivityModal
+          isOpen={showScheduleActivityModal}
+          onClose={() => setShowScheduleActivityModal(false)}
+          onSubmit={handleScheduleActivitySuccess}
+          lead={leadToScheduleActivity}
+        />
+      )}
 
-      <AdvancedScheduleActivityModal
-        isOpen={showScheduleActivityModal}
-        onClose={() => { setShowScheduleActivityModal(false); setLeadToScheduleActivity(null); }}
-        lead={leadToScheduleActivity}
-        onSuccess={handleScheduleActivitySuccess}
-      />
-    </div>
+      {stageActionModalData.isOpen && (
+        <StageActionModal
+          isOpen={stageActionModalData.isOpen}
+          onClose={() => setStageActionModalData({ isOpen: false, lead: null, targetStage: '' })}
+          lead={stageActionModalData.lead}
+          targetStage={stageActionModalData.targetStage}
+          stageConfig={formConfigs[stageActionModalData.targetStage] || []}
+          onSubmit={handleStageActionSubmit}
+        />
+      )}
+
+      <DragOverlay>
+        {activeId ? (
+          <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-64">
+            <div className="font-medium text-gray-800">
+              {leads.find(l => l.leadId === activeId)?.name || 'Lead'}
+            </div>
+            <div className="text-sm text-gray-500">
+              {leads.find(l => l.leadId === activeId)?.email || ''}
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 };
 

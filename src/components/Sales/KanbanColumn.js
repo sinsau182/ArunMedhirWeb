@@ -37,7 +37,7 @@ const KanbanColumn = ({
     id: status,
   });
 
-  console.log(`KanbanColumn ${status}:`, { isOver, leadsCount: leads.length });
+  // console.log(`KanbanColumn ${status}:`, { isOver, leadsCount: leads.length });
 
   const showAddButton = false;
 

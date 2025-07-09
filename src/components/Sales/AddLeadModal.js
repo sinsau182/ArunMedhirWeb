@@ -89,6 +89,17 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
 
   const [errors, setErrors] = useState({});
 
+  // Helper functions to get display names
+  const getSalesPersonName = (id) => {
+    const person = salesPersons.find(p => p.id === id);
+    return person ? person.name : '';
+  };
+
+  const getDesignerName = (id) => {
+    const designer = designers.find(d => d.id === id);
+    return designer ? designer.name : '';
+  };
+
   useEffect(() => {
     if (initialData) {
       setFormData({ ...initialData, area: initialData.area || '', priority: initialData.priority || 'Low', dateOfCreation: initialData.dateOfCreation || new Date().toISOString().split('T')[0] });
@@ -458,11 +469,13 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
                     onValueChange={value => handleInputChange('salesRep', value)}
                   >
                     <SelectTrigger className={`border-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 ${errors.salesRep ? 'border-red-500' : ''} hover:border-blue-400`}>
-                      <SelectValue placeholder="Select sales person" />
+                      <SelectValue placeholder="Select sales person">
+                        {formData.salesRep ? getSalesPersonName(formData.salesRep) : ''}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="rounded-lg shadow-lg">
                       {salesPersons.map(person => (
-                        <SelectItem key={person.id} value={person.name} className="text-xs hover:bg-blue-50 focus:bg-blue-100 rounded-md">
+                        <SelectItem key={person.id} value={person.id} className="text-xs hover:bg-blue-50 focus:bg-blue-100 rounded-md">
                           {person.name}
                         </SelectItem>
                       ))}
@@ -479,11 +492,13 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
                     onValueChange={value => handleInputChange('designer', value)}
                   >
                     <SelectTrigger className={`border-gray-300 text-xs rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150 ${errors.designer ? 'border-red-500' : ''} hover:border-blue-400`}>
-                      <SelectValue placeholder="Select designer" />
+                      <SelectValue placeholder="Select designer">
+                        {formData.designer ? getDesignerName(formData.designer) : ''}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="rounded-lg shadow-lg">
                       {designers.map(designer => (
-                        <SelectItem key={designer.id} value={designer.name} className="text-xs hover:bg-blue-50 focus:bg-blue-100 rounded-md">
+                        <SelectItem key={designer.id} value={designer.id} className="text-xs hover:bg-blue-50 focus:bg-blue-100 rounded-md">
                           {designer.name}
                         </SelectItem>
                       ))}
@@ -521,7 +536,9 @@ const AddLeadModal = ({ isOpen, onClose, onSubmit, initialData, isManagerView = 
             </button>
             <button
               type="button"
-              onClick={handleSubmit}
+              onClick={() => {
+                handleSubmit();
+              }}
               className="px-3 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs transition-all duration-150"
             >
               {initialData?.leadId ? 'Update Lead' : 'Add Lead'}

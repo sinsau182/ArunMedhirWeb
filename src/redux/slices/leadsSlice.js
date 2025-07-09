@@ -166,6 +166,11 @@ const leadsSlice = createSlice({
             .addCase(updateLead.fulfilled, (state, action) => {
                 state.loading = false;
                 state.error = null;
+                // Update the lead in the leads array
+                const index = state.leads.findIndex(lead => lead.leadId === action.payload.leadId);
+                if (index !== -1) {
+                    state.leads[index] = action.payload;
+                }
             })
             .addCase(updateLead.rejected, (state, action) => {
                 state.loading = false;
@@ -177,6 +182,8 @@ const leadsSlice = createSlice({
             })
             .addCase(createLead.fulfilled, (state, action) => {
                 state.loading = false;
+                // Add the new lead to the leads array
+                state.leads.push(action.payload);
             })
             .addCase(createLead.rejected, (state, action) => {
                 state.loading = false;

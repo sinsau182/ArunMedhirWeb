@@ -64,18 +64,18 @@ const KanbanBoard = ({
 
   const handleDragStart = (event) => {
     const { active } = event;
-    console.log('Drag start event:', event);
+    // console.log('Drag start event:', event);
     
     // Find the lead being dragged
     const leadId = active.id;
     const allLeads = Object.values(leadsByStatus).flat();
     const draggedLead = allLeads.find(lead => lead.leadId === leadId);
-    console.log('Dragged lead:', draggedLead);
+    // console.log('Dragged lead:', draggedLead);
     setActiveLead(draggedLead);
   };
 
   const handleDragEnd = (event) => {
-    console.log('KanbanBoard handleDragEnd called:', event);
+    // console.log('KanbanBoard handleDragEnd called:', event);
     setActiveLead(null);
     onDragEnd(event);
   };

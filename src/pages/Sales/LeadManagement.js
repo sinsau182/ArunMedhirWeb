@@ -412,7 +412,7 @@ const LeadManagementContent = ({ role }) => {
 
   // Drag-and-drop handler for Kanban board
   const handleDragEnd = (event) => {
-    console.log('Drag end event:', event);
+    // console.log('Drag end event:', event);
     const { active, over } = event;
     if (!over || !active) {
       console.log('No over or active element');
@@ -421,7 +421,7 @@ const LeadManagementContent = ({ role }) => {
     
     const leadId = active.id;
     const newPipelineName = over.id;
-    console.log('Drag end - leadId:', leadId, 'newPipelineName:', newPipelineName);
+    // console.log('Drag end - leadId:', leadId, 'newPipelineName:', newPipelineName);
     
     if (!leadId || !newPipelineName) {
       console.log('Missing leadId or newPipelineName');
@@ -430,7 +430,7 @@ const LeadManagementContent = ({ role }) => {
     
     // Find the new pipeline by name
     const newPipeline = pipelines.find(p => p.name === newPipelineName);
-    console.log('Found new pipeline:', newPipeline);
+    // console.log('Found new pipeline:', newPipeline);
     
     if (!newPipeline) {
       console.log('Pipeline not found for name:', newPipelineName);
@@ -439,7 +439,7 @@ const LeadManagementContent = ({ role }) => {
     
     // Find the lead
     const lead = leads.find(l => l.leadId === leadId);
-    console.log('Found lead:', lead);
+    // console.log('Found lead:', lead);
     
     if (!lead) {
       console.log('Lead not found for ID:', leadId);
@@ -457,21 +457,21 @@ const LeadManagementContent = ({ role }) => {
     });
     
     if (String(currentPipelineId) !== String(newPipelineId)) {
-      console.log('Pipeline is different, proceeding with move');
+      // console.log('Pipeline is different, proceeding with move');
       
       // If pipeline requires a form, open the modal instead of moving directly
       if (newPipeline.formType === 'CONVERTED') {
-        console.log('Opening CONVERTED modal');
+        // console.log('Opening CONVERTED modal');
         setSelectedLead({ ...lead, pipelineId: newPipelineId });
         setShowConvertModal(true);
         return;
       } else if (newPipeline.formType === 'JUNK') {
-        console.log('Opening JUNK modal');
+        // console.log('Opening JUNK modal');
         setSelectedLead({ ...lead, pipelineId: newPipelineId });
         setShowJunkModal(true);
         return;
       } else if (newPipeline.formType === 'LOST') {
-        console.log('Opening LOST modal');
+        // console.log('Opening LOST modal');
         setSelectedLead({ ...lead, pipelineId: newPipelineId });
         setShowLostModal(true);
         return;

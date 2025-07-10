@@ -316,24 +316,27 @@ const LeadManagementContent = ({ role }) => {
     dispatch(fetchLeads());
   }, [dispatch]);
 
-
-
   // Group leads by pipelineId for Kanban board
   const leadsByStatus = useMemo(() => {
     const grouped = {};
 
     // Check if leads is in the new grouped format
-    if (Array.isArray(leads) && leads.length > 0 && leads[0].stageId && leads[0].leads) {
+    if (
+      Array.isArray(leads) &&
+      leads.length > 0 &&
+      leads[0].stageId &&
+      leads[0].leads
+    ) {
       // New format: leads grouped by stageId
       leads.forEach((stageGroup) => {
         const stageId = stageGroup.stageId;
         const stageLeads = stageGroup.leads || [];
-        
+
         // Find the pipeline/stage name for this stageId
-        const pipeline = pipelines.find(p => 
-          p.stageId === stageId || p.pipelineId === stageId
+        const pipeline = pipelines.find(
+          (p) => p.stageId === stageId || p.pipelineId === stageId
         );
-        
+
         if (pipeline) {
           grouped[pipeline.name] = stageLeads;
         } else {
@@ -371,24 +374,30 @@ const LeadManagementContent = ({ role }) => {
           return false;
         }
         const leadPipelineId = lead.pipelineId || lead.stageId;
-        return !leadPipelineId || leadPipelineId === null || leadPipelineId === undefined;
+        return (
+          !leadPipelineId ||
+          leadPipelineId === null ||
+          leadPipelineId === undefined
+        );
       });
 
       if (leadsWithoutPipeline.length > 0) {
-        const newStage = pipelines.find((p) => p.name.toLowerCase() === "new") || pipelines[0];
+        const newStage =
+          pipelines.find((p) => p.name.toLowerCase() === "new") || pipelines[0];
         if (newStage) {
           if (!grouped[newStage.name]) {
             grouped[newStage.name] = [];
           }
-          grouped[newStage.name] = [...grouped[newStage.name], ...leadsWithoutPipeline];
+          grouped[newStage.name] = [
+            ...grouped[newStage.name],
+            ...leadsWithoutPipeline,
+          ];
         }
       }
     }
 
     return grouped;
   }, [pipelines, leads]);
-
-
 
   // Add pipeline handler
   const handleAddStage = () => {
@@ -462,12 +471,17 @@ const LeadManagementContent = ({ role }) => {
     // Find the lead in the grouped format
     let lead = null;
     let currentPipelineId = null;
-    
+
     // Check if leads is in the new grouped format
-    if (Array.isArray(leads) && leads.length > 0 && leads[0].stageId && leads[0].leads) {
+    if (
+      Array.isArray(leads) &&
+      leads.length > 0 &&
+      leads[0].stageId &&
+      leads[0].leads
+    ) {
       // New format: find lead in grouped structure
       for (const stageGroup of leads) {
-        const foundLead = stageGroup.leads.find(l => l.leadId === leadId);
+        const foundLead = stageGroup.leads.find((l) => l.leadId === leadId);
         if (foundLead) {
           lead = foundLead;
           currentPipelineId = stageGroup.stageId;

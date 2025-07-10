@@ -30,6 +30,26 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// Dummy data for stages (in case stages prop is not provided)
+const DUMMY_STAGES = [
+  { id: 1, name: 'New', color: '#3b82f6', isForm: false },
+  { id: 2, name: 'Contacted', color: '#6366f1', isForm: false },
+  { id: 3, name: 'Qualified', color: '#10b981', isForm: false },
+  { id: 4, name: 'Quoted', color: '#f59e42', isForm: true },
+  { id: 5, name: 'Converted', color: '#22d3ee', isForm: true },
+  { id: 6, name: 'Lost', color: '#ef4444', isForm: false },
+  { id: 7, name: 'Junk', color: '#a3a3a3', isForm: false },
+];
+
+// Mock toast function if not available
+const mockToast = {
+  success: (message) => console.log('Success:', message),
+  error: (message) => console.log('Error:', message),
+};
+
+// Use mock toast if real toast is not available
+const safeToast = typeof toast !== 'undefined' ? toast : mockToast;
+
 const PermissionsSettings = () => {
   const [roles, setRoles] = useState([
     { id: 1, name: 'Sales Manager', permissions: ['view_all_leads', 'edit_all_leads', 'delete_leads', 'manage_pipeline', 'assign_leads', 'view_reports'] },
@@ -66,7 +86,7 @@ const PermissionsSettings = () => {
       setRoles(prev => [...prev, newRole]);
       setNewRoleName('');
       setIsAddingRole(false);
-      toast.success('Role added successfully');
+      safeToast.success('Role added successfully');
     }
   };
 
@@ -87,7 +107,7 @@ const PermissionsSettings = () => {
 
   const handleDeleteRole = (roleId) => {
     setRoles(prev => prev.filter(role => role.id !== roleId));
-    toast.success('Role deleted successfully');
+    safeToast.success('Role deleted successfully');
   };
 
   const permissionsByCategory = allPermissions.reduce((acc, permission) => {
@@ -208,9 +228,9 @@ const WorkflowSettings = () => {
       setWorkflows(prev => [...prev, workflow]);
       setNewWorkflow({ name: '', description: '', stages: [{ id: 1, role: '', action: '' }] });
       setIsAddingWorkflow(false);
-      toast.success('Workflow created successfully');
+      safeToast.success('Workflow created successfully');
     } else {
-      toast.error('Please fill all required fields');
+      safeToast.error('Please fill all required fields');
     }
   };
 
@@ -443,7 +463,7 @@ const AutomationSettings = () => {
         actions: [{ type: '', target: '', message: '' }]
       });
       setIsAddingRule(false);
-      toast.success('Automation rule created successfully');
+      safeToast.success('Automation rule created successfully');
     }
   };
 
@@ -707,7 +727,7 @@ const TemplatesSettings = () => {
       setTemplates(prev => [...prev, template]);
       setNewTemplate({ name: '', type: 'email', subject: '', content: '' });
       setIsAddingTemplate(false);
-      toast.success('Template created successfully');
+      safeToast.success('Template created successfully');
     }
   };
 
@@ -719,7 +739,7 @@ const TemplatesSettings = () => {
 
   const deleteTemplate = (templateId) => {
     setTemplates(prev => prev.filter(template => template.id !== templateId));
-    toast.success('Template deleted successfully');
+    safeToast.success('Template deleted successfully');
   };
 
   const emailTemplates = templates.filter(t => t.type === 'email');
@@ -911,7 +931,10 @@ const TemplatesSettings = () => {
   );
 };
 
-const StageDependentFormsSettings = ({ stages }) => {
+const StageDependentFormsSettings = ({ stages = DUMMY_STAGES }) => {
+  // Use the provided stages prop or fall back to dummy data
+  const pipelineStages = stages || DUMMY_STAGES;
+
   const [stageForms, setStageForms] = useState([
     {
       id: 1,
@@ -962,17 +985,17 @@ const StageDependentFormsSettings = ({ stages }) => {
     { value: 'file', label: 'File Upload' }
   ];
 
-  const availableStages = stages.filter(stage => 
+  const availableStages = pipelineStages.filter(stage => 
     stage.isForm && !stageForms.find(form => form.stageId === stage.id)
   );
 
   const handleCreateForm = () => {
     if (!selectedStage || !newForm.formName.trim()) {
-      toast.error('Please select a stage and enter form name');
+      safeToast.error('Please select a stage and enter form name');
       return;
     }
 
-    const stage = stages.find(s => s.id === parseInt(selectedStage));
+    const stage = pipelineStages.find(s => s.id === parseInt(selectedStage));
     if (!stage) return;
 
     const form = {
@@ -988,7 +1011,7 @@ const StageDependentFormsSettings = ({ stages }) => {
     setNewForm({ formName: '', fields: [{ id: 1, name: '', label: '', type: 'text', required: true }] });
     setSelectedStage('');
     setIsCreatingForm(false);
-    toast.success('Form created successfully');
+    safeToast.success('Form created successfully');
   };
 
   const addField = () => {
@@ -1016,7 +1039,7 @@ const StageDependentFormsSettings = ({ stages }) => {
 
   const deleteForm = (formId) => {
     setStageForms(prev => prev.filter(form => form.id !== formId));
-    toast.success('Form deleted successfully');
+    safeToast.success('Form deleted successfully');
   };
 
   const toggleFormStatus = (formId) => {
@@ -1033,7 +1056,7 @@ const StageDependentFormsSettings = ({ stages }) => {
       fields: form.fields.map(field => ({ ...field, id: Date.now() + Math.random() }))
     };
     setStageForms(prev => [...prev, duplicatedForm]);
-    toast.success('Form duplicated successfully');
+    safeToast.success('Form duplicated successfully');
   };
           
   return (
@@ -1265,31 +1288,40 @@ const StageDependentFormsSettings = ({ stages }) => {
   );
 };
 
-const PipelineSettings = ({ stages, setStages, leads, onDeleteStages }) => {
+const PipelineSettings = ({ stages = DUMMY_STAGES, setStages, leads = [], onDeleteStages }) => {
+  // Use the provided stages prop or fall back to dummy data
+  const [pipelineStages, setPipelineStages] = useState(stages);
   const [newStageName, setNewStageName] = useState("");
   const [newStageIsForm, setNewStageIsForm] = useState(false);
   const [newStageColor, setNewStageColor] = useState('#3b82f6');
   const [isAddingStage, setIsAddingStage] = useState(false);
 
   const handleAddStage = () => {
-    if (newStageName && !stages.some(s => s.name === newStageName)) {
+    if (newStageName && !pipelineStages.some(s => s.name === newStageName)) {
       const newStage = {
         id: Date.now(),
         name: newStageName,
         isForm: newStageIsForm,
         color: newStageColor
       };
-      setStages(prev => [...prev, newStage]);
+      const updatedStages = [...pipelineStages, newStage];
+      setPipelineStages(updatedStages);
+      if (setStages) setStages(updatedStages);
+      
       setNewStageName("");
       setNewStageIsForm(false);
       setNewStageColor('#3b82f6');
       setIsAddingStage(false);
-      toast.success('Stage added successfully');
+      safeToast.success('Stage added successfully');
     }
   };
 
   const handleDeleteStage = (stageToDelete) => {
-    onDeleteStages([stageToDelete.name]);
+    const updatedStages = pipelineStages.filter(stage => stage.id !== stageToDelete.id);
+    setPipelineStages(updatedStages);
+    if (setStages) setStages(updatedStages);
+    if (onDeleteStages) onDeleteStages([stageToDelete.name]);
+    safeToast.success('Stage deleted successfully');
   };
 
   const sensors = useSensors(
@@ -1302,11 +1334,11 @@ const PipelineSettings = ({ stages, setStages, leads, onDeleteStages }) => {
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (active.id !== over?.id) {
-      setStages((items) => {
-        const oldIndex = items.findIndex(item => item.id === active.id);
-        const newIndex = items.findIndex(item => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
+      const oldIndex = pipelineStages.findIndex(item => item.id === active.id);
+      const newIndex = pipelineStages.findIndex(item => item.id === over.id);
+      const reorderedStages = arrayMove(pipelineStages, oldIndex, newIndex);
+      setPipelineStages(reorderedStages);
+      if (setStages) setStages(reorderedStages);
     }
   };
 
@@ -1427,16 +1459,16 @@ const PipelineSettings = ({ stages, setStages, leads, onDeleteStages }) => {
       )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={stages.map(s => s.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={pipelineStages.map(s => s.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
-            {stages.map((stage) => (
+            {pipelineStages.map((stage) => (
               <SortableStageItem key={stage.id} stage={stage} />
             ))}
           </div>
         </SortableContext>
       </DndContext>
 
-      {stages.length === 0 && (
+      {pipelineStages.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           <FaStream className="mx-auto text-3xl mb-2" />
           <p>No pipeline stages configured</p>
@@ -1446,10 +1478,9 @@ const PipelineSettings = ({ stages, setStages, leads, onDeleteStages }) => {
   );
 };
 
-
 const SettingsPage = ({ 
-  leads, 
-  kanbanStatuses, 
+  leads = [], 
+  kanbanStatuses = DUMMY_STAGES, 
   setKanbanStatuses, 
   onDeleteStages,
 }) => {

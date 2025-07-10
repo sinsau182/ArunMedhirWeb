@@ -107,18 +107,26 @@ const DeletePipelineModal = ({ isOpen, onClose }) => {
     }
   }, [isOpen, dispatch]);
 
-  // Fetch pipelines and all leads on mount
-  useEffect(() => {
-    dispatch(fetchPipelines());
-    dispatch(fetchLeads());
-  }, [dispatch]);
-
   // Check if any selected stage has leads
   useEffect(() => {
     if (selectedStages.length > 0) {
-      const hasLeads = selectedStages.some((stageId) =>
-        leads.some((lead) => lead.stageId === stageId)
-      );
+      let hasLeads = false;
+      
+      // Check if leads is in the new grouped format
+      if (Array.isArray(leads) && leads.length > 0 && leads[0].stageId && leads[0].leads) {
+        // New format: check if any selected stage has leads
+        hasLeads = selectedStages.some((stageId) =>
+          leads.some((stageGroup) => 
+            stageGroup.stageId === stageId && stageGroup.leads && stageGroup.leads.length > 0
+          )
+        );
+      } else {
+        // Old format: check individual leads
+        hasLeads = selectedStages.some((stageId) =>
+          leads.some((lead) => lead.stageId === stageId)
+        );
+      }
+      
       if (hasLeads) {
         setWarning(
           "Cannot delete: One or more selected pipeline stages contain leads. Please move or delete all leads in these stages first."
@@ -166,6 +174,8 @@ const DeletePipelineModal = ({ isOpen, onClose }) => {
     setSelectedStages([]);
     onClose();
     dispatch(fetchPipelines());
+    // Refresh leads to get the updated grouped format
+    dispatch(fetchLeads());
   };
 
   const handleSelectAll = () => {
@@ -296,9 +306,6 @@ const ManagerContent = ({ role }) => {
   const { pipelines } = useSelector((state) => state.pipelines);
   const { leads, loading, error } = useSelector((state) => state.leads);
 
-  console.log(leads);
-  console.log(pipelines);
-
   // Add pipeline modal state
   const [isAddingStage, setIsAddingStage] = useState(false);
   const [newStageName, setNewStageName] = useState("");
@@ -353,10 +360,7 @@ const ManagerContent = ({ role }) => {
     dispatch(fetchLeads());
   }, [dispatch]);
 
-  useEffect(() => {
-    console.log("Fetched pipelines:", pipelines);
-    console.log("Fetched leads:", leads);
-  }, [pipelines, leads]);
+
 
   // Deduplicate leads by leadId (keep first occurrence) - Manager specific
   const dedupedLeads = React.useMemo(() => {
@@ -373,104 +377,74 @@ const ManagerContent = ({ role }) => {
   // Group leads by pipelineId for Kanban board
   const leadsByStatus = useMemo(() => {
     const grouped = {};
-    const usedLeadIds = new Set(); // Track which leads have been assigned to prevent duplicates
 
-    // Debug logging
-    console.log("Pipelines:", pipelines);
-    console.log("Leads:", leads);
-
-    pipelines.forEach((pipeline) => {
-      // Check if lead has pipelineId or stageId field
-      const matchingLeads = leads.filter((lead) => {
-        // Skip leads that have already been assigned to another stage
-        if (usedLeadIds.has(lead.leadId)) {
-          console.log(
-            `Lead ${lead.leadId} already assigned to another stage, skipping`
-          );
-          return false;
+    // Check if leads is in the new grouped format
+    if (Array.isArray(leads) && leads.length > 0 && leads[0].stageId && leads[0].leads) {
+      // New format: leads grouped by stageId
+      leads.forEach((stageGroup) => {
+        const stageId = stageGroup.stageId;
+        const stageLeads = stageGroup.leads || [];
+        
+        // Find the pipeline/stage name for this stageId
+        const pipeline = pipelines.find(p => 
+          p.stageId === stageId || p.pipelineId === stageId
+        );
+        
+        if (pipeline) {
+          grouped[pipeline.name] = stageLeads;
+        } else {
+          // Create a fallback name if pipeline not found
+          grouped[`Stage-${stageId.slice(-8)}`] = stageLeads;
         }
+      });
+    } else {
+      // Old format: individual leads with pipelineId/stageId
+      const usedLeadIds = new Set();
 
-        const leadPipelineId = lead.pipelineId || lead.stageId;
-        const pipelineId = pipeline.pipelineId || pipeline.stageId;
+      pipelines.forEach((pipeline) => {
+        const matchingLeads = leads.filter((lead) => {
+          if (usedLeadIds.has(lead.leadId)) {
+            return false;
+          }
 
-        console.log(`Comparing lead ${lead.leadId}:`, {
-          leadPipelineId,
-          pipelineId,
-          pipelineName: pipeline.name,
-          isMatch: String(leadPipelineId) === String(pipelineId),
+          const leadPipelineId = lead.pipelineId || lead.stageId;
+          const pipelineId = pipeline.pipelineId || pipeline.stageId;
+          const isMatch = String(leadPipelineId) === String(pipelineId);
+
+          if (isMatch) {
+            usedLeadIds.add(lead.leadId);
+          }
+
+          return isMatch;
         });
 
-        const isMatch = String(leadPipelineId) === String(pipelineId);
-
-        // If this lead matches this pipeline, mark it as used
-        if (isMatch) {
-          usedLeadIds.add(lead.leadId);
-        }
-
-        return isMatch;
+        grouped[pipeline.name] = matchingLeads;
       });
 
-      grouped[pipeline.name] = matchingLeads;
-      console.log(
-        `Pipeline "${pipeline.name}" has ${matchingLeads.length} leads:`,
-        matchingLeads
-      );
-    });
-
-    // Handle leads without pipelineId - they should go to the first stage or "New" stage
-    const leadsWithoutPipeline = leads.filter((lead) => {
-      // Skip leads that have already been assigned
-      if (usedLeadIds.has(lead.leadId)) {
-        return false;
-      }
-
-      const leadPipelineId = lead.pipelineId || lead.stageId;
-      return (
-        !leadPipelineId ||
-        leadPipelineId === null ||
-        leadPipelineId === undefined
-      );
-    });
-
-    if (leadsWithoutPipeline.length > 0) {
-      console.log("Leads without pipelineId:", leadsWithoutPipeline);
-
-      // Find the "New" stage or first stage
-      const newStage =
-        pipelines.find((p) => p.name.toLowerCase() === "new") || pipelines[0];
-      if (newStage) {
-        if (!grouped[newStage.name]) {
-          grouped[newStage.name] = [];
+      // Handle leads without pipelineId
+      const leadsWithoutPipeline = leads.filter((lead) => {
+        if (usedLeadIds.has(lead.leadId)) {
+          return false;
         }
-        grouped[newStage.name] = [
-          ...grouped[newStage.name],
-          ...leadsWithoutPipeline,
-        ];
-        console.log(
-          `Added ${leadsWithoutPipeline.length} leads without pipelineId to "${newStage.name}"`
-        );
+        const leadPipelineId = lead.pipelineId || lead.stageId;
+        return !leadPipelineId || leadPipelineId === null || leadPipelineId === undefined;
+      });
+
+      if (leadsWithoutPipeline.length > 0) {
+        const newStage = pipelines.find((p) => p.name.toLowerCase() === "new") || pipelines[0];
+        if (newStage) {
+          if (!grouped[newStage.name]) {
+            grouped[newStage.name] = [];
+          }
+          grouped[newStage.name] = [...grouped[newStage.name], ...leadsWithoutPipeline];
+        }
       }
-    }
-
-    // Final check - log any leads that weren't assigned to any stage
-    const allAssignedLeadIds = new Set();
-    Object.values(grouped).forEach((leads) => {
-      leads.forEach((lead) => allAssignedLeadIds.add(lead.leadId));
-    });
-
-    const unassignedLeads = leads.filter(
-      (lead) => !allAssignedLeadIds.has(lead.leadId)
-    );
-    if (unassignedLeads.length > 0) {
-      console.warn("Leads not assigned to any stage:", unassignedLeads);
     }
 
     return grouped;
   }, [pipelines, leads]);
 
-  useEffect(() => {
-    console.log("Grouped leadsByStatus:", leadsByStatus);
-  }, [leadsByStatus]);
+
 
   // Add pipeline handler
   const handleAddStage = () => {
@@ -495,6 +469,8 @@ const ManagerContent = ({ role }) => {
     setNewStageIsForm(false);
     setNewStageFormType("");
     setIsAddingStage(false);
+    // Refresh leads to get the updated grouped format
+    dispatch(fetchLeads());
   };
 
   // Delete pipeline handler
@@ -503,6 +479,8 @@ const ManagerContent = ({ role }) => {
       dispatch(deletePipeline(id));
     });
     dispatch(fetchPipelines());
+    // Refresh leads to get the updated grouped format
+    dispatch(fetchLeads());
     setShowDeletePipelineModal(false);
     setSelectedPipelinesToDelete([]);
   };
@@ -515,7 +493,6 @@ const ManagerContent = ({ role }) => {
 
   // Drag-and-drop handler for Kanban board
   const handleDragEnd = (event) => {
-    console.log("Drag end event:", event);
     const { active, over } = event;
     if (!over || !active) {
       console.log("No over or active element");
@@ -524,12 +501,6 @@ const ManagerContent = ({ role }) => {
 
     const leadId = active.id;
     const newPipelineName = over.id;
-    console.log(
-      "Drag end - leadId:",
-      leadId,
-      "newPipelineName:",
-      newPipelineName
-    );
 
     if (!leadId || !newPipelineName) {
       console.log("Missing leadId or newPipelineName");
@@ -538,24 +509,38 @@ const ManagerContent = ({ role }) => {
 
     // Find the new pipeline by name
     const newPipeline = pipelines.find((p) => p.name === newPipelineName);
-    console.log("Found new pipeline:", newPipeline);
 
     if (!newPipeline) {
       console.log("Pipeline not found for name:", newPipelineName);
       return;
     }
 
-    // Find the lead
-    const lead = leads.find((l) => l.leadId === leadId);
-    console.log("Found lead:", lead);
+    // Find the lead in the grouped format
+    let lead = null;
+    let currentPipelineId = null;
+    
+    // Check if leads is in the new grouped format
+    if (Array.isArray(leads) && leads.length > 0 && leads[0].stageId && leads[0].leads) {
+      // New format: find lead in grouped structure
+      for (const stageGroup of leads) {
+        const foundLead = stageGroup.leads.find(l => l.leadId === leadId);
+        if (foundLead) {
+          lead = foundLead;
+          currentPipelineId = stageGroup.stageId;
+          break;
+        }
+      }
+    } else {
+      // Old format: find lead directly
+      lead = leads.find((l) => l.leadId === leadId);
+      currentPipelineId = lead?.pipelineId || lead?.stageId;
+    }
 
     if (!lead) {
       console.log("Lead not found for ID:", leadId);
       return;
     }
 
-    // Only move if pipeline actually changes
-    const currentPipelineId = lead.pipelineId || lead.stageId;
     const newPipelineId = newPipeline.pipelineId || newPipeline.stageId;
 
     console.log("Pipeline comparison:", {
@@ -565,21 +550,16 @@ const ManagerContent = ({ role }) => {
     });
 
     if (String(currentPipelineId) !== String(newPipelineId)) {
-      console.log("Pipeline is different, proceeding with move");
-
       // If pipeline requires a form, open the modal instead of moving directly
       if (newPipeline.formType === "CONVERTED") {
-        console.log("Opening CONVERTED modal");
         setSelectedLead({ ...lead, pipelineId: newPipelineId });
         setShowConvertModal(true);
         return;
       } else if (newPipeline.formType === "JUNK") {
-        console.log("Opening JUNK modal");
         setSelectedLead({ ...lead, pipelineId: newPipelineId });
         setShowJunkModal(true);
         return;
       } else if (newPipeline.formType === "LOST") {
-        console.log("Opening LOST modal");
         setSelectedLead({ ...lead, pipelineId: newPipelineId });
         setShowLostModal(true);
         return;
@@ -648,6 +628,8 @@ const ManagerContent = ({ role }) => {
 
       setShowAddLeadModal(false);
       setEditingLead(null);
+      // Refresh leads to get the updated grouped format
+      dispatch(fetchLeads());
     } catch (error) {
       console.error("Error saving lead:", error);
       toast.error("Failed to save lead. Please try again.");
@@ -1052,6 +1034,7 @@ const ManagerContent = ({ role }) => {
         onSuccess={() => {
           setShowConvertModal(false);
           setSelectedLead(null);
+          // Refresh leads to get the updated grouped format
           dispatch(fetchLeads());
         }}
       />
@@ -1061,6 +1044,7 @@ const ManagerContent = ({ role }) => {
         onSuccess={() => {
           setShowJunkModal(false);
           setSelectedLead(null);
+          // Refresh leads to get the updated grouped format
           dispatch(fetchLeads());
         }}
       />
@@ -1070,6 +1054,7 @@ const ManagerContent = ({ role }) => {
         onSuccess={() => {
           setShowLostModal(false);
           setSelectedLead(null);
+          // Refresh leads to get the updated grouped format
           dispatch(fetchLeads());
         }}
       />

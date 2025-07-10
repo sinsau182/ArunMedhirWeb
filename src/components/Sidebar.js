@@ -73,8 +73,6 @@ const Sidebar = ({ isSidebarCollapsed }) => {
     ],
     sales: [
       { label: "Dashboard", icon: <ChartColumnIncreasing />, link: "/manager/dashboard", roles: ["SALESMANAGER"] },
-      { label: "Team", icon: <Briefcase />, link: "/manager/team", roles: ["SALESMANAGER"] },
-      { label: "Attendance", icon: <Clock />, link: "/manager/attendance", roles: ["SALESMANAGER"] },
       { label: "Lead Management", icon: <FaTasks />, link: "/SalesManager/Manager", roles: ["SALESMANAGER"] },
       { label: "Settings", icon: <FaCog />, link: "/SalesManager/Manager?view=settings", roles: ["SALESMANAGER"] },
     ],

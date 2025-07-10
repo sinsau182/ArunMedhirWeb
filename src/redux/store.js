@@ -21,6 +21,12 @@ import leadsReducer from "./slices/leadsSlice";
 import incomesReducer from "./slices/incomesSlice";
 import attendancesReducer from "./slices/attendancesSlice";
 import vendorReducer from "./slices/vendorSlice";
+import assetCategoryReducer from './slices/assetCategorySlice';
+import assetLocationReducer from './slices/assetLocationSlice';
+import assetStatusReducer from './slices/assetStatusSlice';
+import customFieldsReducer from './slices/customFieldsSlice';
+import idFormattingReducer from './slices/idFormattingSlice';
+import assetReducer from './slices/assetSlice';
 
 
 export const store = configureStore({
@@ -47,6 +53,12 @@ export const store = configureStore({
     incomes: incomesReducer,
     attendances: attendancesReducer,
     vendors: vendorReducer,
+      assetCategories: assetCategoryReducer,
+  assetLocations: assetLocationReducer,
+  assetStatuses: assetStatusReducer,
+  customFields: customFieldsReducer,
+  idFormatting: idFormattingReducer,
+  assets: assetReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

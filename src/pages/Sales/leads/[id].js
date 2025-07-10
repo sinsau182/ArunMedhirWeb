@@ -317,18 +317,18 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
 
     // Separate activities and notes for individual timelines
     const activitiesLog = (activities || [])
-        .map(a => ({ 
-            ...a, 
+            .map(a => ({ 
+                ...a, 
             type: 'activity',
-            date: new Date(a.createdAt || Date.now()),
-            sortDate: new Date(a.createdAt || Date.now()),
-            timestamp: a.createdAt || new Date().toISOString()
+                date: new Date(a.createdAt || Date.now()),
+                sortDate: new Date(a.createdAt || Date.now()),
+                timestamp: a.createdAt || new Date().toISOString()
         }))
         .sort((a, b) => {
-            const dateA = new Date(a.sortDate);
-            const dateB = new Date(b.sortDate);
-            return dateB.getTime() - dateA.getTime(); // Most recent first
-        });
+        const dateA = new Date(a.sortDate);
+        const dateB = new Date(b.sortDate);
+        return dateB.getTime() - dateA.getTime(); // Most recent first
+    });
 
     const notesLog = (notes || [])
         .map(n => {
@@ -387,11 +387,11 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                 <div className="flex gap-2">
                                     <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                                     <button onClick={handleSaveProject} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-semibold shadow-sm hover:bg-blue-700"><FaCheck /> Save</button>
-                                </div>
+                            </div>
                             ) : (
                                 <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-semibold shadow-sm hover:bg-gray-50"><FaPencilAlt className="w-3 h-3" /> Edit</button>
-                            )}
-                        </div>
+                                )}
+                    </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-8">
                             {/* Fields */}
                             {[
@@ -406,21 +406,21 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                             ].map(({label, field, type, options, required, optional}) => (
                                 <div key={field}>
                                     <div className="text-sm text-gray-500">{label}{required && <span className="text-red-500">*</span>}{optional && <span className="text-gray-400 font-normal ml-1">(optional)</span>}</div>
-                                    {isEditing ? (
+                                {isEditing ? (
                                         type === 'select' ? (
                                             <select value={projectFields[field] || ''} onChange={e => handleProjectFieldChange(field, e.target.value)} className="w-full p-1 mt-1 border-b text-gray-900 focus:outline-none focus:border-blue-500">
                                                 {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                            </select>
-                                        ) : (
+                                    </select>
+                                ) : (
                                             <input type={type} value={projectFields[field] || ''} onChange={e => handleProjectFieldChange(field, e.target.value)} className="w-full p-1 mt-1 border-b text-gray-900 focus:outline-none focus:border-blue-500" />
                                         )
                                     ) : (
                                         <p className="text-gray-900 font-medium mt-1">{lead[field] || <span className="text-gray-400">N/A</span>}</p>
-                                    )}
-                                </div>
+                                )}
+                </div>
                             ))}
-                        </div>
-                    </div>
+                                    </div>
+                                    </div>
 
                     {/* Separate Tabs for Activities, Notes, and Files */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100">
@@ -432,8 +432,8 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                 <button onClick={() => setActiveTab('conversion')} className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold ${activeTab === 'conversion' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-500 hover:text-gray-700'}`}>
                                     <FaCheckCircle />
                                     Conversion
-                                </button>
-                            )}
+                                            </button>
+                                        )}
                         </div>
 
                         <div className="p-6">
@@ -454,16 +454,16 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                                     onToggleExpand={() => setExpandedActivities(prev => ({...prev, [item.id]: !prev[item.id]}))} 
                                                     isDeleted={deletedActivityIds.includes(item.id)} 
                                                 />
-                                            ))}
-                                    </div>
+                                    ))}
+                    </div>
                                     {activitiesLog.length > 5 && (
                                         <div className="text-center mt-6">
                                             <button onClick={() => setShowAllHistory(!showAllHistory)} className="text-sm text-blue-600 font-semibold hover:underline">
                                                 {showAllHistory ? 'Show Less' : 'Show All Activities'}
                                             </button>
-                                        </div>
-                                    )}
-                                </div>
+                </div>
+            )}
+                                              </div>
                             )}
 
                             {/* Notes Tab */}
@@ -481,9 +481,9 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                             ></textarea>
                                             <div className="mt-2 text-right">
                                                 <button onClick={handleAddInternalNote} className="px-4 py-1.5 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800">Save Note</button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                                    </div>
                                     
                                     <div className="space-y-6 border-l-2 border-gray-200 ml-4 pl-8">
                                         {notesLog.map((note, index) => (
@@ -493,8 +493,8 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                             <p className="text-gray-500 text-center py-8">No notes have been added yet.</p>
                                         )}
                                     </div>
-                                </div>
-                            )}
+                            </div>
+                        )}
 
                             {/* Files Tab */}
                             {activeTab === 'files' && (
@@ -504,9 +504,9 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                             {activeTab === 'conversion' && (
                                 <ConversionDetails data={conversionData} />
                             )}
-                        </div>
-                    </div>
-                </div>
+                                                    </div>
+                                                        </div>
+                                                        </div>
 
                 {/* Right Column - Schedule Activity Cards */}
                 <div className="lg:col-span-1 flex flex-col gap-6">
@@ -518,11 +518,11 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                 <div className="flex gap-2">
                                     <button onClick={() => setIsEditingContact(false)} className="px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                                     <button onClick={handleSaveContact} className="px-3 py-1 bg-blue-600 text-white rounded-md text-xs font-semibold shadow-sm hover:bg-blue-700">Save</button>
-                                </div>
+                                                    </div>
                             ) : (
                                 <button onClick={() => setIsEditingContact(true)} className="p-1.5 text-gray-400 hover:text-gray-700"><FaPencilAlt className="w-3 h-3" /></button>
                             )}
-                        </div>
+                                        </div>
                         <div className="space-y-4">
                             {[
                                 {icon: FaUser, field: 'name', value: contactFields.name},
@@ -536,10 +536,10 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                     ) : (
                                         <span className="text-sm text-gray-700">{value}</span>
                                     )}
-                                </div>
+                            </div>
                             ))}
                         </div>
-                    </div>
+                </div>
 
                     {/* Assigned Team Section */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
@@ -549,11 +549,11 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                 <div className="flex gap-2">
                                     <button onClick={() => setIsEditingTeam(false)} className="px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                                     <button onClick={() => { onFieldChange('salesRep', assignedSalesRep); onFieldChange('designer', assignedDesigner); setIsEditingTeam(false); }} className="px-3 py-1 bg-blue-600 text-white rounded-md text-xs font-semibold shadow-sm hover:bg-blue-700">Save</button>
-                                </div>
+                        </div>
                             ) : (
                                 <button onClick={() => setIsEditingTeam(true)} className="p-1.5 text-gray-400 hover:text-gray-700"><FaPencilAlt className="w-3 h-3" /></button>
                             )}
-                        </div>
+                            </div>
                         <div className="space-y-4">
                             <div className="flex items-center gap-4">
                                 <FaUserTie className="w-4 h-4 text-gray-400" />
@@ -582,18 +582,18 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                 )}
                             </div>
                         </div>
-                    </div>
+                        </div>
 
                     {/* Schedule Activity Cards */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-gray-800">Quick Actions</h3>
-                            <button 
+                                <button
                                 onClick={onScheduleActivity} 
                                 className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-semibold hover:bg-blue-700 flex items-center gap-2"
-                            >
+                                >
                                 <FaPlus className="w-3 h-3" /> Schedule
-                            </button>
+                                </button>
                         </div>
                         
                         {/* Overdue Activities Alert */}
@@ -633,24 +633,24 @@ const OdooDetailBody = ({ lead, stages, isEditing, setIsEditing, onFieldChange, 
                                                     {activity.dueTime && ` at ${activity.dueTime}`}
                                                 </p>
                                             </div>
-                                            <button 
+                                <button
                                                 onClick={() => onMarkDone(activity.id)}
                                                 className="ml-2 p-1 text-blue-600 hover:text-blue-800"
                                                 title="Mark as done"
-                                            >
+                                >
                                                 <FaCheck className="w-3 h-3" />
-                                            </button>
-                                        </div>
+                                </button>
+                              </div>
                                     </div>
                                 ))
                             ) : (
                                 <p className="text-sm text-gray-500">No upcoming activities scheduled.</p>
                             )}
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                            </div>
+                            </div>
+                          </div>
+                            </div>
     );
 };
 
@@ -667,7 +667,7 @@ const NoteLogItem = ({ note }) => (
                 {note.content}
                           </div>
             <p className="text-xs text-gray-400 mt-1">{formatRelativeTime(note.date)}</p>
-                </div>
+                    </div>
                                 </div>
 );
 
@@ -816,7 +816,7 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
               const { id } = router.query;
     const [lead, setLead] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [activities, setActivities] = useState([]);
+              const [activities, setActivities] = useState([]);
     const [showScheduleActivityModal, setShowScheduleActivityModal] = useState(false);
     const [leadToScheduleActivity, setLeadToScheduleActivity] = useState(null);
     const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
@@ -827,7 +827,7 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
     const [conversionData, setConversionData] = useState({});
               const [timelineEvents, setTimelineEvents] = useState([]);
     const [deletedActivityIds, setDeletedActivityIds] = useState([]);
-    const [notes, setNotes] = useState([]);
+              const [notes, setNotes] = useState([]);
     
     const [files, setFiles] = useState([
         { id: 1, name: 'Initial Brief.pdf', uploadedBy: 'Client', date: '2024-05-10T10:00:00Z' },
@@ -837,8 +837,8 @@ const ConversionModal = ({ isOpen, onClose, onConfirm, lead }) => {
     
     const pipelineStages = ['New', 'Contacted', 'Qualified', 'Quoted', 'Converted'];
 
-    useEffect(() => {
-        if (id) {
+              useEffect(() => {
+                if (id) {
             const mockLead = {
                 id: id,
                 name: "Innovate Inc. Office",

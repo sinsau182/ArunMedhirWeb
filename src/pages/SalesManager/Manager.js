@@ -111,13 +111,21 @@ const DeletePipelineModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (selectedStages.length > 0) {
       let hasLeads = false;
-      
+
       // Check if leads is in the new grouped format
-      if (Array.isArray(leads) && leads.length > 0 && leads[0].stageId && leads[0].leads) {
+      if (
+        Array.isArray(leads) &&
+        leads.length > 0 &&
+        leads[0].stageId &&
+        leads[0].leads
+      ) {
         // New format: check if any selected stage has leads
         hasLeads = selectedStages.some((stageId) =>
-          leads.some((stageGroup) => 
-            stageGroup.stageId === stageId && stageGroup.leads && stageGroup.leads.length > 0
+          leads.some(
+            (stageGroup) =>
+              stageGroup.stageId === stageId &&
+              stageGroup.leads &&
+              stageGroup.leads.length > 0
           )
         );
       } else {
@@ -126,7 +134,7 @@ const DeletePipelineModal = ({ isOpen, onClose }) => {
           leads.some((lead) => lead.stageId === stageId)
         );
       }
-      
+
       if (hasLeads) {
         setWarning(
           "Cannot delete: One or more selected pipeline stages contain leads. Please move or delete all leads in these stages first."
@@ -360,8 +368,6 @@ const ManagerContent = ({ role }) => {
     dispatch(fetchLeads());
   }, [dispatch]);
 
-
-
   // Deduplicate leads by leadId (keep first occurrence) - Manager specific
   const dedupedLeads = React.useMemo(() => {
     const seen = new Set();
@@ -379,17 +385,22 @@ const ManagerContent = ({ role }) => {
     const grouped = {};
 
     // Check if leads is in the new grouped format
-    if (Array.isArray(leads) && leads.length > 0 && leads[0].stageId && leads[0].leads) {
+    if (
+      Array.isArray(leads) &&
+      leads.length > 0 &&
+      leads[0].stageId &&
+      leads[0].leads
+    ) {
       // New format: leads grouped by stageId
       leads.forEach((stageGroup) => {
         const stageId = stageGroup.stageId;
         const stageLeads = stageGroup.leads || [];
-        
+
         // Find the pipeline/stage name for this stageId
-        const pipeline = pipelines.find(p => 
-          p.stageId === stageId || p.pipelineId === stageId
+        const pipeline = pipelines.find(
+          (p) => p.stageId === stageId || p.pipelineId === stageId
         );
-        
+
         if (pipeline) {
           grouped[pipeline.name] = stageLeads;
         } else {
@@ -427,24 +438,30 @@ const ManagerContent = ({ role }) => {
           return false;
         }
         const leadPipelineId = lead.pipelineId || lead.stageId;
-        return !leadPipelineId || leadPipelineId === null || leadPipelineId === undefined;
+        return (
+          !leadPipelineId ||
+          leadPipelineId === null ||
+          leadPipelineId === undefined
+        );
       });
 
       if (leadsWithoutPipeline.length > 0) {
-        const newStage = pipelines.find((p) => p.name.toLowerCase() === "new") || pipelines[0];
+        const newStage =
+          pipelines.find((p) => p.name.toLowerCase() === "new") || pipelines[0];
         if (newStage) {
           if (!grouped[newStage.name]) {
             grouped[newStage.name] = [];
           }
-          grouped[newStage.name] = [...grouped[newStage.name], ...leadsWithoutPipeline];
+          grouped[newStage.name] = [
+            ...grouped[newStage.name],
+            ...leadsWithoutPipeline,
+          ];
         }
       }
     }
 
     return grouped;
   }, [pipelines, leads]);
-
-
 
   // Add pipeline handler
   const handleAddStage = () => {
@@ -518,12 +535,17 @@ const ManagerContent = ({ role }) => {
     // Find the lead in the grouped format
     let lead = null;
     let currentPipelineId = null;
-    
+
     // Check if leads is in the new grouped format
-    if (Array.isArray(leads) && leads.length > 0 && leads[0].stageId && leads[0].leads) {
+    if (
+      Array.isArray(leads) &&
+      leads.length > 0 &&
+      leads[0].stageId &&
+      leads[0].leads
+    ) {
       // New format: find lead in grouped structure
       for (const stageGroup of leads) {
-        const foundLead = stageGroup.leads.find(l => l.leadId === leadId);
+        const foundLead = stageGroup.leads.find((l) => l.leadId === leadId);
         if (foundLead) {
           lead = foundLead;
           currentPipelineId = stageGroup.stageId;

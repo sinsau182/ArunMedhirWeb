@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import {
   Building2, Mail, Phone, Hash, MapPin, Users, Settings, 
   ArrowLeft, Edit, Plus, Check, X, Search, Trash, 
-  UserPlus, Shield, ChevronDown, ChevronRight, Eye, Star
+  UserPlus, Shield, ChevronDown, ChevronRight, Eye, Star,
+  Database, Activity, Activity as ActivityIcon // <-- Import new icons
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import SuperadminHeaders from "@/components/SuperadminHeaders";
@@ -26,8 +27,7 @@ function CompanyDetails() {
   const { id } = router.query;
   const dispatch = useDispatch();
 
-  // Enhanced company data with feature-specific assignments
-  // Initialize company data with all modules but no enabled features initially
+  // Enhanced company data with roles and permissions
   const [companyData, setCompanyData] = useState({
     id: 1,
     name: "TechCorp Solutions",
@@ -51,6 +51,22 @@ function CompanyDetails() {
       dateOfBirth: "1985-03-20",
       experience: "15 years"
     },
+    roles: [
+      {
+        id: 1,
+        name: "HR Manager",
+        description: "Full access to all HR-related modules and functions.",
+        assignedEntities: ["employees", "leaves", "attendance", "recruitment"],
+        assignedActivities: ["manage_employees", "view_employees", "approve_leaves", "apply_leave", "view_leave_history", "mark_attendance", "view_attendance", "post_jobs", "conduct_interviews"],
+      },
+      {
+        id: 2,
+        name: "Finance Admin",
+        description: "Manages payroll and expenses.",
+        assignedEntities: ["payroll", "reports"],
+        assignedActivities: ["process_payroll", "view_payroll", "generate_reports"],
+      }
+    ],
     assignedModules: [
       { 
         id: 1, 
@@ -221,6 +237,225 @@ function CompanyDetails() {
   const [selectedModuleForFeatures, setSelectedModuleForFeatures] = useState(null);
   const [selectedFeatures, setSelectedFeatures] = useState([]);
 
+  // Add state for role management modal
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState(null);
+  const [isEditingRole, setIsEditingRole] = useState(false);
+  
+  // States for enhanced role management UI
+  const [roleSearchQuery, setRoleSearchQuery] = useState("");
+  const [expandedRoleEntities, setExpandedRoleEntities] = useState(new Set());
+
+  // Constants for Roles & Permissions - Updated to include Accounting module
+  const SYSTEM_ENTITIES = [
+    // HR Management Entities
+    { id: "employees", label: "Employees", description: "Employee management and records", icon: "👥", module: "HR Management" },
+    { id: "attendance", label: "Attendance", description: "Time and attendance tracking", icon: "⏰", module: "HR Management" },
+    { id: "leaves", label: "Leaves", description: "Leave management and approvals", icon: "🏖️", module: "HR Management" },
+    { id: "performance", label: "Performance", description: "Performance reviews and evaluations", icon: "📊", module: "HR Management" },
+    
+    // Accounting Entities
+    { id: "vendors", label: "Vendors", description: "Vendor management and records", icon: "🏭", module: "Accounting" },
+    { id: "customers", label: "Customers", description: "Customer database and management", icon: "👤", module: "Accounting" },
+    { id: "accounting_employees", label: "Employees", description: "Employee financial records and payroll", icon: "👥", module: "Accounting" },
+    
+    // System Administration Entities
+    { id: "departments", label: "Departments", description: "Department structure and management", icon: "🏢", module: "Administration" },
+    { id: "roles", label: "Roles", description: "User roles and permissions", icon: "🔐", module: "Administration" },
+    { id: "settings", label: "Settings", description: "System configuration and settings", icon: "⚙️", module: "Administration" },
+    { id: "reports", label: "Reports", description: "Report generation and analytics", icon: "📊", module: "Administration" },
+    { id: "policies", label: "Policies", description: "Company policies and procedures", icon: "📜", module: "Administration" },
+    { id: "audit_logs", label: "Audit Logs", description: "System audit and activity logs", icon: "🔍", module: "Administration" },
+  ];
+
+  const SYSTEM_ACTIVITIES = [
+    // Employee Activities (HR Management)
+    { id: "view_employees", label: "View Employees", entity: "employees" },
+    { id: "manage_employees", label: "Manage Employees", entity: "employees" },
+    { id: "update_employee", label: "Update Employee", entity: "employees" },
+    { id: "assign_department", label: "Assign Department", entity: "employees" },
+    { id: "update_job_detail", label: "Update Job Detail", entity: "employees" },
+    { id: "reset_password", label: "Reset Password", entity: "employees" },
+    { id: "deactivate_employee", label: "Deactivate Employee", entity: "employees" },
+    { id: "terminate_employee", label: "Terminate Employee", entity: "employees" },
+    { id: "reactivate_employee", label: "Reactivate Employee", entity: "employees" },
+    { id: "upload_employee_docs", label: "Upload Employee Docs", entity: "employees" },
+    { id: "assign_asset", label: "Assign Asset", entity: "employees" },
+    { id: "assign_role_permission", label: "Assign Role Permission", entity: "employees" },
+    
+    // Attendance Activities
+    { id: "mark_attendance", label: "Mark Attendance", entity: "attendance" },
+    { id: "view_attendance", label: "View Attendance", entity: "attendance" },
+    { id: "manage_attendance_policies", label: "Manage Attendance Policies", entity: "attendance" },
+    { id: "approve_attendance", label: "Approve Attendance", entity: "attendance" },
+    { id: "generate_attendance_reports", label: "Generate Attendance Reports", entity: "attendance" },
+    
+    // Leave Activities
+    { id: "approve_leaves", label: "Approve Leaves", entity: "leaves" },
+    { id: "apply_leave", label: "Apply Leave", entity: "leaves" },
+    { id: "view_leave_history", label: "View Leave History", entity: "leaves" },
+    { id: "manage_leave_policies", label: "Manage Leave Policies", entity: "leaves" },
+    { id: "cancel_leave", label: "Cancel Leave", entity: "leaves" },
+    { id: "view_team_leaves", label: "View Team Leaves", entity: "leaves" },
+    
+    // Performance Activities
+    { id: "review_performance", label: "Review Performance", entity: "performance" },
+    { id: "create_performance_goals", label: "Create Performance Goals", entity: "performance" },
+    { id: "view_performance_reports", label: "View Performance Reports", entity: "performance" },
+    { id: "conduct_appraisals", label: "Conduct Appraisals", entity: "performance" },
+    
+    // Vendor Activities (Accounting) - Updated: Removed "view_vendor_reports"
+    { id: "create_vendor", label: "Create Vendor", entity: "vendors" },
+    { id: "update_vendor", label: "Update Vendor", entity: "vendors" },
+    { id: "view_vendor", label: "View Vendor", entity: "vendors" },
+    { id: "delete_vendor", label: "Delete Vendor", entity: "vendors" },
+    { id: "manage_vendor_payments", label: "Manage Vendor Payments", entity: "vendors" },
+    { id: "approve_vendor_bills", label: "Approve Vendor Bills", entity: "vendors" },
+    
+    // Customer Activities (Accounting) - Updated: Removed "export_customer_data"
+    { id: "create_customer", label: "Create Customer", entity: "customers" },
+    { id: "update_customer", label: "Update Customer", entity: "customers" },
+    { id: "view_customer", label: "View Customer", entity: "customers" },
+    { id: "delete_customer", label: "Delete Customer", entity: "customers" },
+    { id: "manage_customer_invoices", label: "Manage Customer Invoices", entity: "customers" },
+    { id: "view_customer_history", label: "View Customer History", entity: "customers" },
+    { id: "manage_customer_payments", label: "Manage Customer Payments", entity: "customers" },
+    
+    // Accounting Employee Activities - Updated: Only keeping expense-related activities
+    { id: "manage_employee_expenses", label: "Manage Employee Expenses", entity: "accounting_employees" },
+    { id: "approve_employee_expenses", label: "Approve Employee Expenses", entity: "accounting_employees" },
+    
+    // Department Activities
+    { id: "manage_departments", label: "Manage Departments", entity: "departments" },
+    { id: "view_departments", label: "View Departments", entity: "departments" },
+    { id: "create_department", label: "Create Department", entity: "departments" },
+    { id: "update_department", label: "Update Department", entity: "departments" },
+    { id: "delete_department", label: "Delete Department", entity: "departments" },
+    
+    // Role Management Activities
+    { id: "create_roles", label: "Create Roles", entity: "roles" },
+    { id: "assign_permissions", label: "Assign Permissions", entity: "roles" },
+    { id: "modify_roles", label: "Modify Roles", entity: "roles" },
+    
+    // Settings Activities
+    { id: "manage_settings", label: "Manage Settings", entity: "settings" },
+    { id: "configure_system", label: "Configure System", entity: "settings" },
+    { id: "manage_integrations", label: "Manage Integrations", entity: "settings" },
+    { id: "backup_restore", label: "Backup & Restore", entity: "settings" },
+    
+    // Reports Activities
+    { id: "generate_reports", label: "Generate Reports", entity: "reports" },
+    { id: "view_analytics", label: "View Analytics", entity: "reports" },
+    { id: "export_data", label: "Export Data", entity: "reports" },
+    { id: "create_custom_reports", label: "Create Custom Reports", entity: "reports" },
+    
+    // Policies Activities
+    { id: "create_policies", label: "Create Policies", entity: "policies" },
+    { id: "update_policies", label: "Update Policies", entity: "policies" },
+    { id: "view_policies", label: "View Policies", entity: "policies" },
+    { id: "enforce_policies", label: "Enforce Policies", entity: "policies" },
+    
+    // Audit Log Activities
+    { id: "view_audit_logs", label: "View Audit Logs", entity: "audit_logs" },
+    { id: "export_audit_logs", label: "Export Audit Logs", entity: "audit_logs" },
+    { id: "configure_audit_settings", label: "Configure Audit Settings", entity: "audit_logs" },
+  ];
+  
+  // Handlers for Role Management
+  const handleOpenRoleModal = (role = null) => {
+    setRoleSearchQuery(""); // Reset search on open
+    if (role) {
+      setIsEditingRole(true);
+      setEditingRole({ ...role });
+      // Pre-expand entities that have assigned activities for better UX
+      const entitiesWithActivities = new Set(
+        SYSTEM_ACTIVITIES
+          .filter(act => role.assignedActivities.includes(act.id))
+          .map(act => act.entity)
+      );
+      setExpandedRoleEntities(entitiesWithActivities);
+    } else {
+      setIsEditingRole(false);
+      setEditingRole({ id: null, name: "", description: "", assignedEntities: [], assignedActivities: [] });
+      setExpandedRoleEntities(new Set());
+    }
+    setIsRoleModalOpen(true);
+  };
+  
+  const handleSaveRole = () => {
+    if (!editingRole.name) {
+      toast.error("Role name is required.");
+      return;
+    }
+    
+    if (isEditingRole) {
+      setCompanyData(prev => ({
+        ...prev,
+        roles: prev.roles.map(r => r.id === editingRole.id ? editingRole : r)
+      }));
+      toast.success("Role updated successfully!");
+    } else {
+      const newRole = { ...editingRole, id: Date.now() };
+      setCompanyData(prev => ({
+        ...prev,
+        roles: [...prev.roles, newRole]
+      }));
+      toast.success("Role created successfully!");
+    }
+    
+    setIsRoleModalOpen(false);
+    setEditingRole(null);
+  };
+
+  const handleDeleteRole = (roleId) => {
+    setCompanyData(prev => ({
+      ...prev,
+      roles: prev.roles.filter(r => r.id !== roleId)
+    }));
+    toast.success("Role deleted successfully.");
+  };
+
+  // Handler to toggle collapsible entity sections
+  const toggleEntityExpansion = (entityId) => {
+    setExpandedRoleEntities(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(entityId)) {
+        newSet.delete(entityId);
+      } else {
+        newSet.add(entityId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handler to expand/collapse all entities
+  const handleExpandCollapseAll = (expand) => {
+    if (expand) {
+      setExpandedRoleEntities(new Set(SYSTEM_ENTITIES.map(e => e.id)));
+    } else {
+      setExpandedRoleEntities(new Set());
+    }
+  };
+
+  // Handle selecting/deselecting all activities for an entity
+  const handleSelectAllActivities = (entityId) => {
+    const activitiesForEntity = SYSTEM_ACTIVITIES.filter(a => a.entity === entityId);
+    const activityIds = activitiesForEntity.map(a => a.id);
+    
+    const currentlySelectedForEntity = editingRole.assignedActivities.filter(id => activityIds.includes(id));
+
+    let newActivities;
+    if (currentlySelectedForEntity.length === activityIds.length) {
+      // All are selected, so deselect all
+      newActivities = editingRole.assignedActivities.filter(id => !activityIds.includes(id));
+    } else {
+      // Not all are selected, so select all (add missing ones)
+      const activitiesToAdd = activityIds.filter(id => !editingRole.assignedActivities.includes(id));
+      newActivities = [...editingRole.assignedActivities, ...activitiesToAdd];
+    }
+    setEditingRole(prev => ({ ...prev, assignedActivities: newActivities }));
+  };
+
   useEffect(() => {
     dispatch(fetchEmployees());
   }, [dispatch]);
@@ -272,10 +507,10 @@ function CompanyDetails() {
       // If no module selected (from "Admins & Access" tab), just create admin without assignment
       if (!selectedModuleForAdmin) {
         // Store admin in availableAdmins list (you might want to save this to your backend)
-        const newAdmin = {
-          id: Date.now(),
-          name: newAdminData.name,
-          email: newAdminData.email,
+      const newAdmin = {
+        id: Date.now(),
+        name: newAdminData.name,
+        email: newAdminData.email,
           phone: newAdminData.phone,
           role: newAdminData.role
         };
@@ -291,22 +526,22 @@ function CompanyDetails() {
           name: newAdminData.name,
           email: newAdminData.email,
           phone: newAdminData.phone,
-          role: newAdminData.role,
-          assignedFeatures: adminAssignmentData.selectedFeatures
-        };
+        role: newAdminData.role,
+        assignedFeatures: adminAssignmentData.selectedFeatures
+      };
 
-        setCompanyData(prev => ({
-          ...prev,
-          assignedModules: prev.assignedModules.map(module => {
-            if (module.id === selectedModuleForAdmin.id) {
+      setCompanyData(prev => ({
+        ...prev,
+        assignedModules: prev.assignedModules.map(module => {
+          if (module.id === selectedModuleForAdmin.id) {
               return { 
                 ...module, 
                 admins: [...(module.admins || []), newAdmin]
               };
-            }
-            return module;
-          })
-        }));
+          }
+          return module;
+        })
+      }));
 
         toast.success(`Admin ${newAdmin.name} created and assigned to ${selectedModuleForAdmin.name} successfully!`);
       }
@@ -586,6 +821,13 @@ function CompanyDetails() {
                 isActive={activeTab === "admins"}
                 onClick={() => setActiveTab("admins")}
               />
+              <TabButton
+                id="permissions"
+                label="Roles & Permissions"
+                icon={Shield}
+                isActive={activeTab === "permissions"}
+                onClick={() => setActiveTab("permissions")}
+              />
             </div>
           </div>
 
@@ -722,10 +964,10 @@ function CompanyDetails() {
                           <div>
                             <p className="text-sm text-gray-500">Address</p>
                             <p className="font-medium text-gray-800">{companyData.regAdd}</p>
-                          </div>
                         </div>
                       </div>
                     </div>
+                  </div>
 
                     {/* Head of Company - Single Panel Layout */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -758,8 +1000,8 @@ function CompanyDetails() {
                           <div>
                             <p className="text-xs text-gray-500">Email</p>
                             <p className="text-sm font-medium text-gray-800">{companyData.headOfCompany?.email}</p>
-                          </div>
-                        </div>
+                      </div>
+                    </div>
 
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -783,7 +1025,7 @@ function CompanyDetails() {
                   </div>
 
                   {/* Module Breakdown - Keep only this section */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Active Modules Overview</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {companyData.assignedModules?.map((module) => (
@@ -793,19 +1035,19 @@ function CompanyDetails() {
                             <div>
                               <span className="font-medium text-gray-700">{module.name}</span>
                               <p className="text-xs text-gray-500">{module.admins?.length || 0} admin(s)</p>
-                            </div>
-                          </div>
+                        </div>
+                        </div>
                           <div className="text-right">
                             <div className="text-sm font-medium text-gray-700">
                               {module.enabledFeatures?.length || 0} features
-                            </div>
+                        </div>
                             <div className={`text-xs ${
                               module.enabledFeatures && module.enabledFeatures.length > 0 
                                 ? 'text-green-600' 
                                 : 'text-gray-400'
                             }`}>
                               {module.enabledFeatures && module.enabledFeatures.length > 0 ? 'Active' : 'Inactive'}
-                            </div>
+                      </div>
                           </div>
                         </div>
                       ))}
@@ -959,10 +1201,10 @@ function CompanyDetails() {
 
                             {/* Admins Section with Inline Action */}
                             <div className="p-5">
-                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center justify-between mb-3">
                                 <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                   👥 Admins ({module.admins?.length || 0})
-                                </h4>
+                                  </h4>
                                 <button
                                   onClick={() => {
                                     setSelectedModuleForAdmin(module);
@@ -974,11 +1216,11 @@ function CompanyDetails() {
                                   <Users size={12} />
                                   Assign Admins
                                 </button>
-                              </div>
-                              
-                              {module.admins && module.admins.length > 0 ? (
-                                <div className="space-y-2">
-                                  {module.admins.slice(0, 3).map((admin) => (
+                                </div>
+                                
+                                {module.admins && module.admins.length > 0 ? (
+                                  <div className="space-y-2">
+                                    {module.admins.slice(0, 3).map((admin) => (
                                     <div key={admin.id} className="flex items-start gap-2">
                                       <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                                         <span className="text-xs font-semibold text-blue-600">
@@ -1039,7 +1281,7 @@ function CompanyDetails() {
                       <p className="text-gray-600 text-sm mt-1">
                         Manage all module administrators and their permissions
                       </p>
-                    </div>
+                                </div>
                     <div className="flex items-center gap-3">
                       {/* Search Input */}
                       <div className="relative">
@@ -1051,7 +1293,7 @@ function CompanyDetails() {
                           onChange={(e) => setAdminFilter(e.target.value)}
                           className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
                         />
-                      </div>
+                              </div>
                       
                       {/* Module Filter */}
                       <select
@@ -1066,7 +1308,7 @@ function CompanyDetails() {
                       </select>
 
                       {/* Add Admin Button */}
-                      <button
+                            <button
                         onClick={() => {
                           setSelectedModuleForAdmin(null);
                           setIsAssignAdminModalOpen(true);
@@ -1076,9 +1318,9 @@ function CompanyDetails() {
                       >
                         <UserPlus size={16} />
                         Add Admin
-                      </button>
-                    </div>
-                  </div>
+                            </button>
+                          </div>
+                      </div>
 
                   {/* Summary Stats */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1137,8 +1379,8 @@ function CompanyDetails() {
                           </p>
                           </div>
                         </div>
-                      </div>
-
+                          </div>
+                          
                     <div className="bg-white rounded-lg border border-gray-200 p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -1157,9 +1399,9 @@ function CompanyDetails() {
                               return allAdmins.length ? Math.round(totalFeatures / allAdmins.length) : 0;
                             })()}
                           </p>
-                              </div>
                           </div>
                         </div>
+                      </div>
                       </div>
 
                   {/* Admin Table */}
@@ -1268,7 +1510,7 @@ function CompanyDetails() {
                                       >
                                         <span>{module.icon}</span>
                                         <span className="font-medium">{module.name}</span>
-                                      </div>
+                            </div>
                                     ))}
                                     {admin.modules?.length > 2 && (
                                       <div className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
@@ -1291,22 +1533,22 @@ function CompanyDetails() {
                                         .slice(0, 2).map((feature, idx) => (
                                         <span key={idx} className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded">
                                           {feature}
-                                        </span>
+                                </span>
                                       ))}
                                       {admin.modules?.flatMap(module => module.assignedFeatures || []).length > 2 && (
                                         <span className="text-xs text-gray-400">
                                           +{admin.modules.flatMap(module => module.assignedFeatures || []).length - 2}
-                                        </span>
+                                </span>
                                       )}
-                                    </div>
-                                  </div>
-                                </div>
+                              </div>
+                            </div>
+                          </div>
 
                                 {/* Actions */}
                                 <div className="col-span-2">
                                   <div className="flex items-center justify-center gap-2">
-                                    <button
-                                      onClick={() => {
+                            <button
+                              onClick={() => {
                                         // Find the first module this admin belongs to for editing
                                         const firstModule = companyData.assignedModules?.find(m => 
                                           m.admins?.some(a => a.email === admin.email)
@@ -1320,8 +1562,8 @@ function CompanyDetails() {
                                       title="Edit Admin"
                                     >
                                       <Edit size={16} />
-                                    </button>
-                                    <button
+                            </button>
+                            <button
                                       onClick={() => {
                                         // Find the first module this admin belongs to for removal
                                         const firstModule = companyData.assignedModules?.find(m => 
@@ -1334,19 +1576,19 @@ function CompanyDetails() {
                                       }}
                                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                       title="Remove Admin"
-                                    >
-                                      <Trash size={16} />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                            >
+                              <Trash size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                                      </div>
                           ))
                         ) : (
                           <div className="px-6 py-12 text-center">
                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                               <Users className="h-8 w-8 text-gray-400" />
-                            </div>
+                                          </div>
                             <h3 className="text-lg font-medium text-gray-800 mb-2">
                               {adminFilter || featureFilter ? "No Admins Found" : "No Admins Yet"}
                             </h3>
@@ -1372,8 +1614,8 @@ function CompanyDetails() {
                           </div>
                         );
                       })()}
-                    </div>
-                  </div>
+                        </div>
+                      </div>
 
                   {/* Table Footer with Summary - Remove Export and Bulk Actions */}
                   <div className="flex justify-between items-center text-sm text-gray-600 bg-gray-50 px-6 py-3 rounded-b-xl">
@@ -1415,6 +1657,68 @@ function CompanyDetails() {
                       })()}
                     </div>
                     {/* Removed Export List and Bulk Actions buttons */}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "permissions" && (
+                <div className="space-y-6">
+                  {/* Header */}
+                  <div className="flex justify-between items-center">
+                          <div>
+                      <h2 className="text-xl font-semibold text-gray-800">Roles & Permissions</h2>
+                      <p className="text-gray-600 text-sm mt-1">Define custom roles and their access levels for this company.</p>
+                          </div>
+                    <button
+                      onClick={() => handleOpenRoleModal()}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium"
+                    >
+                      <Plus size={16} />
+                      Create Role
+                    </button>
+                        </div>
+                        
+                  {/* Roles Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {companyData.roles?.map(role => (
+                      <div key={role.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col">
+                        <div className="flex-grow">
+                          <h3 className="text-lg font-bold text-gray-800">{role.name}</h3>
+                          <p className="text-sm text-gray-500 mt-1 mb-4 h-10">{role.description}</p>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Database size={14} className="text-blue-500" />
+                              <span>{role.assignedEntities.length} Entities</span>
+                                  </div>
+                            <div className="flex items-center gap-2">
+                              <Activity size={14} className="text-green-500" />
+                              <span>{role.assignedActivities.length} Activities</span>
+                                  </div>
+                                </div>
+                                  </div>
+                        <div className="mt-6 pt-4 border-t border-gray-100 flex gap-2">
+                          <button 
+                            onClick={() => handleOpenRoleModal(role)}
+                            className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteRole(role.id)}
+                            className="p-2 text-red-500 bg-red-50 rounded-lg hover:bg-red-100"
+                          >
+                            <Trash size={16} />
+                          </button>
+                                </div>
+                              </div>
+                            ))}
+                    {(!companyData.roles || companyData.roles.length === 0) && (
+                      <div className="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
+                        <Shield size={48} className="mx-auto mb-2 text-gray-300" />
+                        <p>No roles created yet.</p>
+                        <p className="text-sm">Click "Create Role" to get started.</p>
+                          </div>
+                        )}
                   </div>
                 </div>
               )}
@@ -1547,8 +1851,8 @@ function CompanyDetails() {
             <p className="text-gray-600 text-sm">
               {selectedModuleForAdmin ? (
                 isCreateNewAdminInAssign 
-                  ? `Create a new admin and assign to ${selectedModuleForAdmin?.name}`
-                  : `Select an existing admin to assign to ${selectedModuleForAdmin?.name}`
+                ? `Create a new admin and assign to ${selectedModuleForAdmin?.name}`
+                : `Select an existing admin to assign to ${selectedModuleForAdmin?.name}`
               ) : (
                 isCreateNewAdminInAssign 
                   ? "Create a new admin and select modules to assign"
@@ -1612,9 +1916,9 @@ function CompanyDetails() {
                         </>
                       );
                     })()}
-                  </div>
+                </div>
 
-                  {adminAssignmentData.adminId && (
+                {adminAssignmentData.adminId && (
                     <div className="bg-gray-50 rounded-lg p-3">
                       <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Admin Details:</h4>
                       {(() => {
@@ -1632,8 +1936,8 @@ function CompanyDetails() {
                           </div>
                         ) : null;
                       })()}
-                    </div>
-                  )}
+                  </div>
+                )}
                 </div>
 
                 {/* Remove the Role Override field for Module Cards assignment */}
@@ -1797,16 +2101,21 @@ function CompanyDetails() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-              <div className="relative">
-                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="e.g., HR Manager, Finance Admin"
+              <Select
+                onValueChange={(value) => setEditAdminData(prev => ({...prev, role: value}))}
                   value={editAdminData.role}
-                  onChange={(e) => setEditAdminData(prev => ({ ...prev, role: e.target.value }))}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
-                />
-              </div>
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a role for this admin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companyData.roles.map(role => (
+                    <SelectItem key={role.id} value={role.name}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {selectedModuleForAdmin && (
@@ -2021,6 +2330,337 @@ function CompanyDetails() {
           </div>
         </div>
       </Modal>
+
+      {/* Role Management Modal - Completely Redesigned Wide & Clean Layout */}
+      {isRoleModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+            onClick={() => setIsRoleModalOpen(false)}
+          />
+          
+          {/* Modal Container - Full Width */}
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative w-full max-w-7xl bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all">
+              
+              {/* Modal Header - Clean & Modern */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                      <Shield className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-semibold text-white">
+                        {isEditingRole ? "Edit Role & Assign Permissions" : "Create New Role & Assign Permissions"}
+                      </h1>
+                      <p className="text-blue-100 text-sm">Configure role details and system access permissions</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsRoleModalOpen(false)}
+                    className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
+                  >
+                    <X size={20} className="text-white" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Content - 2-Column Layout */}
+              <div className="h-[70vh] flex">
+                
+                {/* Left Column: Role Details (25% width) */}
+                <div className="w-1/4 bg-gray-50 border-r border-gray-200 p-6 overflow-y-auto">
+                  <div className="space-y-6">
+                    
+                    {/* Role Information */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                        Role Details
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Role Name *</label>
+                          <input
+                            type="text"
+                            value={editingRole?.name || ""}
+                            onChange={(e) => setEditingRole(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="HR Manager"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Description</label>
+                          <textarea
+                            value={editingRole?.description || ""}
+                            onChange={(e) => setEditingRole(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Full access to all HR-related modules and functions..."
+                            rows={4}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Permission Summary */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Permission Summary</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">Entities Access</span>
+                          <span className="text-xs font-semibold text-blue-600">
+                            {editingRole?.assignedEntities?.length || 0} / {SYSTEM_ENTITIES.length}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">Total Activities</span>
+                          <span className="text-xs font-semibold text-green-600">
+                            {editingRole?.assignedActivities?.length || 0} / {SYSTEM_ACTIVITIES.length}
+                          </span>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <div className="pt-2">
+                          <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>Configuration Progress</span>
+                            <span>{Math.round(((editingRole?.assignedActivities?.length || 0) / SYSTEM_ACTIVITIES.length) * 100)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${((editingRole?.assignedActivities?.length || 0) / SYSTEM_ACTIVITIES.length) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-gray-700 mb-2">Quick Actions</h4>
+                      <button
+                        onClick={() => handleExpandCollapseAll(true)}
+                        className="w-full px-3 py-2 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+                      >
+                        📂 Expand All Sections
+                      </button>
+                      <button
+                        onClick={() => handleExpandCollapseAll(false)}
+                        className="w-full px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                      >
+                        📁 Collapse All Sections
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Permissions (75% width) */}
+                <div className="flex-1 flex flex-col bg-white">
+                  
+                  {/* Permissions Header */}
+                  <div className="px-8 py-4 border-b border-gray-200 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900">System Permissions</h3>
+                        <p className="text-xs text-gray-500 mt-1">Select entities and their specific activities to control access</p>
+                      </div>
+                      
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="🔍 Filter modules..."
+                          value={roleSearchQuery}
+                          onChange={(e) => setRoleSearchQuery(e.target.value)}
+                          className="w-80 pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Permissions Grid - Updated to show module grouping */}
+                  <div className="flex-1 px-8 py-6 overflow-y-auto">
+                    <div className="space-y-6">
+                      {/* Group entities by module - Updated to include Accounting */}
+                      {["HR Management", "Accounting", "Administration"].map(module => {
+                        const entitiesInModule = SYSTEM_ENTITIES
+                          .filter(entity => entity.module === module)
+                          .filter(entity => entity.label.toLowerCase().includes(roleSearchQuery.toLowerCase()));
+                        
+                        if (entitiesInModule.length === 0) return null;
+                        
+                        return (
+                          <div key={module} className="space-y-4">
+                            {/* Module Header */}
+                            <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+                              <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                              <h4 className="text-lg font-bold text-gray-800">{module}</h4>
+                              <div className="text-sm text-gray-500">
+                                ({entitiesInModule.length} {entitiesInModule.length === 1 ? 'entity' : 'entities'})
+                              </div>
+                            </div>
+                            
+                            {/* Entities in this module */}
+                            <div className="space-y-4">
+                              {entitiesInModule.map(entity => {
+                                const isExpanded = expandedRoleEntities.has(entity.id);
+                                const activitiesForEntity = SYSTEM_ACTIVITIES.filter(a => a.entity === entity.id);
+                                const selectedCount = editingRole?.assignedActivities?.filter(actId => 
+                                  activitiesForEntity.some(a => a.id === actId)
+                                ).length || 0;
+                                const isAllSelected = selectedCount === activitiesForEntity.length && activitiesForEntity.length > 0;
+
+                                return (
+                                  <div key={entity.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow ml-4">
+                                    
+                                    {/* Entity Header - Modern Card Style */}
+                                    <div className="bg-white px-6 py-4 border-b border-gray-100">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                          <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl flex items-center justify-center">
+                                            <span className="text-lg">{entity.icon}</span>
+                                          </div>
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-3">
+                                              <input
+                                                type="checkbox"
+                                                checked={editingRole?.assignedEntities?.includes(entity.id) || false}
+                                                onChange={(e) => {
+                                                  const newEntities = e.target.checked
+                                                    ? [...(editingRole?.assignedEntities || []), entity.id]
+                                                    : (editingRole?.assignedEntities || []).filter(id => id !== entity.id);
+                                                  setEditingRole(prev => ({...prev, assignedEntities: newEntities}));
+                                                }}
+                                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                              />
+                                              <h4 className="font-semibold text-gray-900">{entity.label}</h4>
+                                              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                isAllSelected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                                              }`}>
+                                                {selectedCount}/{activitiesForEntity.length}
+                                              </div>
+                                            </div>
+                                            <p className="text-sm text-gray-500 mt-1">{entity.description}</p>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-3">
+                                          {activitiesForEntity.length > 0 && (
+                                            <button
+                                              onClick={() => handleSelectAllActivities(entity.id)}
+                                              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                                isAllSelected 
+                                                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                              }`}
+                                            >
+                                              {isAllSelected ? '✅ All' : '🔘 All'}
+                                            </button>
+                                          )}
+                                          
+                                          <button
+                                            onClick={() => toggleEntityExpansion(entity.id)}
+                                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                          >
+                                            <ChevronDown
+                                              size={16}
+                                              className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                            />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Activities Section - Horizontal Layout */}
+                                    <AnimatePresence>
+                                      {isExpanded && (
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: 'auto', opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          transition={{ duration: 0.2 }}
+                                          className="overflow-hidden"
+                                        >
+                                          <div className="bg-gray-50 px-6 py-4">
+                                            {activitiesForEntity.length > 0 ? (
+                                              <div className="grid grid-cols-2 gap-3">
+                                                {activitiesForEntity.map(activity => (
+                                                  <label 
+                                                    key={activity.id} 
+                                                    className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all group"
+                                                  >
+                                                    <input
+                                                      type="checkbox"
+                                                      checked={editingRole?.assignedActivities?.includes(activity.id) || false}
+                                                      onChange={() => {
+                                                        const newActivities = editingRole?.assignedActivities?.includes(activity.id)
+                                                          ? (editingRole?.assignedActivities || []).filter(id => id !== activity.id)
+                                                          : [...(editingRole?.assignedActivities || []), activity.id];
+                                                        setEditingRole(prev => ({...prev, assignedActivities: newActivities}));
+                                                      }}
+                                                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                    />
+                                                    <span className="text-sm text-gray-700 group-hover:text-blue-700 font-medium">
+                                                      {activity.label}
+                                                    </span>
+                                                  </label>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <div className="text-center py-8 text-gray-400">
+                                                <ActivityIcon size={24} className="mx-auto mb-2 opacity-50" />
+                                                <p className="text-sm">No activities available for this entity</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer - Clean Actions */}
+              <div className="px-8 py-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex justify-between items-center">
+                  <p className="text-xs text-gray-500">
+                    💡 Changes will be saved to this company's role configuration
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setIsRoleModalOpen(false)}
+                      className="px-6 py-2.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleSaveRole} 
+                      disabled={!editingRole?.name?.trim()}
+                      className="px-8 py-2.5 text-sm bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <Check size={16} />
+                      {isEditingRole ? "✅ Update Role" : "🎯 Create Role"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

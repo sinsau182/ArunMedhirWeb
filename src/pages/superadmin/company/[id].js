@@ -36,20 +36,12 @@ function CompanyDetails() {
     gst: "07AAACT2727Q1ZS",
     regAdd: "123 Tech Street, Silicon Valley, CA 94000",
     colorCode: "#4F46E5",
-    // Expanded head of company details
+    // Only required head of company details
     headOfCompany: { 
       id: 1, 
       name: "John Smith", 
       email: "john@techcorp.com", 
-      phone: "9876543210",
-      designation: "Chief Executive Officer",
-      department: "Executive",
-      joiningDate: "2020-01-15",
-      empId: "EMP001",
-      address: "456 Executive Lane, Silicon Valley, CA 94001",
-      emergencyContact: "9876543211",
-      dateOfBirth: "1985-03-20",
-      experience: "15 years"
+      phone: "9876543210"
     },
     roles: [
       {
@@ -213,7 +205,6 @@ function CompanyDetails() {
     { id: 5, name: "Emily White", email: "emily@techcorp.com", role: "Marketing Manager" },
     { id: 6, name: "Frank Miller", email: "frank@techcorp.com", role: "Operations Manager" }
   ];
-
   // Add new states for admin management
   const [isEditAdminModalOpen, setIsEditAdminModalOpen] = useState(false);
   const [selectedAdminForEdit, setSelectedAdminForEdit] = useState(null);
@@ -964,10 +955,10 @@ function CompanyDetails() {
                           <div>
                             <p className="text-sm text-gray-500">Address</p>
                             <p className="font-medium text-gray-800">{companyData.regAdd}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
                     {/* Head of Company - Single Panel Layout */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -1000,8 +991,8 @@ function CompanyDetails() {
                           <div>
                             <p className="text-xs text-gray-500">Email</p>
                             <p className="text-sm font-medium text-gray-800">{companyData.headOfCompany?.email}</p>
-                      </div>
-                    </div>
+                          </div>
+                        </div>
 
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -1024,43 +1015,7 @@ function CompanyDetails() {
                     </div>
                   </div>
 
-                  {/* Module Breakdown - Keep only this section */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Active Modules Overview</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {companyData.assignedModules?.map((module) => (
-                        <div key={module.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{module.icon}</span>
-                            <div>
-                              <span className="font-medium text-gray-700">{module.name}</span>
-                              <p className="text-xs text-gray-500">{module.admins?.length || 0} admin(s)</p>
-                        </div>
-                        </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium text-gray-700">
-                              {module.enabledFeatures?.length || 0} features
-                        </div>
-                            <div className={`text-xs ${
-                              module.enabledFeatures && module.enabledFeatures.length > 0 
-                                ? 'text-green-600' 
-                                : 'text-gray-400'
-                            }`}>
-                              {module.enabledFeatures && module.enabledFeatures.length > 0 ? 'Active' : 'Inactive'}
-                      </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {(!companyData.assignedModules || companyData.assignedModules.length === 0) && (
-                        <div className="col-span-full text-center py-8 text-gray-500">
-                          <Building2 size={48} className="mx-auto mb-2 text-gray-300" />
-                          <p>No modules assigned yet</p>
-                          <p className="text-sm">Go to Modules & Features to assign modules</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  {/* Remove the entire "Active Modules Overview" section */}
                 </div>
               )}
 

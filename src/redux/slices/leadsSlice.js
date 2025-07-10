@@ -14,7 +14,7 @@ export const fetchLeads = createAsyncThunk(
   'leads/fetchLeads',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/leads`, {
+      const res = await axios.get(`${API_BASE_URL}/leads/kanban-cards`, {
         headers: getAuthHeaders(),
       });
       return res.data;
@@ -120,7 +120,7 @@ export const moveLeadToPipeline = createAsyncThunk(
       
       console.log('Move lead response:', response.data);
       
-      // Refetch all leads after move to get updated data
+      // Refetch all leads after move to get updated grouped format
       dispatch(fetchLeads());
       
       return { leadId, newPipelineId };
@@ -202,6 +202,19 @@ const leadsSlice = createSlice({
                 state.loading = false;
                 state.error = action.error.message;
                 state.lead = null;
+            })
+            .addCase(moveLeadToPipeline.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(moveLeadToPipeline.fulfilled, (state, action) => {
+                state.loading = false;
+                state.error = null;
+                // The leads will be refreshed by fetchLeads, so no need to update here
+            })
+            .addCase(moveLeadToPipeline.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload || action.error.message;
             })
     }
 });

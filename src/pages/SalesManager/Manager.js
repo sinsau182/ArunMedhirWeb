@@ -49,6 +49,27 @@ import AdvancedScheduleActivityModal from '@/components/Sales/AdvancedScheduleAc
 import { useRouter } from 'next/router';
 import Tooltip from '@/components/ui/ToolTip';
 
+// Add these imports for settings functionality
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 const salesPersons = [
   { id: 1, name: 'Alice' },
   { id: 2, name: 'Bob' },
@@ -339,6 +360,228 @@ const LeadsTable = ({ leads }) => (
   </div>
 );
 
+// Settings Components
+const SettingsPage = ({ 
+  leads, 
+  kanbanStatuses, 
+  setKanbanStatuses, 
+  onDeleteStages,
+}) => {
+  const [activeSettingsPage, setActiveSettingsPage] = useState('pipelineStages');
+
+  const settingsPages = [
+    { id: 'pipelineStages', label: 'Pipeline Stages', icon: FaStream, description: 'Add, remove, and reorder the stages in your sales pipeline.' },
+    { id: 'permissions', label: 'User Roles & Permissions', icon: FaUserShield, description: 'Define what each user role can see and do within this module.' },
+    { id: 'workflow', label: 'Approval Workflow', icon: FaSitemap, description: 'Set up a sequence of roles that must approve a lead to proceed.' },
+    { id: 'automation', label: 'Automation Rules', icon: FaRobot, description: 'Create IF-THEN rules to automate tasks like alerts and notifications.' },
+    { id: 'templates', label: 'Email & SMS Templates', icon: FaEnvelopeOpenText, description: 'Create and manage standardized templates for your team to use.' },
+  ];
+
+  const activePage = settingsPages.find(p => p.id === activeSettingsPage);
+
+  const renderSettingsContent = () => {
+    switch (activeSettingsPage) {
+      case 'pipelineStages':
+        return (
+          <PipelineSettings
+            stages={kanbanStatuses}
+            setStages={setKanbanStatuses}
+            leads={leads}
+            onDeleteStages={onDeleteStages}
+          />
+        );
+      case 'permissions':
+        return <div className="text-center text-gray-500 p-8">User Roles & Permissions settings coming soon...</div>;
+      case 'workflow':
+        return <div className="text-center text-gray-500 p-8">Approval Workflow settings coming soon...</div>;
+      case 'automation':
+        return <div className="text-center text-gray-500 p-8">Automation Rules settings coming soon...</div>;
+      case 'templates':
+        return <div className="text-center text-gray-500 p-8">Email & SMS Templates settings coming soon...</div>;
+      default:
+        return <div className="text-center text-gray-500">Select a setting to configure.</div>;
+    }
+  };
+
+  return (
+    <div className="bg-gray-50 p-4 sm:p-6 rounded-lg -m-6">
+      {/* Top Navigation Tabs */}
+      <div className="mb-6">
+        <nav className="flex flex-wrap gap-1 border-b border-gray-200">
+          {settingsPages.map(page => (
+            <button
+              key={page.id}
+              onClick={() => setActiveSettingsPage(page.id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                activeSettingsPage === page.id
+                  ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+              }`}
+            >
+              <page.icon className="w-4 h-4 flex-shrink-0" />
+              <span>{page.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border">
+        {activePage && (
+          <div className="mb-6 pb-6 border-b border-gray-200">
+            <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <activePage.icon className="w-6 h-6 text-gray-400" />
+              {activePage.label}
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">{activePage.description}</p>
+          </div>
+        )}
+        {renderSettingsContent()}
+      </div>
+    </div>
+  );
+};
+
+const PipelineSettings = ({ stages, setStages, leads, onDeleteStages }) => {
+  const [newStageName, setNewStageName] = useState("");
+  const [newStageColor, setNewStageColor] = useState("#3b82f6");
+  const [newStageIsForm, setNewStageIsForm] = useState(false);
+  const [isAddingStage, setIsAddingStage] = useState(false);
+  const [showDeletePipelineModal, setShowDeletePipelineModal] = useState(false);
+
+  const handleAddStage = () => {
+    if (newStageName && !stages.find(s => s.name === newStageName)) {
+      const newStage = {
+        id: Date.now(),
+        name: newStageName,
+        color: newStageColor,
+        isForm: newStageIsForm
+      };
+      setStages(prev => [...prev, newStage]);
+      toast.success(`Stage "${newStageName}" added successfully.`);
+      setNewStageName("");
+      setNewStageColor("#3b82f6");
+      setNewStageIsForm(false);
+      setIsAddingStage(false);
+    } else {
+      toast.error("Stage name cannot be empty or a duplicate.");
+    }
+  };
+
+  const handleCancelAddStage = () => {
+    setNewStageName("");
+    setNewStageColor("#3b82f6");
+    setNewStageIsForm(false);
+    setIsAddingStage(false);
+  };
+
+  const COLOR_PALETTE = ['#3b82f6', '#6366f1', '#10b981', '#f59e42', '#22d3ee', '#ef4444', '#a3a3a3'];
+  
+  return (
+    <div>
+      <h3 className="text-lg font-bold text-gray-800 mb-4">Pipeline Stage Management</h3>
+      <p className="text-sm text-gray-600 mb-6">Add, remove, and reorder stages for your sales pipeline.</p>
+      
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsAddingStage(true)}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+          >
+            <FaPlus /> Add Stage
+          </button>
+          <button
+            onClick={() => setShowDeletePipelineModal(true)}
+            className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
+          >
+            <FaTrash /> Delete Stages
+          </button>
+        </div>
+
+        {isAddingStage && (
+          <div className="p-4 bg-gray-50 rounded-lg border space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Stage Name</label>
+              <input
+                type="text"
+                value={newStageName}
+                onChange={(e) => setNewStageName(e.target.value)}
+                placeholder="Enter new stage name"
+                className="border p-2 rounded-md shadow-sm w-full"
+                autoFocus
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Stage Color</label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {COLOR_PALETTE.map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setNewStageColor(color)}
+                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${newStageColor === color ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-200'}`}
+                    style={{ background: color }}
+                  >
+                    {newStageColor === color && <span className="w-3 h-3 bg-white rounded-full border border-blue-600"></span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700">Is Form Required</label>
+              <button
+                type="button"
+                onClick={() => setNewStageIsForm(prev => !prev)}
+                className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ${newStageIsForm ? 'bg-blue-600' : 'bg-gray-300'}`}
+              >
+                <span className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-200 ${newStageIsForm ? 'translate-x-6' : ''}`}></span>
+              </button>
+              <span className="text-sm text-gray-500">{newStageIsForm ? 'Yes' : 'No'}</span>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={handleAddStage} className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">Save</button>
+              <button onClick={handleCancelAddStage} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md">Cancel</button>
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-6">
+          <h4 className="font-semibold text-gray-700 mb-4">Current Stages:</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {stages.map(stage => (
+              <div key={stage.id} className="p-4 bg-white border rounded-lg shadow-sm">
+                <div className="flex items-center gap-3 mb-2">
+                  <div 
+                    className="w-4 h-4 rounded-full" 
+                    style={{ backgroundColor: stage.color }}
+                  ></div>
+                  <span className="font-medium text-gray-800">{stage.name}</span>
+                  {stage.isForm && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Form Required</span>
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {leads.filter(lead => lead.status === stage.name).length} leads
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      <DeletePipelineModal
+        isOpen={showDeletePipelineModal}
+        onClose={() => setShowDeletePipelineModal(false)}
+        stages={stages.map(s => s.name)}
+        onDeleteStages={onDeleteStages}
+      />
+    </div>
+  );
+};
+
 const ManagerContent = ({ role }) => {
   // Use local state for leads and pipeline stages
   const [leads, setLeads] = useState(MOCK_LEADS);
@@ -354,6 +597,9 @@ const ManagerContent = ({ role }) => {
 
   const [filterText, setFilterText] = useState("");
   const [viewMode, setViewMode] = useState('kanban');
+  const [mainView, setMainView] = useState('pipeline'); // Add this state
+  const router = useRouter();
+  const { view: queryView } = router.query;
 
   // Modal states
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
@@ -612,108 +858,156 @@ const ManagerContent = ({ role }) => {
 
   const isPipelinePresent = kanbanStatuses && kanbanStatuses.length > 0;
 
+  // Handle query view changes
+  useEffect(() => {
+    if (queryView === 'settings') {
+      setMainView('settings');
+    } else {
+      setMainView('pipeline');
+    }
+  }, [queryView]);
+
+  const handleViewChange = (view) => {
+    setMainView(view);
+    router.push('/SalesManager/Manager' + (view === 'settings' ? '?view=settings' : ''), undefined, { shallow: true });
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-6">
-          <Tooltip text={!isPipelinePresent ? 'Please add pipeline.' : ''}>
-            <button
-              onClick={() => handleOpenAddLeadForm()}
-              className={`bg-blue-600 text-white px-6 py-2 rounded-lg shadow flex items-center min-w-24 justify-center transition-colors duration-200 ${!isPipelinePresent ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-              disabled={!isPipelinePresent}
-              tabIndex={isPipelinePresent ? 0 : -1}
-            >
-              New
-            </button>
-          </Tooltip>
-          <div className="flex items-center space-x-1">
-            <h2 className="text-xl font-semibold text-gray-700">Pipeline</h2>
-            <div className="relative pipeline-dropdown">
-              <button 
-                onClick={() => setShowPipelineDropdown(!showPipelineDropdown)} 
-                className="text-gray-500 hover:text-gray-700 p-1 flex items-center gap-1 transition-colors duration-200"
+      {/* Only show the pipeline header and content when not in settings */}
+      {mainView === 'pipeline' && (
+        <>
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center space-x-6">
+              <Tooltip text={!isPipelinePresent ? 'Please add pipeline.' : ''}>
+                <button
+                  onClick={() => handleOpenAddLeadForm()}
+                  className={`bg-blue-600 text-white px-6 py-2 rounded-lg shadow flex items-center min-w-24 justify-center transition-colors duration-200 ${!isPipelinePresent ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+                  disabled={!isPipelinePresent}
+                  tabIndex={isPipelinePresent ? 0 : -1}
+                >
+                  New
+                </button>
+              </Tooltip>
+              <div className="flex items-center space-x-1">
+                <h2 className="text-xl font-semibold text-gray-700">Pipeline</h2>
+                <div className="relative pipeline-dropdown">
+                  <button 
+                    onClick={() => setShowPipelineDropdown(!showPipelineDropdown)} 
+                    className="text-gray-500 hover:text-gray-700 p-1 flex items-center gap-1 transition-colors duration-200"
+                  >
+                    <FaCog />
+                    <FaChevronDown className={`text-xs transition-transform duration-200 ${showPipelineDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {showPipelineDropdown && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-40 transform opacity-100 scale-100 transition-all duration-200">
+                      <button
+                        onClick={() => handlePipelineAction('add')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 transition-colors duration-150"
+                      >
+                        <FaPlus className="text-xs" />
+                        Add Pipeline
+                      </button>
+                      <button
+                        onClick={() => handlePipelineAction('delete')}
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2 transition-colors duration-150"
+                      >
+                        <FaTrash className="text-xs" />
+                        Delete Pipeline
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="relative w-72">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  className="border p-2 rounded-md shadow-sm w-full pl-10 bg-white"
+                />
+              </div>
+              
+              {/* Add Settings Button */}
+              <button
+                onClick={() => handleViewChange('settings')}
+                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center gap-2"
+                title="Settings"
               >
                 <FaCog />
-                <FaChevronDown className={`text-xs transition-transform duration-200 ${showPipelineDropdown ? 'rotate-180' : ''}`} />
+                Settings
               </button>
-              
-              {showPipelineDropdown && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-40 transform opacity-100 scale-100 transition-all duration-200">
-                  <button
-                    onClick={() => handlePipelineAction('add')}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 transition-colors duration-150"
-                  >
-                    <FaPlus className="text-xs" />
-                    Add Pipeline
-                  </button>
-                  <button
-                    onClick={() => handlePipelineAction('delete')}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2 transition-colors duration-150"
-                  >
-                    <FaTrash className="text-xs" />
-                    Delete Pipeline
-                  </button>
-                </div>
-              )}
+
+              {/* View toggle icons */}
+              <div className="flex items-center space-x-1 bg-gray-200 p-1 rounded-md">
+                <button
+                  className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-blue-600 shadow text-white' : 'hover:bg-blue-100 text-blue-600'}`}
+                  onClick={() => setViewMode('kanban')}
+                  title="Kanban Board View"
+                >
+                  <FaThLarge size={18} />
+                </button>
+                <button
+                  className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'hover:bg-blue-100 text-blue-600'}`}
+                  onClick={() => setViewMode('table')}
+                  title="Table View"
+                >
+                  <FaListUl size={18} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center space-x-4">
-          <div className="relative w-72">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              className="border p-2 rounded-md shadow-sm w-full pl-10 bg-white"
+          {viewMode === 'kanban' ? (
+            <KanbanBoard
+              leadsByStatus={leadsByStatus}
+              onDragEnd={handleDragEnd}
+              statuses={kanbanStatuses.map(s => s.name)}
+              onEdit={handleEdit}
+              onConvert={handleConvert}
+              onMarkLost={handleMarkLost}
+              onMarkJunk={handleMarkJunk}
+              onAddLead={handleOpenAddLeadForm}
+              isAddingStage={isAddingStage}
+              newStageName={newStageName}
+              setNewStageName={setNewStageName}
+              onAddStage={handleAddStage}
+              onCancelAddStage={handleCancelAddStage}
+              onScheduleActivity={handleScheduleActivity}
+              setIsForm={setNewStageIsForm}
+              setStageColor={setNewStageColor}
+              stageColor={newStageColor}
+              isForm={newStageIsForm}
+              kanbanStatuses={kanbanStatuses}
             />
-          </div>
-          {/* View toggle icons */}
-          <div className="flex items-center space-x-1 bg-gray-200 p-1 rounded-md">
-            <button
-              className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-blue-600 shadow text-white' : 'hover:bg-blue-100 text-blue-600'}`}
-              onClick={() => setViewMode('kanban')}
-              title="Kanban Board View"
-            >
-              <FaThLarge size={18} />
-            </button>
-            <button
-              className={`p-2 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'hover:bg-blue-100 text-blue-600'}`}
-              onClick={() => setViewMode('table')}
-              title="Table View"
-            >
-              <FaListUl size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
+          ) : (
+            <LeadsTable leads={dedupedLeads} />
+          )}
+        </>
+      )}
 
-      {viewMode === 'kanban' ? (
-        <KanbanBoard
-          leadsByStatus={leadsByStatus}
-          onDragEnd={handleDragEnd}
-          statuses={kanbanStatuses.map(s => s.name)}
-          onEdit={handleEdit}
-          onConvert={handleConvert}
-          onMarkLost={handleMarkLost}
-          onMarkJunk={handleMarkJunk}
-          onAddLead={handleOpenAddLeadForm}
-          isAddingStage={isAddingStage}
-          newStageName={newStageName}
-          setNewStageName={setNewStageName}
-          onAddStage={handleAddStage}
-          onCancelAddStage={handleCancelAddStage}
-          onScheduleActivity={handleScheduleActivity}
-          setIsForm={setNewStageIsForm}
-          setStageColor={setNewStageColor}
-          stageColor={newStageColor}
-          isForm={newStageIsForm}
-          kanbanStatuses={kanbanStatuses}
-        />
-      ) : (
-        <LeadsTable leads={dedupedLeads} />
+      {/* Settings View */}
+      {mainView === 'settings' && (
+        <div className="space-y-6">
+          {/* Settings Header */}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+            <p className="text-sm text-gray-600">Configure your lead management system</p>
+          </div>
+
+          <SettingsPage
+            leads={dedupedLeads}
+            kanbanStatuses={kanbanStatuses}
+            setKanbanStatuses={setKanbanStatuses}
+            onDeleteStages={handleDeleteStages}
+          />
+        </div>
       )}
 
       <AddLeadModal

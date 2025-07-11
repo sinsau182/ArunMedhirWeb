@@ -94,25 +94,50 @@ function SuperadminCompanies() {
     setIsCompanyModalOpen(true);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setCompanyData((prevData) => {
-      const updatedData = { ...prevData, [name]: value };
+  // const handleInputChange = (e) => {
+  //   const { name, value } = e.target;
+  //   setCompanyData((prevData) => {
+  //     const updatedData = { ...prevData, [name]: value };
 
-      // Auto-generate prefix if the company name is being updated
-      if (name === "name" && value.length >= 3) {
-        updatedData.prefixForEmpID = value.substring(0, 3).toUpperCase();
-      }
-      // Ensure prefix is always uppercase
-      if (name === "prefixForEmpID") {
-        updatedData.prefixForEmpID = value.toUpperCase();
-      }
+  //     // Auto-generate prefix if the company name is being updated
+  //     if (name === "name" && value.length >= 3) {
+  //       updatedData.prefixForEmpID = value.substring(0, 3).toUpperCase();
+  //     }
+  //     // Ensure prefix is always uppercase
+  //     if (name === "prefixForEmpID") {
+  //       updatedData.prefixForEmpID = value.toUpperCase();
+  //     }
 
-      return updatedData;
-    });
-  };
+  //     return updatedData;
+  //   });
+  // };
 
   // Email validation function
+  
+  const handleInputChange = (e) => {
+  const { name, value } = e.target;
+  setCompanyData((prevData) => {
+    const updatedData = { ...prevData, [name]: value };
+
+    // Auto-generate prefix if the company name is being updated
+    if (name === "name" && value.length >= 3) {
+      updatedData.prefixForEmpID = value.substring(0, 3).toUpperCase();
+    }
+
+    // Ensure prefixForEmpID is always uppercase
+    if (name === "prefixForEmpID") {
+      updatedData.prefixForEmpID = value.toUpperCase();
+    }
+
+    // Ensure GST is always uppercase
+    if (name === "gst") {
+      updatedData.gst = value.toUpperCase();
+    }
+
+    return updatedData;
+  });
+};
+
   const validateEmail = (email) => {
     const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return regex.test(email);
@@ -396,6 +421,8 @@ function SuperadminCompanies() {
               />
             </div>
             
+             
+
             <div>
               <label htmlFor="prefixForEmpID" className="block text-sm font-medium text-gray-700 mb-1">
                 Company Prefix <span className="text-red-500">*</span>

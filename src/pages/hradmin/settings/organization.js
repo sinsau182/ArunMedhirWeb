@@ -103,12 +103,12 @@ const OrganizationSettings = () => {
       if (!departmentForm.name) {
         newErrors.name = "Department name is required";
       }
-      if (!departmentForm.leavePolicy) {
-        newErrors.leavePolicy = "Leave policy is required";
-      }
-      if (!departmentForm.head) {
-        newErrors.head = "Department head is required";
-      }
+      // if (!departmentForm.leavePolicy) {
+      //   newErrors.leavePolicy = "Leave policy is required";
+      // }
+      // if (!departmentForm.head) {
+      //   newErrors.head = "Department head is required";
+      // }
       if (
         !departmentForm.weeklyHolidays ||
         departmentForm.weeklyHolidays.length === 0
@@ -190,9 +190,9 @@ const OrganizationSettings = () => {
     if (!departmentForm.name) {
       newErrors.name = "Department name is required";
     }
-    if (!departmentForm.leavePolicy) {
-      newErrors.leavePolicy = "Leave policy is required";
-    }
+    // if (!departmentForm.leavePolicy) {
+    //   newErrors.leavePolicy = "Leave policy is required";
+    // }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -619,9 +619,9 @@ const OrganizationSettings = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                           Description
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                        {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                           Department Head
-                        </th>
+                        </th> */}
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                           Leave Policy
                         </th>
@@ -873,7 +873,7 @@ const OrganizationSettings = () => {
                   />
                 </div>
 
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Department Head <span className="text-red-500">*</span>
                   </label>
@@ -885,11 +885,11 @@ const OrganizationSettings = () => {
                     onChange={handleDepartmentFormChange}
                     required
                   />
-                </div>
+                </div> */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Leave Policy <span className="text-red-500">*</span>
+                    Leave Policy 
                   </label>
                   <Select
                     name="leavePolicy"
@@ -998,7 +998,7 @@ const OrganizationSettings = () => {
                   />
                 </div>
 
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Department Head <span className="text-red-500">*</span>
                   </label>
@@ -1011,7 +1011,7 @@ const OrganizationSettings = () => {
                     onChange={handleDepartmentFormChange}
                     required
                   />
-                </div>
+                </div> */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

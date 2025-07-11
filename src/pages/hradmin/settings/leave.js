@@ -1251,6 +1251,33 @@ const LeaveSettings = () => {
                               )}
                             </div>
                                 {/* --- Functional Special Condition and Consecutive Leaves --- */}
+
+                                
+                                <div className="p-4 bg-gray-100 rounded-md shadow-sm">
+  <div className="flex items-center gap-2">
+    <span className="font-medium text-gray-700">Allow Consecutive Leaves</span>
+    <label className="relative inline-flex items-center cursor-pointer">
+      <input
+        type="checkbox"
+        checked={allocation.allowConsecutiveLeaves}
+        onChange={() => handleToggle("allowConsecutiveLeaves")}
+        className="sr-only peer"
+      />
+      <div
+        className={`w-10 h-6 rounded-full transition-all ${
+          allocation.allowConsecutiveLeaves ? "bg-blue-600" : "bg-gray-300"
+        }`}
+      ></div>
+      <div
+        className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-all ${
+          allocation.allowConsecutiveLeaves ? "translate-x-4" : ""
+        }`}
+      ></div>
+    </label>
+  </div>
+</div>
+
+                                 
                                 <div className="mt-4 p-4 rounded-lg bg-gray-100 border border-gray-200 w-full max-w-2xl mx-auto">
                                   <div className="flex flex-row items-center gap-12 mb-4 flex-nowrap">
                                     <div className="flex items-center gap-2">
@@ -1261,14 +1288,7 @@ const LeaveSettings = () => {
                                         <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-all ${allocation.specialCondition ? "translate-x-4" : ""}`}></div>
                                       </label>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium text-gray-700">Allow Consecutive Leaves</span>
-                                      <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={allocation.allowConsecutiveLeaves} onChange={() => handleToggle("allowConsecutiveLeaves")} className="sr-only peer" />
-                                        <div className={`w-10 h-6 rounded-full transition-all ${allocation.allowConsecutiveLeaves ? "bg-blue-600" : "bg-gray-300"}`}></div>
-                                        <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-all ${allocation.allowConsecutiveLeaves ? "translate-x-4" : ""}`}></div>
-                                      </label>
-                                    </div>
+                                    
                                   </div>
                                   {/* Divider */}
                                   <div className="w-full flex items-center mb-6">

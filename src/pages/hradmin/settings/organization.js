@@ -20,6 +20,7 @@ import {
   deleteDesignation,
 } from "@/redux/slices/designationSlice";
 import withAuth from "@/components/withAuth";
+import DepartmentFormModal from "@/components/Forms/DepartmentFormModal";
 
 const OrganizationSettings = () => {
   const selectedCompanyId = sessionStorage.getItem("currentCompanyId");
@@ -544,6 +545,10 @@ const OrganizationSettings = () => {
     }, 2000); // Exactly 2 seconds
   };
 
+  const handleDepartmentAdded = () => {
+    dispatch(fetchDepartments());
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
@@ -819,127 +824,12 @@ const OrganizationSettings = () => {
       </div>
 
       {/* Department Add Modal */}
-      {showDepartmentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg w-[600px]">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Add Department
-                </h3>
-                <button
-                  onClick={() => {
-                    handleModalClose();
-                  }}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <form
-                className="space-y-4"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleDepartmentSubmit(e);
-                }}
-              >
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter department name"
-                    onChange={handleDepartmentFormChange}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter department description"
-                    rows={3}
-                    onChange={handleDepartmentFormChange}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Department Head <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="head"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter department head name"
-                    onChange={handleDepartmentFormChange}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Leave Policy <span className="text-red-500">*</span>
-                  </label>
-                  <Select
-                    name="leavePolicy"
-                    options={leavePolicyOptions}
-                    className="react-select"
-                    classNamePrefix="select"
-                    placeholder="Select leave policy"
-                    onChange={handleSelectChange}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Weekly Holidays <span className="text-red-500">*</span>
-                  </label>
-                  <Select
-                    name="weeklyHolidays"
-                    isMulti
-                    options={weekDays}
-                    className="react-select"
-                    classNamePrefix="select"
-                    placeholder="Select weekly holidays"
-                    onChange={handleSelectChange}
-                  />
-                </div>
-              </form>
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowDepartmentModal(false)}
-                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleDepartmentSubmit(e);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DepartmentFormModal
+        isOpen={showDepartmentModal}
+        onClose={handleModalClose}
+        onSuccess={handleDepartmentAdded}
+        companyId={selectedCompanyId}
+      />
 
       {/* Department Edit Modal */}
       {showDepartmentEditModal && (

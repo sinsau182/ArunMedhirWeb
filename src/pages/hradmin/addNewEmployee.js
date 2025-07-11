@@ -15,10 +15,13 @@ import {
   FiUpload,
   FiCheck,
   FiX,
+  FiLoader,
 } from "react-icons/fi";
 import { getItemFromSessionStorage } from "@/redux/slices/sessionStorageSlice";
 import getConfig from "next/config";
 import axios from "axios";
+import DepartmentFormModal from "@/components/Forms/DepartmentFormModal";
+import DesignationFormModal from "@/components/Forms/DesignationFormModal";
 
 // Add this CSS class to your global styles or component
 const inputGroupClass =
@@ -56,7 +59,7 @@ const MultiSelect = ({ label, options, value }) => {
   );
 };
 
-const DepartmentSelect = ({ label, options, value, onChange }) => {
+const DepartmentSelect = ({ label, options, value, onChange, onAddDepartment }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -66,7 +69,6 @@ const DepartmentSelect = ({ label, options, value, onChange }) => {
         setIsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -89,9 +91,7 @@ const DepartmentSelect = ({ label, options, value, onChange }) => {
             )}
           </div>
           <svg
-            className={`w-4 h-4 transition-transform ${
-              isOpen ? "rotate-180" : ""
-            }`}
+            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -104,16 +104,22 @@ const DepartmentSelect = ({ label, options, value, onChange }) => {
             />
           </svg>
         </div>
-
         {isOpen && (
-          <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1">
+          <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+            <div
+              className="px-4 py-2.5 cursor-pointer hover:bg-blue-100 text-blue-600 border-b border-gray-100 font-semibold"
+              onClick={() => {
+                setIsOpen(false);
+                if (onAddDepartment) onAddDepartment();
+              }}
+            >
+              + Add Department
+            </div>
             {options.map((department) => (
               <div
                 key={department.departmentId}
                 className={`px-4 py-2.5 cursor-pointer hover:bg-gray-100 ${
-                  value?.departmentId === department.departmentId
-                    ? "bg-blue-50"
-                    : ""
+                  value?.departmentId === department.departmentId ? "bg-blue-50" : ""
                 }`}
                 onClick={() => {
                   onChange(department);
@@ -130,9 +136,14 @@ const DepartmentSelect = ({ label, options, value, onChange }) => {
   );
 };
 
-const DesignationSelect = ({ label, options, value, onChange }) => {
+const DesignationSelect = ({ label, options, value, onChange, onAddDesignation, disabled, placeholder, loading }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Close dropdown if loading starts
+  useEffect(() => {
+    if (loading && isOpen) setIsOpen(false);
+  }, [loading, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -140,32 +151,36 @@ const DesignationSelect = ({ label, options, value, onChange }) => {
         setIsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
-    <div className={inputGroupClass} ref={dropdownRef}>
+    <div className={inputGroupClass + (disabled || loading ? ' opacity-60 pointer-events-none' : '')} ref={dropdownRef}>
       <label className={floatingLabelClass}>{label}</label>
       <div className="relative">
         <div
           className={`${inputClass} flex items-center justify-between cursor-pointer min-h-[42px]`}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            if (!disabled && !loading) setIsOpen(!isOpen);
+          }}
         >
           <div className="flex flex-wrap gap-1 py-1">
-            {value ? (
+            {loading ? (
+              <span className="flex items-center text-blue-500">
+                <FiLoader className="animate-spin w-5 h-5 mr-2" />
+                Loading...
+              </span>
+            ) : value ? (
               <span className="text-gray-700">
                 {typeof value === "object" ? value.name : value}
               </span>
             ) : (
-              <span className="text-gray-500">Select designation</span>
+              <span className="text-gray-500">{placeholder || 'Select designation'}</span>
             )}
           </div>
           <svg
-            className={`w-4 h-4 transition-transform ${
-              isOpen ? "rotate-180" : ""
-            }`}
+            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -178,16 +193,22 @@ const DesignationSelect = ({ label, options, value, onChange }) => {
             />
           </svg>
         </div>
-
-        {isOpen && (
-          <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1">
+        {isOpen && !disabled && !loading && (
+          <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+            <div
+              className="px-4 py-2.5 cursor-pointer hover:bg-blue-100 text-blue-600 border-b border-gray-100 font-semibold"
+              onClick={() => {
+                setIsOpen(false);
+                if (onAddDesignation) onAddDesignation();
+              }}
+            >
+              + Add Designation
+            </div>
             {options.map((designation) => (
               <div
                 key={designation.designationId}
                 className={`px-4 py-2.5 cursor-pointer hover:bg-gray-100 ${
-                  value?.designationId === designation.designationId
-                    ? "bg-blue-50"
-                    : ""
+                  value?.designationId === designation.designationId ? "bg-blue-50" : ""
                 }`}
                 onClick={() => {
                   onChange({
@@ -324,6 +345,9 @@ function EmployeeForm() {
   const [designations, setDesignations] = useState([]);
   const [managers, setManagers] = useState([]);
   const { publicRuntimeConfig } = getConfig();
+  const [showDepartmentModal, setShowDepartmentModal] = useState(false);
+  const [showDesignationModal, setShowDesignationModal] = useState(false);
+  const [isDesignationLoading, setIsDesignationLoading] = useState(false);
 
   // Add department fetch on component mount
   useEffect(() => {
@@ -1041,6 +1065,7 @@ function EmployeeForm() {
   useEffect(() => {
     const fetchDesignations = async () => {
       try {
+        setIsDesignationLoading(true);
         // Get department ID from either object or string format
         const deptId =
           typeof formData.employee.department === "object"
@@ -1049,6 +1074,7 @@ function EmployeeForm() {
 
         if (!deptId) {
           setDesignations([]);
+          setIsDesignationLoading(false);
           return;
         }
 
@@ -1076,6 +1102,8 @@ function EmployeeForm() {
         toast.error(
           error.response?.data?.message || "Failed to fetch designations"
         );
+      } finally {
+        setIsDesignationLoading(false);
       }
     };
 
@@ -1121,6 +1149,110 @@ function EmployeeForm() {
 
     fetchManagers();
   }, [formData.employee.department?.departmentId, publicRuntimeConfig.apiURL]);
+
+  const handleDepartmentAdded = (newDepartment) => {
+    // Refetch departments and select the new one
+    const fetchDepartments = async () => {
+      try {
+        const token = getItemFromSessionStorage("token", null);
+        const companyId = sessionStorage.getItem("currentCompanyId");
+        const response = await axios.get(
+          `${publicRuntimeConfig.apiURL}/departments/company/${companyId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (response.data && Array.isArray(response.data)) {
+          setDepartments(response.data);
+          // Auto-select the new department
+          const created = response.data.find(
+            (d) => d.name === newDepartment.name
+          );
+          if (created) {
+            handleInputChange("employee", "department", {
+              departmentId: created.departmentId,
+              name: created.name,
+            });
+            // Set weekly holidays as read-only weekly offs
+            const weeklyHolidays = created.weeklyHolidays
+              ? created.weeklyHolidays.split(",")
+              : [];
+            handleInputChange("employee", "weeklyOffs", weeklyHolidays);
+            // Clear designation and manager when department changes
+            handleInputChange("employee", "designation", null);
+            handleInputChange("employee", "reportingManager", null);
+          }
+        }
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || "Failed to fetch departments"
+        );
+      }
+    };
+    fetchDepartments();
+  };
+
+  const handleDesignationAdded = (newDesignation) => {
+    // Refetch designations for the selected department and select the new one
+    const fetchDesignationsForDepartment = async () => {
+      try {
+        setIsDesignationLoading(true);
+        // Get department ID from either object or string format
+        const deptId =
+          typeof formData.employee.department === "object"
+            ? formData.employee.department.departmentId
+            : formData.employee.department;
+        if (!deptId) {
+          setDesignations([]);
+          setIsDesignationLoading(false);
+          return;
+        }
+        const token = getItemFromSessionStorage("token", null);
+        const response = await axios.get(
+          `${publicRuntimeConfig.apiURL}/api/designations/department/${deptId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (response.data && Array.isArray(response.data)) {
+          setDesignations(response.data);
+          // Auto-select the new designation (by id or name)
+          let created = null;
+          if (newDesignation.designationId) {
+            created = response.data.find(
+              (d) => d.designationId === newDesignation.designationId
+            );
+          }
+          if (!created) {
+            created = response.data.find(
+              (d) => d.name === newDesignation.name
+            );
+          }
+          if (created) {
+            handleInputChange("employee", "designation", {
+              designationId: created.designationId,
+              name: created.name,
+              manager: created.manager,
+              overtimeEligible: created.overtimeEligible,
+            });
+          }
+        }
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || "Failed to fetch designations"
+        );
+      } finally {
+        setIsDesignationLoading(false);
+      }
+    };
+    fetchDesignationsForDepartment();
+  };
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -1316,18 +1448,10 @@ function EmployeeForm() {
                               type: "email",
                               required: true,
                             },
-                            {
-                              label: "Official Email",
-                              field: "emailOfficial",
-                              type: "email",
-                            },
                           ].map(({ label, field, type, required }) => (
                             <div key={field} className={inputGroupClass}>
                               <label className={floatingLabelClass}>
-                                {label}{" "}
-                                {required && (
-                                  <span className="text-red-400">*</span>
-                                )}
+                                {label} {required && <span className="text-red-400">*</span>}
                               </label>
                               <input
                                 type={type}
@@ -1432,49 +1556,51 @@ function EmployeeForm() {
                                 departmentId: selectedDepartment.departmentId,
                                 name: selectedDepartment.name,
                               });
-
                               // Set weekly holidays as read-only weekly offs
                               const weeklyHolidays =
                                 selectedDepartment.weeklyHolidays
                                   ? selectedDepartment.weeklyHolidays.split(",")
                                   : [];
-                              handleInputChange(
-                                "employee",
-                                "weeklyOffs",
-                                weeklyHolidays
-                              );
-
+                              handleInputChange("employee", "weeklyOffs", weeklyHolidays);
                               // Clear designation and manager when department changes
-                              handleInputChange(
-                                "employee",
-                                "designation",
-                                null
-                              );
-                              handleInputChange(
-                                "employee",
-                                "reportingManager",
-                                null
-                              );
+                              handleInputChange("employee", "designation", null);
+                              handleInputChange("employee", "reportingManager", null);
                             }}
+                            onAddDepartment={() => setShowDepartmentModal(true)}
                           />
                           <DesignationSelect
                             label="Designation"
-                            options={designations}
+                            options={formData.employee.department ? designations : []}
                             value={formData.employee.designation}
                             onChange={(selectedDesignation) =>
                               handleInputChange("employee", "designation", {
-                                designationId:
-                                  selectedDesignation.designationId,
+                                designationId: selectedDesignation.designationId,
                                 name: selectedDesignation.name,
                                 manager: selectedDesignation.manager,
-                                overtimeEligible:
-                                  selectedDesignation.overtimeEligible,
+                                overtimeEligible: selectedDesignation.overtimeEligible,
                               })
                             }
+                            onAddDesignation={() => setShowDesignationModal(true)}
+                            disabled={isDesignationLoading || !formData.employee.department}
+                            placeholder={!formData.employee.department ? 'First Select Department' : 'Select designation'}
+                            loading={isDesignationLoading}
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className={inputGroupClass}>
+                          <label className={floatingLabelClass}>Official Email</label>
+                          <input
+                            type="email"
+                            className={inputClass}
+                            value={formData.employee.emailOfficial || ""}
+                            onChange={(e) =>
+                              handleInputChange("employee", "emailOfficial", e.target.value)
+                            }
+                            placeholder="Enter official email"
+                          />
+                        </div>
+
+                        <div className="grid grid-2 gap-4">
                           {[
                             {
                               label: "Date of Joining",
@@ -2217,6 +2343,23 @@ function EmployeeForm() {
           </div>
         </div>
       )}
+
+      {/* Department Modal */}
+      <DepartmentFormModal
+        isOpen={showDepartmentModal}
+        onClose={() => setShowDepartmentModal(false)}
+        onSuccess={handleDepartmentAdded}
+        companyId={company}
+      />
+
+      {/* Designation Modal */}
+      <DesignationFormModal
+        isOpen={showDesignationModal}
+        onClose={() => setShowDesignationModal(false)}
+        onSuccess={handleDesignationAdded}
+        companyId={company}
+        defaultDepartment={formData.employee.department}
+      />
     </div>
   );
 }

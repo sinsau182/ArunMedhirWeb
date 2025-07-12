@@ -28,7 +28,7 @@ export default function DepartmentFormModal({
   const [form, setForm] = useState({
     name: initialValues.name || "",
     description: initialValues.description || "",
-    head: initialValues.head || "",
+    
     leavePolicy: initialValues.leavePolicy || "",
     weeklyHolidays: initialValues.weeklyHolidays || [],
   });
@@ -45,7 +45,7 @@ export default function DepartmentFormModal({
       setForm({
         name: initialValues.name || "",
         description: initialValues.description || "",
-        head: initialValues.head || "",
+        
         leavePolicy: initialValues.leavePolicy || "",
         weeklyHolidays: initialValues.weeklyHolidays || [],
       });
@@ -97,8 +97,8 @@ export default function DepartmentFormModal({
   const validate = () => {
     const newErrors = {};
     if (!form.name) newErrors.name = "Department name is required";
-    if (!form.leavePolicy) newErrors.leavePolicy = "Leave policy is required";
-    if (!form.head) newErrors.head = "Department head is required";
+    
+    
     if (!form.weeklyHolidays || form.weeklyHolidays.length === 0)
       newErrors.weeklyHolidays = "Weekly holidays are required";
     setErrors(newErrors);
@@ -113,7 +113,7 @@ export default function DepartmentFormModal({
       const departmentData = {
         name: form.name,
         description: form.description || "",
-        departmentHead: form.head,
+        
         leavePolicy: form.leavePolicy.value,
         weeklyHolidays: form.weeklyHolidays.map((d) => d.value).join(","),
         companyId,
@@ -124,7 +124,7 @@ export default function DepartmentFormModal({
       setForm({
         name: "",
         description: "",
-        head: "",
+        
         leavePolicy: "",
         weeklyHolidays: [],
       });
@@ -181,24 +181,10 @@ export default function DepartmentFormModal({
               onChange={handleChange}
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Department Head <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="head"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter department head name"
-              value={form.head}
-              onChange={handleChange}
-              required
-            />
-            {errors.head && <div className="text-red-500 text-xs mt-1">{errors.head}</div>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Leave Policy <span className="text-red-500">*</span>
+              Leave Policy <span className="text-red-500"></span>
             </label>
             <Select
               name="leavePolicy"

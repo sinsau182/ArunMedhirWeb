@@ -401,7 +401,9 @@ function EmployeeForm() {
 
   const [formData, setFormData] = useState({
     employee: {
-      name: "",
+      firstName: "",
+      middleName: "",
+      lastName: "",
       fathersName: "",
       gender: "",
       phone: "",
@@ -464,8 +466,9 @@ function EmployeeForm() {
           ...prevFormData,
           employee: {
             ...prevFormData.employee,
-            employeeId: parsedEmployee.employeeId || "",
-            name: parsedEmployee.name || "",
+            firstName: parsedEmployee.firstName || "",
+            middleName: parsedEmployee.middleName || "",
+            lastName: parsedEmployee.lastName || "",
             fathersName: parsedEmployee.fathersName || "",
             gender: parsedEmployee.gender || "",
             phone: parsedEmployee.phone || "",
@@ -685,8 +688,11 @@ function EmployeeForm() {
       const errors = {};
 
       // Basic required fields that must always be present
-      if (!formData.employee.name?.trim()) {
-        errors.name = "Employee name is required";
+      if (!formData.employee.firstName?.trim()) {
+        errors.firstName = "First name is required";
+      }
+      if (!formData.employee.lastName?.trim()) {
+        errors.lastName = "Last name is required";
       }
       if (!formData.employee.phone?.trim()) {
         errors.phone = "Phone number is required";
@@ -731,7 +737,9 @@ function EmployeeForm() {
 
       // Prepare form data with only filled fields
       const baseEmployeeData = {
-        name: formData.employee.name?.trim(),
+        firstName: formData.employee.firstName?.trim(),
+        middleName: formData.employee.middleName?.trim(),
+        lastName: formData.employee.lastName?.trim(),
         phone: formData.employee.phone?.trim(),
         joiningDate: formData.employee.joiningDate,
         department: formData.employee.department?.departmentId,
@@ -969,7 +977,8 @@ function EmployeeForm() {
   // Move these functions before the sections array definition
   const checkPersonalDetailsCompletion = () => {
     const requiredFields = [
-      "name",
+      "firstName",
+      "lastName",
       "phone",
       "joiningDate",
       "department",
@@ -1342,25 +1351,63 @@ function EmployeeForm() {
                           Personal Information
                         </h3>
 
-                        <div className={inputGroupClass}>
-                          <label className={floatingLabelClass}>
-                            Employee Name{" "}
-                            <span className="text-red-400">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            className={inputClass}
-                            value={formData.employee.name || ""}
-                            onChange={(e) =>
-                              handleInputChange(
-                                "employee",
-                                "name",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Enter employee name"
-                          />
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className={inputGroupClass}>
+                            <label className={floatingLabelClass}>
+                              First Name <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              className={inputClass}
+                              value={formData.employee.firstName || ""}
+                              onChange={(e) =>
+                                handleInputChange(
+                                  "employee",
+                                  "firstName",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Enter first name"
+                            />
+                          </div>
+                          <div className={inputGroupClass}>
+                            <label className={floatingLabelClass}>
+                              Middle Name
+                            </label>
+                            <input
+                              type="text"
+                              className={inputClass}
+                              value={formData.employee.middleName || ""}
+                              onChange={(e) =>
+                                handleInputChange(
+                                  "employee",
+                                  "middleName",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Enter middle name (optional)"
+                            />
+                          </div>
+                          <div className={inputGroupClass}>
+                            <label className={floatingLabelClass}>
+                              Last Name <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              className={inputClass}
+                              value={formData.employee.lastName || ""}
+                              onChange={(e) =>
+                                handleInputChange(
+                                  "employee",
+                                  "lastName",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Enter last name"
+                            />
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -1600,7 +1647,7 @@ function EmployeeForm() {
                           />
                         </div>
 
-                        <div className="grid grid-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                           {[
                             {
                               label: "Date of Joining",
@@ -1618,9 +1665,8 @@ function EmployeeForm() {
                               </label>
                               <input
                                 type={type || "text"}
-                                className={`${inputClass} ${
-                                  type === "date" ? "py-[0.4rem] px-3" : ""
-                                }`}
+                                className={`${inputClass} ${type === "date" ? "py-[0.4rem] px-3" : ""
+                                  }`}
                                 value={formData.employee[field] || ""}
                                 onChange={(e) =>
                                   handleInputChange(

@@ -141,7 +141,10 @@ const companiesSlice = createSlice({
         state.err = action.payload; // Use `action.payload` for custom error messages
       })
       .addCase(createCompany.fulfilled, (state, action) => {
-        state.companies.push(action.payload);
+        // Add the new company to the list
+        if (action.payload && action.payload.companyId) {
+          state.companies.push(action.payload);
+        }
       })
       .addCase(updateCompany.fulfilled, (state, action) => {
         const index = state.companies.findIndex(

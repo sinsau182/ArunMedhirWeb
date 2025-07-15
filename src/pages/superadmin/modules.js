@@ -192,7 +192,9 @@ function SuperadminModules() {
   // Add new state for Add Admin modal
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [newAdminData, setNewAdminData] = useState({
-    name: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     email: "",
     phone: "",
     companyId: "",
@@ -200,13 +202,18 @@ function SuperadminModules() {
 
   // Add handleAddAdmin function
   const handleAddAdmin = async () => {
-    if (
-      !newAdminData.name ||
-      !newAdminData.email ||
-      !newAdminData.phone ||
-      !newAdminData.companyId
-    ) {
-      toast.error("Please fill in all fields");
+    if (!newAdminData.firstName || !newAdminData.lastName) {
+      toast.error("First name and last name are required");
+      return;
+    }
+
+    if (!newAdminData.email || !newAdminData.phone) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!newAdminData.companyId) {
+      toast.error("No company selected. Please select a company in the module form first.");
       return;
     }
 
@@ -231,7 +238,9 @@ function SuperadminModules() {
 
       // Add employee data as a JSON string
       const employeeData = {
-        name: newAdminData.name.trim(),
+        firstName: newAdminData.firstName.trim(),
+        middleName: newAdminData.middleName.trim(),
+        lastName: newAdminData.lastName.trim(),
         emailPersonal: newAdminData.email.trim(),
         phone: newAdminData.phone.replace(/\D/g, ""),
         companyId: newAdminData.companyId,
@@ -246,7 +255,9 @@ function SuperadminModules() {
 
       // Reset form and close modal
       setNewAdminData({
-        name: "",
+        firstName: "",
+        middleName: "",
+        lastName: "",
         email: "",
         phone: "",
         companyId: "",
@@ -587,7 +598,18 @@ function SuperadminModules() {
                     <div className="sticky top-0 bg-white border-b border-gray-200">
                       <button
                         key="add-admin-button"
-                        onClick={() => setIsAddAdminModalOpen(true)}
+                        onClick={() => {
+                          // Auto-select the company from the module form
+                          setNewAdminData({
+                            firstName: "",
+                            middleName: "",
+                            lastName: "",
+                            email: "",
+                            phone: "",
+                            companyId: selectedCompany || "",
+                          });
+                          setIsAddAdminModalOpen(true);
+                        }}
                         className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
                       >
                         <UserPlus size={16} />
@@ -764,7 +786,9 @@ function SuperadminModules() {
         onClose={() => {
           setIsAddAdminModalOpen(false);
           setNewAdminData({
-            name: "",
+            firstName: "",
+            middleName: "",
+            lastName: "",
             email: "",
             phone: "",
             companyId: "",
@@ -776,7 +800,7 @@ function SuperadminModules() {
             <h2 className="text-2xl font-bold text-gray-800">Add New Admin</h2>
           </div>
 
-          {/* Company Selection */}
+          {/* Company Selection - Auto-selected from module context */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Company <span className="text-red-500">*</span>
@@ -818,19 +842,52 @@ function SuperadminModules() {
             </Select>
           </div>
 
-          {/* Admin Name */}
+          {/* Admin Name Fields */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Name <span className="text-red-500">*</span>
             </label>
-            <Input
-              placeholder="Enter admin name"
-              value={newAdminData.name}
-              onChange={(e) =>
-                setNewAdminData((prev) => ({ ...prev, name: e.target.value }))
-              }
-              className="bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2"
-            />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  placeholder="Enter first name"
+                  value={newAdminData.firstName}
+                  onChange={(e) =>
+                    setNewAdminData((prev) => ({ ...prev, firstName: e.target.value }))
+                  }
+                  className="bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Middle Name
+                </label>
+                <Input
+                  placeholder="Enter middle name (optional)"
+                  value={newAdminData.middleName}
+                  onChange={(e) =>
+                    setNewAdminData((prev) => ({ ...prev, middleName: e.target.value }))
+                  }
+                  className="bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  placeholder="Enter last name"
+                  value={newAdminData.lastName}
+                  onChange={(e) =>
+                    setNewAdminData((prev) => ({ ...prev, lastName: e.target.value }))
+                  }
+                  className="bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Admin Email */}
@@ -872,7 +929,9 @@ function SuperadminModules() {
               onClick={() => {
                 setIsAddAdminModalOpen(false);
                 setNewAdminData({
-                  name: "",
+                  firstName: "",
+                  middleName: "",
+                  lastName: "",
                   email: "",
                   phone: "",
                   companyId: "",

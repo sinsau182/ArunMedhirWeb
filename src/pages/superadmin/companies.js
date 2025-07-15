@@ -13,7 +13,7 @@ import {
   Table,
 } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
-import { Search, UserPlus, Trash, Edit } from "lucide-react";
+import { Search, UserPlus, Trash, Edit, ChevronDown, User } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import withAuth from "@/components/withAuth";
@@ -37,6 +37,17 @@ function SuperadminCompanies() {
     regAdd: "",
   });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // Company Head related states
+  const [isCompanyHeadModalOpen, setIsCompanyHeadModalOpen] = useState(false);
+  const [companyHeadData, setCompanyHeadData] = useState({
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+  });
+  const [companyHeadError, setCompanyHeadError] = useState("");
 
   const dispatch = useDispatch();
   const { companies, loading, err } = useSelector((state) => state.companies);
@@ -79,7 +90,26 @@ function SuperadminCompanies() {
       setCompanyData({
         ...company,
         colorCode: company.colorCode || "", // Ensure colorCode is included
+        companyHead: company.companyHead || null, // Include company head data
       });
+      // Pre-fill companyHeadData for editing
+      if (company.companyHead) {
+        setCompanyHeadData({
+          firstName: company.companyHead.firstName || "",
+          middleName: company.companyHead.middleName || "",
+          lastName: company.companyHead.lastName || "",
+          email: company.companyHead.email || "",
+          phone: company.companyHead.phone || "",
+        });
+      } else {
+        setCompanyHeadData({
+          firstName: "",
+          middleName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+        });
+      }
     } else {
       setIsEditing(false); // Reset to adding mode
       setCompanyData({
@@ -89,6 +119,14 @@ function SuperadminCompanies() {
         gst: "",
         regAdd: "",
         colorCode: "", // Initialize colorCode for new companies
+        companyHead: null, // Initialize company head
+      });
+      setCompanyHeadData({
+        firstName: "",
+        middleName: "",
+        lastName: "",
+        email: "",
+        phone: "",
       });
     }
     setIsCompanyModalOpen(true);
@@ -161,17 +199,29 @@ function SuperadminCompanies() {
     setError("");
 
     try {
+      // Prepare company data with company head
+      const companyDataToSend = {
+        ...companyData,
+        companyHead: companyData.companyHead ? {
+          firstName: companyData.companyHead.firstName,
+          middleName: companyData.companyHead.middleName,
+          lastName: companyData.companyHead.lastName,
+          email: companyData.companyHead.email,
+          phone: companyData.companyHead.phone,
+        } : null
+      };
+
       if (isEditing) {
         // Dispatch update action with Redux
         await dispatch(
           updateCompany({ 
             id: selectedCompany.companyId, // Handle both id formats
-            updatedData: companyData 
+            updatedData: companyDataToSend 
           })
         );
         toast.success("Company updated successfully!");
       } else {
-        const result = await dispatch(createCompany(companyData));
+        const result = await dispatch(createCompany(companyDataToSend));
 
         if (createCompany.fulfilled.match(result)) {
           toast.success("Company created successfully!");
@@ -216,6 +266,105 @@ function SuperadminCompanies() {
   const handleColorChange = (color) => {
     setCompanyData((prevData) => ({ ...prevData, colorCode: color }));
   };
+
+  // Company Head related functions
+  const handleOpenCompanyHeadModal = () => {
+    if (companyData.companyHead) {
+      setCompanyHeadData({
+        firstName: companyData.companyHead.firstName || "",
+        middleName: companyData.companyHead.middleName || "",
+        lastName: companyData.companyHead.lastName || "",
+        email: companyData.companyHead.email || "",
+        phone: companyData.companyHead.phone || "",
+      });
+    } else {
+      setCompanyHeadData({
+        firstName: "",
+        middleName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+      });
+    }
+    setCompanyHeadError("");
+    setIsCompanyHeadModalOpen(true);
+  };
+
+  const handleCompanyHeadInputChange = (e) => {
+    const { name, value } = e.target;
+    setCompanyHeadData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const validateCompanyHeadData = () => {
+    if (!companyHeadData.firstName?.trim()) {
+      setCompanyHeadError("First Name is required");
+      return false;
+    }
+    if (!companyHeadData.lastName?.trim()) {
+      setCompanyHeadError("Last Name is required");
+      return false;
+    }
+    if (!companyHeadData.email?.trim()) {
+      setCompanyHeadError("Email is required");
+      return false;
+    }
+    if (!companyHeadData.phone?.trim()) {
+      setCompanyHeadError("Phone is required");
+      return false;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(companyHeadData.email)) {
+      setCompanyHeadError("Please enter a valid email address");
+      return false;
+    }
+    
+    // Validate phone format (10 digits)
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(companyHeadData.phone)) {
+      setCompanyHeadError("Please enter a valid 10-digit phone number");
+      return false;
+    }
+    
+    setCompanyHeadError("");
+    return true;
+  };
+
+  const handleSaveCompanyHead = () => {
+    if (validateCompanyHeadData()) {
+      setCompanyData((prevData) => ({
+        ...prevData,
+        companyHead: {
+          firstName: companyHeadData.firstName.trim(),
+          middleName: companyHeadData.middleName.trim(),
+          lastName: companyHeadData.lastName.trim(),
+          email: companyHeadData.email,
+          phone: companyHeadData.phone,
+        },
+      }));
+      setIsCompanyHeadModalOpen(false);
+      setIsDropdownOpen(false);
+      toast.success("Company Head added successfully!");
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isDropdownOpen && !event.target.closest('.dropdown-container')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   return (
     <div className="bg-white text-[#4a4a4a] max-h-screen">
@@ -412,6 +561,60 @@ function SuperadminCompanies() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Company Head
+              </label>
+              <div className="relative dropdown-container">
+                <div
+                  className="flex items-center justify-between w-full p-3 bg-gray-100 text-[#4a4a4a] border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <div className="flex items-center space-x-2">
+                    <User size={16} className="text-gray-500" />
+                    <span>
+                      {companyData.companyHead 
+                        ? [companyData.companyHead.firstName, companyData.companyHead.middleName, companyData.companyHead.lastName].filter(Boolean).join(" ")
+                        : "Select Company Head"
+                      }
+                    </span>
+                  </div>
+                  <ChevronDown 
+                    size={16} 
+                    className={`text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                  />
+                </div>
+                
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+                    <div
+                      className="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+                      onClick={handleOpenCompanyHeadModal}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <UserPlus size={16} className="text-green-600" />
+                        <span className="text-green-600 font-medium">{companyData.companyHead ? "Edit Company Head" : "Add Company Head"}</span>
+                      </div>
+                    </div>
+                    {companyData.companyHead && (
+                      <div
+                        className="p-3 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => {
+                          setCompanyData((prevData) => ({ ...prevData, companyHead: null }));
+                          setIsDropdownOpen(false);
+                        }}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Trash size={16} className="text-red-600" />
+                          <span className="text-red-600">Remove Company Head</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Choose Company Color <span className="text-red-500">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
@@ -527,6 +730,142 @@ function SuperadminCompanies() {
               Cancel
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Company Head Modal */}
+      <Modal
+        isOpen={isCompanyHeadModalOpen}
+        onClose={() => {
+          setIsCompanyHeadModalOpen(false);
+          setCompanyHeadError("");
+          setCompanyHeadData({
+            firstName: "",
+            middleName: "",
+            lastName: "",
+            email: "",
+            phone: "",
+          });
+        }}
+      >
+        <div className="p-6 bg-gray-200 text-[#4a4a4a] rounded-lg flex flex-col items-center justify-center">
+          <div className="relative w-full flex justify-center -mt-4">
+            <h2 className="text-2xl font-thin tracking-wide">
+              {companyData.companyHead ? "Edit Company Head" : "Add Company Head"}
+            </h2>
+            <button
+              onClick={() => {
+                setIsCompanyHeadModalOpen(false);
+                setCompanyHeadError("");
+                setCompanyHeadData({
+                  firstName: "",
+                  middleName: "",
+                  lastName: "",
+                  email: "",
+                  phone: "",
+                });
+              }}
+              className="absolute right-0 text-gray-500 hover:text-gray-800 mt-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+          <div className="w-full space-y-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    First Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    name="firstName"
+                    value={companyHeadData.firstName}
+                    onChange={handleCompanyHeadInputChange}
+                    placeholder="Enter first name"
+                    className="bg-gray-100 text-[#4a4a4a] border border-gray-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Middle Name
+                  </label>
+                  <Input
+                    name="middleName"
+                    value={companyHeadData.middleName}
+                    onChange={handleCompanyHeadInputChange}
+                    placeholder="Enter middle name (optional)"
+                    className="bg-gray-100 text-[#4a4a4a] border border-gray-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Last Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    name="lastName"
+                    value={companyHeadData.lastName}
+                    onChange={handleCompanyHeadInputChange}
+                    placeholder="Enter last name"
+                    className="bg-gray-100 text-[#4a4a4a] border border-gray-300"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="headEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="headEmail"
+                name="email"
+                type="email"
+                value={companyHeadData.email}
+                onChange={handleCompanyHeadInputChange}
+                placeholder="Enter email address"
+                className="bg-gray-100 text-[#4a4a4a] border border-gray-300"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="headPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                Phone <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="headPhone"
+                name="phone"
+                value={companyHeadData.phone}
+                onChange={handleCompanyHeadInputChange}
+                placeholder="Enter phone number"
+                className="bg-gray-100 text-[#4a4a4a] border border-gray-300"
+              />
+            </div>
+          </div>
+          
+          {companyHeadError && <p className="text-red-600 mt-2">{companyHeadError}</p>}
+          
+          <Button
+            onClick={handleSaveCompanyHead}
+            className="mt-6 bg-green-600 text-white"
+          >
+            Add Company Head
+          </Button>
         </div>
       </Modal>
     </div>

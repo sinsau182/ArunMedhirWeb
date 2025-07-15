@@ -743,7 +743,10 @@ const OdooDetailBody = ({
               {activeTab === "activity" && (
                 <div className="relative">
                   {/* Single vertical line for the whole timeline, connecting all circles */}
-                  <div className="absolute left-5 top-0 w-1 h-full bg-gray-200 z-0" style={{ borderRadius: '1px' }} />
+                  <div
+                    className="absolute left-5 top-0 w-1 h-full bg-gray-200 z-0"
+                    style={{ borderRadius: "1px" }}
+                  />
                   <ul className="">
                     {activities.length === 0 && (
                       <li className="text-center text-gray-400 py-4">
@@ -783,20 +786,34 @@ const OdooDetailBody = ({
                         }
 
                         return (
-                          <li key={activity.id} className="flex items-start mb-8 relative" style={{ minHeight: '48px' }}>
+                          <li
+                            key={activity.id}
+                            className="flex items-start mb-8 relative"
+                            style={{ minHeight: "48px" }}
+                          >
                             {/* Marker column: line and dot perfectly aligned */}
-                            <div className="relative flex flex-col items-center" style={{ width: '40px', minWidth: '40px' }}>
-                              <span className={`z-10 flex items-center justify-center rounded-full border-2 w-7 h-7 ${dotClass}`} style={{ left: '0px' }}>{icon}</span>
+                            <div
+                              className="relative flex flex-col items-center"
+                              style={{ width: "40px", minWidth: "40px" }}
+                            >
+                              <span
+                                className={`z-10 flex items-center justify-center rounded-full border-2 w-7 h-7 ${dotClass}`}
+                                style={{ left: "0px" }}
+                              >
+                                {icon}
+                              </span>
                             </div>
                             {/* Timeline content */}
                             <div className="flex-1 pl-2">
                               {/* Activity type label for success only */}
                               {activityTypeLabel && (
-                                <span className="text-xs font-semibold text-green-600 mb-0.5 block">{activityTypeLabel}</span>
+                                <span className="text-xs font-semibold text-green-600 mb-0.5 block">
+                                  {activityTypeLabel}
+                                </span>
                               )}
                               <span className="font-semibold text-gray-900 ml-2">
-                                  {activity.title}
-                                </span>
+                                {activity.title}
+                              </span>
                               <div className="text-xs text-gray-500 mb-2">
                                 {activity.dueDate
                                   ? new Date(
@@ -810,7 +827,8 @@ const OdooDetailBody = ({
                               </div>
                               {activity.notes && (
                                 <div className="text-sm">
-                                  <span className="font-semibold">Notes:</span> {activity.notes}
+                                  <span className="font-semibold">Notes:</span>{" "}
+                                  {activity.notes}
                                 </div>
                               )}
                             </div>
@@ -894,207 +912,107 @@ const OdooDetailBody = ({
                     lead.initialQuote ||
                     lead.projectTimeline ? (
                       <>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                        {/* <h3 className="text-2xl font-bold text-gray-900 mb-2">
                           Status Details
-                        </h3>
-                        <div className="border-b border-gray-200 mb-6"></div>
-
-                        {/* Conversion Details Form - Hardcoded Display */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        </h3> */}
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                            {lead.stageName}
+                          </h3>
+                        </div>
+                        <div style={{ marginBottom: "1.5rem" }} />
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "1.5rem",
+                          }}
+                        >
+                          <div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Initial Quoted Amount
-                              </label>
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                  ₹
-                                </span>
-                                <input
-                                  type="text"
-                                  value={
-                                    lead.initialQuote || lead.quotedAmount || ""
-                                  }
-                                  readOnly
-                                  className="pl-9 pr-3 py-2 block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800"
-                                  placeholder="Enter initial quoted amount"
-                                />
-                              </div>
+                              <strong>Initial Quoted Amount:</strong> ₹{" "}
+                              {lead.initialQuote || lead.quotedAmount || "N/A"}
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Final Quotation (₹) *
-                              </label>
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                  ₹
-                                </span>
-                                <input
-                                  type="text"
-                                  value={lead.finalQuotation || ""}
-                                  readOnly
-                                  className="pl-9 pr-3 py-2 block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800"
-                                  required
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Sign-up Amount (₹) *
-                            </label>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                ₹
-                              </span>
-                              <input
-                                type="text"
-                                value={lead.signupAmount || ""}
-                                readOnly
-                                className="pl-9 pr-3 py-2 block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800"
-                                required
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Payment Date
-                              </label>
-                              <input
-                                type="text"
-                                value={lead.paymentDate || ""}
-                                readOnly
-                                className="block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800 py-2 px-3"
-                              />
+                              <strong>Final Quotation:</strong> ₹{" "}
+                              {lead.finalQuotation || "N/A"}
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Payment Mode
-                              </label>
-                              <select
-                                value={lead.paymentMode || ""}
-                                disabled
-                                className="block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800 py-2 px-3"
-                              >
-                                <option value="">Select Payment Mode</option>
-                                <option value="UPI">UPI</option>
-                                <option value="Debit Card">Debit Card</option>
-                                <option value="Credit Card">Credit Card</option>
-                                <option value="IMPS/NEFT">IMPS/NEFT</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Payment Transaction ID
-                            </label>
-                            <input
-                              type="text"
-                              value={lead.paymentTransactionId || ""}
-                              readOnly
-                              className="block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800 py-2 px-3"
-                              placeholder="Enter transaction ID"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                PAN Number
-                              </label>
-                              <input
-                                type="text"
-                                value={lead.panNumber || ""}
-                                readOnly
-                                className="block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800 py-2 px-3"
-                              />
+                              <strong>Sign-up Amount:</strong> ₹{" "}
+                              {lead.signupAmount || "N/A"}
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Project Timeline
-                              </label>
-                              <input
-                                type="text"
-                                value={lead.projectTimeline || ""}
-                                readOnly
-                                className="block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800 py-2 px-3"
-                                placeholder="e.g., 6 Months, Jan-Mar 2025"
-                              />
+                              <strong>PAN Number:</strong>{" "}
+                              {lead.panNumber || "N/A"}
                             </div>
-                          </div>
-
-                          <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Discount (Optional)
-                            </label>
-                            <input
-                              type="text"
-                              value={lead.discount || ""}
-                              readOnly
-                              className="block w-full rounded-md border border-gray-300 bg-gray-50 text-gray-800 py-2 px-3"
-                              placeholder="e.g., 10% or 5000"
-                            />
-                          </div>
-
-                          <hr className="my-6" />
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Upload Payment Proof
-                              </label>
+                              <strong>Discount:</strong>{" "}
+                              {lead.discount || "N/A"}
+                            </div>
+                            <div>
+                              <strong>Payment Proof:</strong>{" "}
                               {lead.paymentDetailsFileName ? (
-                                <div className="flex items-center gap-2 bg-gray-100 p-3 rounded border">
-                                  <svg
-                                    className="text-red-600 text-2xl"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                  <span className="truncate">
-                                    {lead.paymentDetailsFileName}
+                                <a
+                                  href={lead.paymentDetailsFileName}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <span style={{ wordBreak: "break-all" }}>
+                                    {(() => {
+                                      const name = lead.paymentDetailsFileName
+                                        .split("/")
+                                        .pop();
+                                      return (
+                                        name.split("_").slice(2).join("_") ||
+                                        name
+                                      );
+                                    })()}
                                   </span>
-                                </div>
+                                </a>
                               ) : (
-                                <div className="text-gray-400 text-sm">
-                                  No file uploaded
-                                </div>
+                                "No file uploaded"
                               )}
                             </div>
+                          </div>
+                          <div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Upload Booking Form
-                              </label>
+                              <strong>Payment Date:</strong>{" "}
+                              {lead.paymentDate || "N/A"}
+                            </div>
+                            <div>
+                              <strong>Payment Mode:</strong>{" "}
+                              {lead.paymentMode || "N/A"}
+                            </div>
+                            <div>
+                              <strong>Payment Transaction ID:</strong>{" "}
+                              {lead.paymentTransactionId || "N/A"}
+                            </div>
+                            <div>
+                              <strong>Project Timeline:</strong>{" "}
+                              {lead.projectTimeline || "N/A"}
+                            </div>
+                            <div>
+                              <strong>Booking Form:</strong>{" "}
                               {lead.bookingFormFileName ? (
-                                <div className="flex items-center gap-2 bg-gray-100 p-3 rounded border">
-                                  <svg
-                                    className="text-red-600 text-2xl"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                  <span className="truncate">
-                                    {lead.bookingFormFileName}
+                                <a
+                                  href={lead.bookingFormFileName}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <span style={{ wordBreak: "break-all" }}>
+                                    {(() => {
+                                      const name = lead.bookingFormFileName
+                                        .split("/")
+                                        .pop();
+                                      return (
+                                        name.split("_").slice(2).join("_") ||
+                                        name
+                                      );
+                                    })()}
                                   </span>
-                                </div>
+                                </a>
                               ) : (
-                                <div className="text-gray-400 text-sm">
-                                  No file uploaded
-                                </div>
+                                "No file uploaded"
                               )}
                             </div>
                           </div>
@@ -1155,51 +1073,64 @@ const OdooDetailBody = ({
               )}
               {activeTab === "history" && (
                 <div className="relative">
-                    {(() => {
-                      const activityMap = new Map();
-                      const specialEvents = [];
-                      activityLogs
-                        .slice()
-                      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                        .forEach((log) => {
-                          const action = (log.action || "").toLowerCase();
-                          if (
-                            action === "stage changed" ||
-                            action === "pipeline changed" ||
-                            action === "activity deleted"
-                          ) {
-                            specialEvents.push(log);
-                          } else if (log.activityId) {
-                            if (!activityMap.has(log.activityId)) {
-                              activityMap.set(log.activityId, log);
-                            } else {
-                              const existing = activityMap.get(log.activityId);
-                              if (
-                                existing.action !== "Activity completed" &&
-                                log.action === "Activity completed"
-                              ) {
-                                activityMap.set(log.activityId, log);
-                              }
-                            }
+                  {(() => {
+                    const activityMap = new Map();
+                    const specialEvents = [];
+                    activityLogs
+                      .slice()
+                      .sort(
+                        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+                      )
+                      .forEach((log) => {
+                        const action = (log.action || "").toLowerCase();
+                        if (
+                          action === "stage changed" ||
+                          action === "pipeline changed" ||
+                          action === "activity deleted"
+                        ) {
+                          specialEvents.push(log);
+                        } else if (log.activityId) {
+                          if (!activityMap.has(log.activityId)) {
+                            activityMap.set(log.activityId, log);
                           } else {
-                            specialEvents.push(log);
+                            const existing = activityMap.get(log.activityId);
+                            if (
+                              existing.action !== "Activity completed" &&
+                              log.action === "Activity completed"
+                            ) {
+                              activityMap.set(log.activityId, log);
+                            }
                           }
-                        });
-                      const merged = [
-                        ...specialEvents,
-                        ...Array.from(activityMap.values()),
-                    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                    const visibleHistory = showAllHistory ? merged : merged.slice(0, HISTORY_LIMIT);
+                        } else {
+                          specialEvents.push(log);
+                        }
+                      });
+                    const merged = [
+                      ...specialEvents,
+                      ...Array.from(activityMap.values()),
+                    ].sort(
+                      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+                    );
+                    const visibleHistory = showAllHistory
+                      ? merged
+                      : merged.slice(0, HISTORY_LIMIT);
                     return (
                       <div className="">
                         {/* Timeline vertical line, absolutely positioned in marker column */}
-                        <div className="absolute top-0 left-5 w-1 h-full bg-gray-200 z-0" style={{ borderRadius: '1px' }} />
+                        <div
+                          className="absolute top-0 left-5 w-1 h-full bg-gray-200 z-0"
+                          style={{ borderRadius: "1px" }}
+                        />
                         {visibleHistory.map((log, idx) => {
                           // Activity type label logic
                           let activityTypeLabel = log.activityType || "";
                           if (
-                            ((log.action && log.action.toLowerCase().includes("created")) ||
-                              (log.activityType && log.activityType.toLowerCase().includes("created"))) &&
+                            ((log.action &&
+                              log.action.toLowerCase().includes("created")) ||
+                              (log.activityType &&
+                                log.activityType
+                                  .toLowerCase()
+                                  .includes("created"))) &&
                             log.activityType &&
                             log.activityType.toLowerCase() !== "created"
                           ) {
@@ -1207,81 +1138,158 @@ const OdooDetailBody = ({
                           }
 
                           // Main text is always the activity title or fallback
-                          let mainText = log.metadata?.activityTitle || log.details || log.action || "Activity";
-                          if (log.action && log.action.toLowerCase() === "stage changed") {
-                            if (log.metadata && log.metadata.oldStage && log.metadata.newStage) {
+                          let mainText =
+                            log.metadata?.activityTitle ||
+                            log.details ||
+                            log.action ||
+                            "Activity";
+                          if (
+                            log.action &&
+                            log.action.toLowerCase() === "stage changed"
+                          ) {
+                            if (
+                              log.metadata &&
+                              log.metadata.oldStage &&
+                              log.metadata.newStage
+                            ) {
                               mainText = `${log.metadata.oldStage} → ${log.metadata.newStage}`;
-                        } else {
+                            } else {
                               mainText = log.details || "Stage Changed";
                             }
-                          } else if (log.action && log.action.toLowerCase() === "pipeline changed") {
-                            if (log.metadata && log.metadata.oldPipeline && log.metadata.newPipeline) {
+                          } else if (
+                            log.action &&
+                            log.action.toLowerCase() === "pipeline changed"
+                          ) {
+                            if (
+                              log.metadata &&
+                              log.metadata.oldPipeline &&
+                              log.metadata.newPipeline
+                            ) {
                               mainText = `${log.metadata.oldPipeline} → ${log.metadata.newPipeline}`;
                             } else {
                               mainText = log.details || "Pipeline Changed";
                             }
-                          } else if (log.action && log.action.toLowerCase() === "activity completed") {
-                            mainText = log.metadata?.activityTitle || log.details || "Activity Completed";
-                          } else if (log.action && log.action.toLowerCase() === "activity deleted") {
-                            mainText = log.metadata?.activityTitle || log.details || "Activity Deleted";
+                          } else if (
+                            log.action &&
+                            log.action.toLowerCase() === "activity completed"
+                          ) {
+                            mainText =
+                              log.metadata?.activityTitle ||
+                              log.details ||
+                              "Activity Completed";
+                          } else if (
+                            log.action &&
+                            log.action.toLowerCase() === "activity deleted"
+                          ) {
+                            mainText =
+                              log.metadata?.activityTitle ||
+                              log.details ||
+                              "Activity Deleted";
                           }
 
                           // Dot color and icon logic
                           let dotColor = "bg-blue-100 border-blue-500";
-                          let icon = <FaInfo className="text-blue-500 w-3.5 h-3.5" />;
-                          if (log.action && log.action.toLowerCase() === "activity completed") {
+                          let icon = (
+                            <FaInfo className="text-blue-500 w-3.5 h-3.5" />
+                          );
+                          if (
+                            log.action &&
+                            log.action.toLowerCase() === "activity completed"
+                          ) {
                             dotColor = "bg-green-100 border-green-500";
-                            icon = <FaCheck className="text-green-500 w-3.5 h-3.5" />;
-                          } else if (log.action && log.action.toLowerCase() === "activity deleted") {
+                            icon = (
+                              <FaCheck className="text-green-500 w-3.5 h-3.5" />
+                            );
+                          } else if (
+                            log.action &&
+                            log.action.toLowerCase() === "activity deleted"
+                          ) {
                             dotColor = "bg-red-100 border-red-500";
-                            icon = <FaTimes className="text-red-500 w-3.5 h-3.5" />;
+                            icon = (
+                              <FaTimes className="text-red-500 w-3.5 h-3.5" />
+                            );
                           } else if (
                             log.action &&
                             (log.action.toLowerCase() === "stage changed" ||
                               log.action.toLowerCase() === "pipeline changed")
                           ) {
                             dotColor = "bg-blue-100 border-blue-500";
-                            icon = <FaArrowRight className="text-blue-500 w-3.5 h-3.5" />;
+                            icon = (
+                              <FaArrowRight className="text-blue-500 w-3.5 h-3.5" />
+                            );
                           } else if (
-                            (log.action && log.action.toLowerCase().includes("created")) ||
-                            (log.activityType && log.activityType.toLowerCase().includes("created"))
+                            (log.action &&
+                              log.action.toLowerCase().includes("created")) ||
+                            (log.activityType &&
+                              log.activityType
+                                .toLowerCase()
+                                .includes("created"))
                           ) {
                             dotColor = "bg-blue-100 border-blue-500";
-                            icon = <FaRegClock className="text-blue-500 w-3.5 h-3.5" />;
+                            icon = (
+                              <FaRegClock className="text-blue-500 w-3.5 h-3.5" />
+                            );
                           }
 
-                        return (
-                            <div key={log.id} className="flex items-start mb-8 relative" style={{ minHeight: '48px' }}>
+                          return (
+                            <div
+                              key={log.id}
+                              className="flex items-start mb-8 relative"
+                              style={{ minHeight: "48px" }}
+                            >
                               {/* Marker column: line and dot perfectly aligned */}
-                              <div className="relative flex flex-col items-center" style={{ width: '40px', minWidth: '40px' }}>
-                                <span className={`z-10 flex items-center justify-center rounded-full border-2 w-7 h-7 ${dotColor}`} style={{ left: '0px' }}>{icon}</span>
+                              <div
+                                className="relative flex flex-col items-center"
+                                style={{ width: "40px", minWidth: "40px" }}
+                              >
+                                <span
+                                  className={`z-10 flex items-center justify-center rounded-full border-2 w-7 h-7 ${dotColor}`}
+                                  style={{ left: "0px" }}
+                                >
+                                  {icon}
+                                </span>
                               </div>
                               {/* Timeline content */}
                               <div className="flex-1 pl-2">
                                 {/* Activity type label if present */}
                                 {activityTypeLabel && (
-                                  <span className={`text-xs font-semibold mb-0.5 block ${getActivityTypeColor(log.activityType)}`}>{activityTypeLabel}</span>
+                                  <span
+                                    className={`text-xs font-semibold mb-0.5 block ${getActivityTypeColor(
+                                      log.activityType
+                                    )}`}
+                                  >
+                                    {activityTypeLabel}
+                                  </span>
                                 )}
-                                <span className="font-semibold text-gray-800 text-base">{mainText}</span>
+                                <span className="font-semibold text-gray-800 text-base">
+                                  {mainText}
+                                </span>
                                 <span className="text-xs text-gray-400 mt-1 block">
-                                  {new Date(log.timestamp).toLocaleDateString("en-GB", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  })}
-                                  {" "}
-                                {log.timestamp &&
-                                    new Date(log.timestamp).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
+                                  {new Date(log.timestamp).toLocaleDateString(
+                                    "en-GB",
+                                    {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    }
+                                  )}{" "}
+                                  {log.timestamp &&
+                                    new Date(log.timestamp).toLocaleTimeString(
+                                      [],
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      }
+                                    )}
                                 </span>
                                 {/* Optional: show notes/content if present */}
                                 {log.metadata?.notes && (
-                                  <span className="text-sm text-gray-600 mt-1">{log.metadata.notes}</span>
-                                  )}
+                                  <span className="text-sm text-gray-600 mt-1">
+                                    {log.metadata.notes}
+                                  </span>
+                                )}
                               </div>
-                                </div>
+                            </div>
                           );
                         })}
                         {/* View More / View Less button */}
@@ -1293,8 +1301,8 @@ const OdooDetailBody = ({
                             >
                               View More
                             </button>
-                                </div>
-                              )}
+                          </div>
+                        )}
                         {showAllHistory && merged.length > HISTORY_LIMIT && (
                           <div className="flex justify-center mt-2">
                             <button
@@ -1303,11 +1311,11 @@ const OdooDetailBody = ({
                             >
                               View Less
                             </button>
-                                </div>
-                              )}
-                            </div>
-                        );
-                    })()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

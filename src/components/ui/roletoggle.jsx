@@ -6,12 +6,12 @@ import { useRouter } from "next/router";
 const roleLabels = {
   EMPLOYEE: "Employee",
   MANAGER: "Manager",
-  HRADMIN: "HR Admin",
+  HRADMIN: "HR",
   SALES: "Sales",
-  SALESMANAGER: "Sales Manager",
+  // SALESMANAGER: "Sales Manager",
   ACCOUNTANT: "Accountant",
-  PROJECTMANAGER: "Project Manager",
-  ASSETMANAGER: "Asset Manager",
+  PROJECTMANAGER: "Project",
+  ASSETMANAGER: "Asset",
 };
 
 const roleColors = {
@@ -19,7 +19,7 @@ const roleColors = {
   MANAGER: "bg-green-500 text-white",
   EMPLOYEE: "bg-purple-500 text-white",
   SALES: "bg-yellow-500 text-white",
-  SALESMANAGER: "bg-yellow-600 text-white",
+  // SALESMANAGER: "bg-yellow-600 text-white",
   ACCOUNTADMIN: "bg-indigo-500 text-white",
   PROJECTADMIN: "bg-orange-500 text-white",
   ACCOUNTANT: "bg-indigo-500 text-white",
@@ -35,7 +35,7 @@ const roleOrder = [
   "ACCOUNTANT",
   "PROJECTMANAGER",
   "SALES",
-  "SALESMANAGER",
+  // "SALESMANAGER",
   "ASSETMANAGER",
 ];
 

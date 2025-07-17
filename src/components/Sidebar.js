@@ -23,6 +23,7 @@ import {
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
+import version from "../version";
 
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
   const [currentRole, setCurrentRole] = useState("");
@@ -443,6 +444,10 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
           })}
         </ul>
       </nav>
+      {/* App Version at the bottom */}
+      <div className="absolute bottom-4 right-0 w-full px-4 text-right">
+        <span className="text-xs text-gray-400 font-mono select-none">v{version.version}</span>
+      </div>
     </aside>
   );
 };

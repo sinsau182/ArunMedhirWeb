@@ -1,3 +1,4 @@
+//// id formatting  slice
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { getItemFromSessionStorage } from './sessionStorageSlice';
@@ -12,9 +13,9 @@ export const fetchIdFormattings = createAsyncThunk(
       const token = getItemFromSessionStorage('token', null);
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.get(API_BASE, { headers });
-      
+
       console.log('Redux: Fetched ID formattings:', response.data);
-      
+
       // Convert array to object with categoryId as key for easier access
       const formattingsByCategory = {};
       if (Array.isArray(response.data)) {
@@ -22,7 +23,7 @@ export const fetchIdFormattings = createAsyncThunk(
           formattingsByCategory[format.categoryId] = format;
         });
       }
-      
+
       return formattingsByCategory;
     } catch (error) {
       console.error('Redux: Error fetching ID formattings:', error);
@@ -38,13 +39,13 @@ export const addIdFormatting = createAsyncThunk(
     try {
       const token = getItemFromSessionStorage('token', null);
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
+
       console.log('Redux: Adding ID formatting:', formattingData);
-      
+
       const response = await axios.post(API_BASE, formattingData, { headers });
-      
+
       console.log('Redux: Added ID formatting response:', response.data);
-      
+
       return { categoryId: formattingData.categoryId, formatting: response.data };
     } catch (error) {
       console.error('Redux: Error adding ID formatting:', error);
@@ -60,13 +61,13 @@ export const updateIdFormatting = createAsyncThunk(
     try {
       const token = getItemFromSessionStorage('token', null);
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
+
       console.log('Redux: Updating ID formatting for category:', categoryId, formattingData);
-      
+
       const response = await axios.patch(`${API_BASE}/category/${categoryId}`, formattingData, { headers });
-      
+
       console.log('Redux: Updated ID formatting response:', response.data);
-      
+
       return { categoryId, formatting: response.data };
     } catch (error) {
       console.error('Redux: Error updating ID formatting:', error);

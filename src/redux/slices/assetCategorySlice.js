@@ -1,3 +1,5 @@
+
+//export default assetCategorySlice.reducer; ////
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import getConfig from 'next/config';
